@@ -1,6 +1,7 @@
 package org.bdgenomics.guacamole.filters
 
 import org.bdgenomics.guacamole.pileup.PileupElement
+
 /**
  * Filter to remove pileup elements with low alignment quality
  */

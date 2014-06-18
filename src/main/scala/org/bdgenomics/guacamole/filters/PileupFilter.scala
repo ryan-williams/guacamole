@@ -140,7 +140,14 @@ object PileupFilter {
   }
 
   def apply(pileup: Pileup, args: PileupFilterArguments): Pileup = {
-    apply(pileup, args.filterAmbiguousMapped, args.filterMultiAllelic, args.maxMappingComplexity, args.minAlignmentForComplexity, args.minAlignmentQuality, args.maxPercentAbnormalInsertSize, args.filterDeletionOverlap)
+    apply(pileup, args.filterAmbiguousMapped,
+      args.filterMultiAllelic,
+      args.maxMappingComplexity,
+      args.minAlignmentForComplexity,
+      args.minAlignmentQuality,
+      args.maxPercentAbnormalInsertSize,
+      args.filterDeletionOverlap)
+
   }
 
   def apply(pileup: Pileup,
@@ -171,7 +178,6 @@ object PileupFilter {
     if (filterMultiAllelic) {
       elements = MultiAllelicPileupFilter(elements)
     }
-
     if (maxMappingComplexity < 100) {
       elements = RegionComplexityFilter(elements, maxMappingComplexity, minAlignmentForComplexity)
     }

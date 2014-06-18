@@ -254,7 +254,8 @@ object BayesianQualityVariantCaller extends Command with Serializable with Loggi
    */
   private def computeBaseGenotypeLikelihood(element: PileupElement, genotype: Genotype): Double = {
     def computeBaseLikelihood(element: PileupElement, referenceAllele: String): Double = {
-      val errorProbability = PhredUtils.phredToErrorProbability(element.qualityScore)
+      val alignmentProbability = PhredUtils.phredToErrorProbability(element.read.alignmentQuality)
+      val errorProbability = PhredUtils.phredToErrorProbability(element.qualityScore) + alignmentProbability
       if (Bases.basesToString(element.sequencedBases) == referenceAllele) 1 - errorProbability else errorProbability
     }
     genotype.alleles.map(referenceAllele => computeBaseLikelihood(element, referenceAllele)).sum

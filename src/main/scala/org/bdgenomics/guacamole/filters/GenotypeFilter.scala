@@ -9,6 +9,41 @@ import org.bdgenomics.guacamole.Common
 /**
  * Filter to remove genotypes where the number of reads at the locus is low
  */
+object MinimumLikelihoodFilter {
+
+  def hasMinimumLikelihood(genotype: ADAMGenotype,
+                           minLikelihood: Int,
+                           includeNull: Boolean = true): Boolean = {
+    if (genotype.getGenotypeQuality != null) {
+      genotype.getGenotypeQuality > minLikelihood
+    } else {
+      includeNull
+    }
+  }
+
+  /**
+   *
+   *  Apply the filter to an RDD of genotypes
+   *
+   * @param genotypes RDD of genotypes to filter
+   * @param minLikelihood minimum quality score for this genotype
+   * @param includeNull include the genotype if the required fields are nu
+   * @param debug if true, compute the count of genotypes after filtering
+   * @return Genotypes with quality > minLikelihood
+   */
+  def apply(genotypes: RDD[ADAMGenotype],
+            minLikelihood: Int,
+            debug: Boolean = false,
+            includeNull: Boolean = true): RDD[ADAMGenotype] = {
+    val filteredGenotypes = genotypes.filter(hasMinimumLikelihood(_, minLikelihood, includeNull))
+    if (debug) GenotypeFilter.printFilterProgress(filteredGenotypes)
+    filteredGenotypes
+  }
+}
+
+/**
+ * Filter to remove genotypes where the number of reads at the locus is low
+ */
 object MinimumReadDepthFilter {
 
   def hasMinimumReadDepth(genotype: ADAMGenotype,
@@ -162,21 +197,29 @@ object GenotypeFilter {
     @Option(name = "-debug-genotype-filters", usage = "Print count of genotypes after each filtering step")
     var debugGenotypeFilters = false
 
+    @Option(name = "-minLikelihood", usage = "Minimum Phred-scaled likelihood. Default: 0 (off)")
+    var minLikelihood: Int = 0
+
   }
 
   def apply(genotypes: RDD[ADAMGenotype], args: GenotypeFilterArguments): RDD[ADAMGenotype] = {
     var filteredGenotypes = genotypes
 
     if (args.minReadDepth > 0) {
-      filteredGenotypes = MinimumReadDepthFilter(genotypes, args.minReadDepth, args.debugGenotypeFilters)
+      filteredGenotypes = MinimumReadDepthFilter(filteredGenotypes, args.minReadDepth, args.debugGenotypeFilters)
     }
 
     if (args.minAlternateReadDepth > 0) {
-      filteredGenotypes = MinimumAlternateReadDepthFilter(genotypes, args.minAlternateReadDepth, args.debugGenotypeFilters)
+      filteredGenotypes = MinimumAlternateReadDepthFilter(filteredGenotypes, args.minAlternateReadDepth, args.debugGenotypeFilters)
     }
 
-    if (args.lowStrandBiasLimit >= 0 || args.highStrandBiasLimit <= 100) {
-      filteredGenotypes = StrandBiasFilter(genotypes, args.lowStrandBiasLimit, args.highStrandBiasLimit, args.maxStrandBiasAltReadDepth, args.debugGenotypeFilters)
+    //  TODO: Removed until these fields are returned to genotype
+    //    if (args.lowStrandBiasLimit >= 0 || args.highStrandBiasLimit <= 100) {
+    //      filteredGenotypes = StrandBiasFilter(genotypes, args.lowStrandBiasLimit, args.highStrandBiasLimit, args.maxStrandBiasAltReadDepth)
+    //    }
+
+    if (args.minLikelihood > 0) {
+      filteredGenotypes = MinimumLikelihoodFilter(filteredGenotypes, args.minLikelihood, args.debugGenotypeFilters)
     }
 
     filteredGenotypes

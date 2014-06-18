@@ -70,6 +70,14 @@ case class Pileup(locus: Long, elements: Seq[PileupElement]) {
     })
   }
 
+  lazy val depth: Int = elements.length
+
+  lazy val referenceElements = elements.filter(_.isMatch)
+
+  lazy val referenceDepth = referenceElements.length
+
+  lazy val nonReferenceDepth = depth - referenceDepth
+
   /**
    * Returns a new [[Pileup]] at a different locus on the same contig.
    *

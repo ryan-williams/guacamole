@@ -154,14 +154,14 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
     val referenceBase = Bases.baseToString(normalPileup.referenceBase)
     val tumorSampleName = tumorPileup.elements(0).read.sampleName
 
-    val tumorLikelihoods = BayesianQualityVariantCaller.computeLikelihoods(filteredTumorPileup).toMap
+    val tumorLikelihoods = BayesianQualityVariantCaller.computeLikelihoods(filteredTumorPileup, includeAlignmentLikelihood = true).toMap
 
     def buildVariants(genotype: Genotype,
                       probability: Double,
                       readDepth: Int,
                       alternateReadDepth: Int,
                       alternateForwardDepth: Int,
-                      delta: Double = 1e-6): Seq[ADAMGenotype] = {
+                      delta: Double = 1e-10): Seq[ADAMGenotype] = {
       val genotypeAlleles = JavaConversions.seqAsJavaList(genotype.getGenotypeAlleles(referenceBase))
       genotype.getNonReferenceAlleles(referenceBase).map(
         variantAllele => {
@@ -186,14 +186,14 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
     val tumorMostLikelyGenotype = tumorLikelihoods.maxBy(_._2)
     if (!tumorMostLikelyGenotype._1.isVariant(referenceBase)) return Seq.empty
 
-    val normalLikelihoods = BayesianQualityVariantCaller.computeLikelihoods(filteredNormalPileup).toMap
+    val normalLikelihoods = BayesianQualityVariantCaller.computeLikelihoods(filteredNormalPileup, includeAlignmentLikelihood = true).toMap
 
     if (normalLikelihoods.isEmpty) return Seq.empty
     val (normalVariantGenotypes, normalReferenceGenotype) = normalLikelihoods.partition(_._1.isVariant(referenceBase))
 
     val normalizedTumorLikelihood = tumorMostLikelyGenotype._2 / tumorLikelihoods.map(_._2).sum
     val normalizedNormalLikelihood = normalVariantGenotypes.map(_._2).sum / normalLikelihoods.map(_._2).sum
-    val somaticVariantOdds = PhredUtils.successProbabilityToPhred(normalizedTumorLikelihood - normalizedNormalLikelihood - 1e-6)
+    val somaticVariantOdds = PhredUtils.successProbabilityToPhred(normalizedTumorLikelihood - normalizedNormalLikelihood - 1e-10)
 
     if (somaticVariantOdds < logOddsThreshold) return Seq.empty
 
@@ -204,13 +204,16 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
     val referenceReadDepth = referenceElements.length
     val referenceForwardReadDepth = referenceElements.filter(_.read.isPositiveStrand).length
 
-    val alternateReadDepth = referenceElements.length
+    val alternateReadDepth = alternateElements.length
     val alternateForwardReadDepth = alternateElements.filter(_.read.isPositiveStrand).length
 
     //TODO to apply strand bias filter here for now
-    val strandBias = 100.0 * alternateForwardReadDepth / alternateReadDepth
+    val alternateStrandBias = 100.0 * alternateForwardReadDepth / alternateReadDepth
     val referenceStrandBias = 100.0 * referenceForwardReadDepth / referenceReadDepth
-    if (alternateForwardReadDepth < maxAltReadDepthBias && ((strandBias <= lowStrandBiasLimit && referenceStrandBias > 50) || (strandBias >= highStrandBiasLimit && referenceStrandBias < 50))) return Seq.empty
+    val strandBias = 100.0 * (alternateForwardReadDepth + referenceForwardReadDepth) / (alternateReadDepth + referenceReadDepth)
+    //    if (alternateForwardReadDepth < maxAltReadDepthBias && ((strandBias <= lowStrandBiasLimit && referenceStrandBias > 50) || (strandBias >= highStrandBiasLimit && referenceStrandBias < 50))) return Seq.empty
+
+    if (math.abs(strandBias - referenceStrandBias) > maxAltReadDepthBias || math.abs(strandBias - alternateStrandBias) > maxAltReadDepthBias) return Seq.empty
 
     buildVariants(tumorMostLikelyGenotype._1, normalizedTumorLikelihood, filteredTumorPileup.depth, alternateReadDepth, alternateForwardReadDepth)
 

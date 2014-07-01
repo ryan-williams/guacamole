@@ -193,9 +193,9 @@ object BayesianQualityVariantCaller extends Command with Serializable with Loggi
    *
    * @return Sequence of (Genotype, Likelihood)
    */
-  def computeLikelihoods(pileup: Pileup): Seq[(Genotype, Double)] = {
+  def computeLikelihoods(pileup: Pileup, includeAlignmentLikelihood: Boolean = true): Seq[(Genotype, Double)] = {
     val possibleGenotypes = getPossibleGenotypes(pileup)
-    possibleGenotypes.map(g => (g, computeGenotypeLikelihoods(pileup, g, possibleGenotypes.size - 1)))
+    possibleGenotypes.map(g => (g, computeGenotypeLikelihoods(pileup, g, possibleGenotypes.size - 1, includeAlignmentLikelihood)))
   }
 
   /**
@@ -203,9 +203,9 @@ object BayesianQualityVariantCaller extends Command with Serializable with Loggi
    *
    * @return Sequence of (Genotype, LogLikelihood)
    */
-  def computeLogLikelihoods(pileup: Pileup): Seq[(Genotype, Double)] = {
+  def computeLogLikelihoods(pileup: Pileup, includeAlignmentLikelihood: Boolean = false): Seq[(Genotype, Double)] = {
     val possibleGenotypes = getPossibleGenotypes(pileup)
-    possibleGenotypes.map(g => (g, computeGenotypeLogLikelihoods(pileup, g, possibleGenotypes.size - 1)))
+    possibleGenotypes.map(g => (g, computeGenotypeLogLikelihoods(pileup, g, possibleGenotypes.size - 1, includeAlignmentLikelihood)))
   }
 
   /**
@@ -220,10 +220,10 @@ object BayesianQualityVariantCaller extends Command with Serializable with Loggi
    *
    *  @return likelihood for genotype based on P( bases in pileup | genotype )
    */
-  protected def computeGenotypeLikelihoods(pileup: Pileup, genotype: Genotype, numAlternateAlleles: Int): Double = {
+  protected def computeGenotypeLikelihoods(pileup: Pileup, genotype: Genotype, numAlternateAlleles: Int, includeAlignmentLikelihood: Boolean = false): Double = {
 
     val depth = pileup.elements.size
-    pileup.elements.map(computeBaseGenotypeLikelihood(_, genotype)).reduce(_ * _) / math.pow(genotype.ploidy, depth)
+    pileup.elements.map(computeBaseGenotypeLikelihood(_, genotype, includeAlignmentLikelihood)).reduce(_ * _) / math.pow(genotype.ploidy, depth)
   }
 
   /**
@@ -231,10 +231,10 @@ object BayesianQualityVariantCaller extends Command with Serializable with Loggi
    *
    *  @return log likelihood for genotype based P( bases in pileup | genotype )
    */
-  protected def computeGenotypeLogLikelihoods(pileup: Pileup, genotype: Genotype, numAlternateAlleles: Int): Double = {
+  protected def computeGenotypeLogLikelihoods(pileup: Pileup, genotype: Genotype, numAlternateAlleles: Int, includeAlignmentLikelihood: Boolean = false): Double = {
 
     val depth = pileup.elements.size
-    val unnormalizedLikelihood = pileup.elements.map(el => math.log(computeBaseGenotypeLikelihood(el, genotype))).reduce(_ + _)
+    val unnormalizedLikelihood = pileup.elements.map(el => math.log(computeBaseGenotypeLikelihood(el, genotype, includeAlignmentLikelihood))).reduce(_ + _)
     if (genotype.ploidy == 2) {
       unnormalizedLikelihood - depth
     } else {
@@ -252,10 +252,15 @@ object BayesianQualityVariantCaller extends Command with Serializable with Loggi
    * @param genotype genotype to evaluate
    * @return likelihood for genotype based on P( bases in pileup element | genotype )
    */
-  private def computeBaseGenotypeLikelihood(element: PileupElement, genotype: Genotype): Double = {
+  private def computeBaseGenotypeLikelihood(element: PileupElement, genotype: Genotype, includeAlignmentLikelihood: Boolean = false): Double = {
     def computeBaseLikelihood(element: PileupElement, referenceAllele: String): Double = {
-      val alignmentProbability = PhredUtils.phredToErrorProbability(element.read.alignmentQuality)
-      val errorProbability = PhredUtils.phredToErrorProbability(element.qualityScore) + alignmentProbability
+      val baseCallProbability = PhredUtils.phredToErrorProbability(element.qualityScore)
+      val errorProbability = if (includeAlignmentLikelihood) {
+        baseCallProbability + PhredUtils.phredToErrorProbability(element.read.alignmentQuality)
+      } else {
+        baseCallProbability
+      }
+
       if (Bases.basesToString(element.sequencedBases) == referenceAllele) 1 - errorProbability else errorProbability
     }
     genotype.alleles.map(referenceAllele => computeBaseLikelihood(element, referenceAllele)).sum

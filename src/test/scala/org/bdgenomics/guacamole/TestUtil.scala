@@ -51,7 +51,7 @@ object TestUtil extends ShouldMatchers {
                start: Long = 1,
                chr: String = "chr1",
                qualityScores: Option[Array[Int]] = None,
-               alignmentQuality: Int = 30): MappedRead = {
+               alignmentQuality: Int = 60): MappedRead = {
 
     val qualityScoreString = if (qualityScores.isDefined) {
       qualityScores.get.map(q => q + 33).map(_.toChar).mkString

@@ -73,7 +73,7 @@ class BayesianQualityVariantCallerSuite extends SparkFunSuite {
     expectedLikelihoods += makeGenotype("T", "G") -> altLikelihood
 
     val scored = BayesianQualityVariantCaller.computeLikelihoods(pileup).toMap
-    scored.foreach(l => TestUtil.assertAlmostEqual(l._2, expectedLikelihoods(l._1)))
+    scored.foreach(l => TestUtil.assertAlmostEqual(l._2, expectedLikelihoods(l._1), 1e-3))
   }
 
   test("score genotype for single sample, mix of ref/non-ref bases") {
@@ -120,7 +120,7 @@ class BayesianQualityVariantCallerSuite extends SparkFunSuite {
     expectedLikelihoods += makeGenotype("C", "C") -> allErrorLikelihood
 
     val scored = BayesianQualityVariantCaller.computeLikelihoods(pileup).toMap
-    scored.foreach(l => TestUtil.assertAlmostEqual(l._2, expectedLikelihoods(l._1)))
+    scored.foreach(l => TestUtil.assertAlmostEqual(l._2, expectedLikelihoods(l._1), 1e-3))
   }
 
   test("log score genotype for single sample, all bases ref") {

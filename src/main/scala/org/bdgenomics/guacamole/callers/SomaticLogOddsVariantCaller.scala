@@ -199,12 +199,18 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
 
     val alternateBase = tumorMostLikelyGenotype._1.getNonReferenceAlleles(referenceBase)(0)
     val alternateElements = filteredTumorPileup.elements.filter(el => Bases.basesToString(el.sequencedBases) == alternateBase)
-    val alternateReadDepth = alternateElements.length
+    val referenceElements = filteredTumorPileup.elements.filter(el => Bases.basesToString(el.sequencedBases) == referenceBase)
+
+    val referenceReadDepth = referenceElements.length
+    val referenceForwardReadDepth = referenceElements.filter(_.read.isPositiveStrand).length
+
+    val alternateReadDepth = referenceElements.length
     val alternateForwardReadDepth = alternateElements.filter(_.read.isPositiveStrand).length
 
     //TODO to apply strand bias filter here for now
     val strandBias = 100.0 * alternateForwardReadDepth / alternateReadDepth
-    if (alternateForwardReadDepth < maxAltReadDepthBias && (strandBias <= lowStrandBiasLimit || strandBias >= highStrandBiasLimit)) return Seq.empty
+    val referenceStrandBias = 100.0 * referenceForwardReadDepth / referenceReadDepth
+    if (alternateForwardReadDepth < maxAltReadDepthBias && ((strandBias <= lowStrandBiasLimit && referenceStrandBias > 50) || (strandBias >= highStrandBiasLimit && referenceStrandBias < 50))) return Seq.empty
 
     buildVariants(tumorMostLikelyGenotype._1, normalizedTumorLikelihood, filteredTumorPileup.depth, alternateReadDepth, alternateForwardReadDepth)
 

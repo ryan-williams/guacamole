@@ -13,7 +13,7 @@ object QualityAlignedReadsFilter {
    * @return filtered sequence of elements - those who had higher than minimumAlignmentQuality alignmentQuality
    */
   def apply(elements: Seq[PileupElement], minimumAlignmentQuality: Int): Seq[PileupElement] = {
-    elements.filter(_.read.alignmentQuality > minimumAlignmentQuality)
+    elements.filter(_.read.alignmentQuality >= minimumAlignmentQuality)
   }
 }
 

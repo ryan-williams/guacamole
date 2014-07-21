@@ -171,13 +171,14 @@ object PileupFilter {
       elements = AmbiguousMappingPileupFilter(elements)
     }
 
-    if (maxPercentAbnormalInsertSize > 0) {
+    if (maxPercentAbnormalInsertSize < 100) {
       elements = AbnormalInsertSizePileupFilter(elements, maxPercentAbnormalInsertSize)
     }
 
     if (filterMultiAllelic) {
       elements = MultiAllelicPileupFilter(elements)
     }
+
     if (maxMappingComplexity < 100) {
       elements = RegionComplexityFilter(elements, maxMappingComplexity, minAlignmentForComplexity)
     }

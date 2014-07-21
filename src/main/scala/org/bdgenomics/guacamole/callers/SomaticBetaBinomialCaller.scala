@@ -9,7 +9,7 @@ import org.bdgenomics.adam.avro.{ ADAMContig, ADAMVariant, ADAMGenotype }
 import org.apache.spark.rdd.RDD
 import org.bdgenomics.guacamole.concordance.GenotypesEvaluator
 import org.bdgenomics.guacamole.concordance.GenotypesEvaluator.GenotypeConcordance
-import org.bdgenomics.guacamole.pileup.Pileup
+import org.bdgenomics.guacamole.pileup.{ PileupElement, Pileup }
 import scala.collection.JavaConversions
 import org.bdgenomics.adam.util.PhredUtils
 import org.bdgenomics.guacamole.filters.GenotypeFilter.GenotypeFilterArguments
@@ -27,8 +27,8 @@ import org.apache.commons.math3.util.ArithmeticUtils
  * on a sample identifier when joining the genotypes
  *
  */
-object SomaticLogOddsVariantCaller extends Command with Serializable with Logging {
-  override val name = "logodds-somatic"
+object SomaticBetaBinomialCaller extends Command with Serializable with Logging {
+  override val name = "somatic-betabinomial"
   override val description = "call somatic variants using a two independent caller on tumor and normal"
 
   private class Arguments extends DistributedUtil.Arguments with Output with GenotypeConcordance with GenotypeFilterArguments with PileupFilterArguments with TumorNormalReads {
@@ -50,12 +50,10 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
         .format(tumorReads.sequenceDictionary, normalReads.sequenceDictionary))
 
     val minReadDepth = args.minReadDepth
+    val maxNormalAlternateReadDepth = args.maxNormalAlternateReadDepth
 
     val lowStrandBiasLimit = args.lowStrandBiasLimit
     val highStrandBiasLimit = args.highStrandBiasLimit
-
-    val maxNormalAlternateReadDepth = args.maxNormalAlternateReadDepth
-
     val oddsThreshold = args.logOdds
 
     val maxMappingComplexity = args.maxMappingComplexity
@@ -163,57 +161,17 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
         includeAlignmentLikelihood = true,
         normalize = true).toMap
 
-    def normalPrior(gt: Genotype, hetVariantPrior: Double = 1e-3): Double = {
-      val numberVariants = gt.numberOfVariants(referenceBase)
-      if (numberVariants > 0) math.pow(hetVariantPrior / gt.uniqueAllelesCount, numberVariants) else 1
-    }
-
-    val mapTumorLikelihoods = BayesianQualityVariantCaller.normalize(
-      tumorLikelihoods.map(genotypeLikelihood =>
-        (genotypeLikelihood._1, genotypeLikelihood._2 * normalPrior(genotypeLikelihood._1))))
-
-    val tumorMostLikelyGenotype = mapTumorLikelihoods.maxBy(_._2)
-
-    if (!tumorMostLikelyGenotype._1.isVariant(referenceBase)) return Seq.empty
-
-    val normalLikelihoods =
-      BayesianQualityVariantCaller.computeLikelihoods(filteredNormalPileup,
-        includeAlignmentLikelihood = true,
-        normalize = true).toMap
-
-    val mapNormalLikelihoods = BayesianQualityVariantCaller.normalize(
-      normalLikelihoods.map(genotypeLikelihood =>
-        (genotypeLikelihood._1, genotypeLikelihood._2 * normalPrior(genotypeLikelihood._1))))
-
-    val (normalVariantGenotypes, normalReferenceGenotype) = mapNormalLikelihoods.partition(_._1.isVariant(referenceBase))
-
-    //    val mostLikelyGenotype = computeSomaticLikelihood(referenceBase, filteredTumorPileup, filteredNormalPileup)
-    //    val tumorMostLikelyGenotype = mostLikelyGenotype._1._1
-
-    val somaticLogOdds = math.log(tumorMostLikelyGenotype._2) - math.log(normalVariantGenotypes.map(_._2).sum)
-    val somaticVariantProbability = PhredUtils.successProbabilityToPhred(scaleratio(somaticLogOdds) - 1e-10)
-
-    if (!tumorMostLikelyGenotype._1.isVariant(referenceBase)) return Seq.empty
+    val tumorMostLikelyGenotype = tumorLikelihoods.maxBy(_._2)
     val alternateBase = tumorMostLikelyGenotype._1.getNonReferenceAlleles(referenceBase)(0)
 
-    val (alternateReadDepth, alternateForwardReadDepth) = computeDepthAndForwardDepth(alternateBase, filteredTumorPileup)
-    val (referenceReadDepth, referenceForwardReadDepth) = computeDepthAndForwardDepth(referenceBase, filteredTumorPileup)
-    val (referenceNormalReadDepth, referenceNormalForwardReadDepth) = computeDepthAndForwardDepth(referenceBase, filteredNormalPileup)
-    val (alternateNormalReadDepth, alternateNormalForwardReadDepth) = computeDepthAndForwardDepth(alternateBase, filteredNormalPileup)
+    val tumorP = mapEstimateOfP(filteredTumorPileup, alternateBase)
+    val normalP = mapEstimateOfP(filteredNormalPileup, alternateBase)
+    val pVal = testStatistic(tumorP, normalP, filteredTumorPileup.depth, filteredNormalPileup.depth)
+    val likelihoodOfVariant = math.abs(pVal) * 10
 
-    val phredScaledGenotypeLikelihood = PhredUtils.successProbabilityToPhred(tumorMostLikelyGenotype._2 - 1e-10)
-    if (!tumorMostLikelyGenotype._1.isVariant(referenceBase) ||
-      somaticVariantProbability < logOddsThreshold ||
-      alternateNormalReadDepth > maxNormalAlternateReadDepth ||
-      (phredScaledGenotypeLikelihood < minLikelihood && !somaticLogOdds.isInfinite)) return Seq.empty
+    if (likelihoodOfVariant < minLikelihood) return Seq.empty
 
-    //    if (math.abs(strandBiasZScore) > 1.5) return Seq.empty
-//    if (isBiasedToSingleStrand(alternateReadDepth,
-//      alternateForwardReadDepth,
-//      referenceReadDepth,
-//      referenceForwardReadDepth,
-//      lowStrandBiasLimit,
-//      highStrandBiasLimit)) return Seq.empty
+    val (alternateReadDepth, alternateForwardReadDepth) = SomaticLogOddsVariantCaller.computeDepthAndForwardDepth(alternateBase, filteredTumorPileup)
 
     def buildVariants(genotype: Genotype,
                       probability: Double,
@@ -245,60 +203,26 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
     buildVariants(tumorMostLikelyGenotype._1, tumorMostLikelyGenotype._2, filteredTumorPileup.depth, alternateReadDepth, alternateForwardReadDepth)
   }
 
-  //  def computeSomaticLikelihood(referenceBase: String, tumorPileup: Pileup, normalPileup: Pileup, hetVariantPrior: Double = 1e-3, tumorNormalLinkPrior: Double = 1e-6): ((Genotype, Genotype), Double) = {
-  //
-  //    def normalPrior(gt: Genotype, hetVariantPrior: Double): Double = {
-  //      val numberVariants = gt.numberOfVariants(referenceBase)
-  //      if (numberVariants > 0) math.pow(hetVariantPrior / gt.uniqueAllelesCount, numberVariants) else 1
-  //    }
-  //
-  //    def tumorPrior(tgt: Genotype, ngt: Genotype, tumorNormalLinkPrior: Double): Double = {
-  //
-  //      val sharedAlleles = tgt.alleles.toSet.intersect(ngt.alleles.toSet).size
-  //      if (!tgt.equals(ngt)) tumorNormalLinkPrior else 1
-  //      //if (sharedAlleles != tgt.ploidy) math.pow(tumorNormalLinkPrior, sharedAlleles) else 1
-  //    }
-  //
-  //    val tumorLikelihoods = BayesianQualityVariantCaller.computeLikelihoods(tumorPileup, includeAlignmentLikelihood = false, normalize = true).toMap
-  //    val normalLikelihoods = BayesianQualityVariantCaller.computeLikelihoods(normalPileup, includeAlignmentLikelihood = false, normalize = true).toMap
-  //    val jointLikelihoods =
-  //      tumorLikelihoods.flatMap(tumorGT => {
-  //        normalLikelihoods.map(normalGT => {
-  //          ((tumorGT._1, normalGT._1), tumorGT._2 * normalGT._2 * normalPrior(normalGT._1, hetVariantPrior) * normalPrior(tumorGT._1, hetVariantPrior) * tumorPrior(tumorGT._1, normalGT._1, tumorNormalLinkPrior))
-  //        })
-  //      })
-  //    val totalLikelihood = jointLikelihoods.map(_._2).sum
-  //    val normalizedJointLikelihoods = jointLikelihoods.map(jointLikelihood => (jointLikelihood._1, jointLikelihood._2 / totalLikelihood))
-  //    normalizedJointLikelihoods.maxBy(_._2)
-  //  }
+  def mapEstimateOfP(pileup: Pileup,
+                     referenceAllele: String,
+                     betaPriorAlpha: Int = 10,
+                     betaPriorBeta: Int = 1,
+                     includeAlignmentLikelihood: Boolean = false): Double = {
 
-  //  //TODO to apply strand bias filter here for now
-  def strandBiasFilter(alternateReadDepth: Int,
-                       alternateForwardReadDepth: Int,
-                       referenceReadDepth: Int,
-                       referenceForwardReadDepth: Int): Int = {
+    def computeBaseLikelihood(element: PileupElement, referenceAllele: String): Double = {
+      val baseCallProbability = PhredUtils.phredToErrorProbability(element.qualityScore)
+      val errorProbability = if (includeAlignmentLikelihood) {
+        baseCallProbability + PhredUtils.phredToErrorProbability(element.read.alignmentQuality)
+      } else {
+        baseCallProbability
+      }
 
-    //val p_ref_alt_equally_forward = fishersExactTest(totalForward, totalBackward, alternateForwardReadDepth, alternateReadDepth - alternateForwardReadDepth)
-    val strandEquallyAlt = FishersExactTest(alternateReadDepth, referenceReadDepth, alternateForwardReadDepth, referenceForwardReadDepth)
-    math.round(100 * (1 - strandEquallyAlt)).toInt
+      if (Bases.basesToString(element.sequencedBases) == referenceAllele) 1 - errorProbability else errorProbability
+    }
 
-  }
+    val estimatedPos = pileup.elements.map(el => computeBaseLikelihood(el, referenceAllele)).sum
 
-  def isBiasedToSingleStrand(alternateReadDepth: Int,
-                             alternateForwardReadDepth: Int,
-                             referenceReadDepth: Int,
-                             referenceForwardReadDepth: Int,
-                             lowStrandBiasLimit: Int,
-                             highStrandBiasLimit: Int): Boolean = {
-
-    val altForwardRatio = math.round(100 * alternateForwardReadDepth / alternateReadDepth.toFloat).toInt
-    val refForwardRatio = referenceForwardReadDepth / referenceReadDepth.toFloat
-    if (altForwardRatio >= highStrandBiasLimit ||
-      altForwardRatio <= lowStrandBiasLimit)
-      true
-    else
-      false
-
+    (estimatedPos + betaPriorBeta - 1) / (pileup.depth + betaPriorAlpha + betaPriorBeta)
   }
 
   def testStatistic(p1: Double, p2: Double, n1: Int, n2: Int): Double = {
@@ -307,26 +231,6 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
     val standardError = math.sqrt(p * (1 - p) * ((1.0 / n1) + (1.0 / n2)))
 
     (p1 - p2) / standardError
-  }
-
-  def computeDepthAndForwardDepth(base: String, filteredTumorPileup: Pileup): (Int, Int) = {
-    val baseElements = filteredTumorPileup.elements.filter(el => Bases.basesToString(el.sequencedBases) == base)
-
-    val readDepth = baseElements.length
-    val baseForwardReadDepth = baseElements.filter(_.read.isPositiveStrand).length
-    return (readDepth, baseForwardReadDepth)
-  }
-
-  def logistic(x: Double): Double = {
-    1.0 / (1 + math.exp(-x))
-  }
-
-  def scaleratio(x: Double): Double = {
-    1 - (1.0 / math.abs(x))
-  }
-
-  def gompertz(x: Double, c: Double = -0.5, a: Double = 1, b: Double = -1): Double = {
-    math.exp(-math.exp(c * x))
   }
 
 }

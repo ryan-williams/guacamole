@@ -126,13 +126,11 @@ object StrandBiasFilter {
    * @param genotype Genotype to evaluate
    * @param lowStrandBiasLimit Minimum allowed percent of reads on the forward strand
    * @param highStrandBiasLimit Maximum allowed percent of reads on the forward strand
-   * @param maxStrandBiasReadDepth maximum depth at which to apply filter
    * @return
    */
   def isBiasedToSingleStrand(genotype: ADAMGenotype,
                              lowStrandBiasLimit: Int,
                              highStrandBiasLimit: Int,
-                             maxStrandBiasReadDepth: Int,
                              includeNull: Boolean = true): Boolean = {
 
     // TODO! fix this for current ADAM version
@@ -154,7 +152,6 @@ object StrandBiasFilter {
    * @param genotypes RDD of genotypes to filter
    * @param lowStrandBiasLimit Minimum allowed percent of reads on the forward strand
    * @param highStrandBiasLimit Maximum allowed percent of reads on the forward strand
-   * @param maxStrandBiasReadDepth maximum depth at which to apply filter
    * @param includeNull include the genotype if the required fields are null
    * @param debug if true, compute the count of genotypes after filtering
    * @return Genotypes with read depth > minAlternateReadDepth
@@ -164,7 +161,7 @@ object StrandBiasFilter {
             maxStrandBiasReadDepth: Int,
             debug: Boolean = false,
             includeNull: Boolean = true): RDD[ADAMGenotype] = {
-    val filteredGenotypes = genotypes.filter(isBiasedToSingleStrand(_, lowStrandBiasLimit, highStrandBiasLimit, maxStrandBiasReadDepth, includeNull))
+    val filteredGenotypes = genotypes.filter(isBiasedToSingleStrand(_, lowStrandBiasLimit, highStrandBiasLimit, includeNull))
     if (debug) GenotypeFilter.printFilterProgress(filteredGenotypes)
     filteredGenotypes
   }
@@ -185,8 +182,8 @@ object GenotypeFilter {
     @Option(name = "-minAlternateReadDepth", usage = "Minimum number of reads with alternate allele for a genotype call")
     var minAlternateReadDepth: Int = 0
 
-    @Option(name = "-maxStrandBiasAltReadDepth", usage = "Max number of reads to apply strand bias filter to")
-    var maxStrandBiasAltReadDepth: Int = 10
+    @Option(name = "-maxNormalAlternateReadDepth", usage = "Maximum number of alternate reads in the normal sample")
+    var maxNormalAlternateReadDepth: Int = 0
 
     @Option(name = "-lowStrandBiasLimit", usage = "Minimum allowed % of reads on the forward strand. (To prevent strand bias)")
     var lowStrandBiasLimit: Int = 0
@@ -218,9 +215,9 @@ object GenotypeFilter {
     //      filteredGenotypes = StrandBiasFilter(genotypes, args.lowStrandBiasLimit, args.highStrandBiasLimit, args.maxStrandBiasAltReadDepth)
     //    }
 
-    if (args.minLikelihood > 0) {
-      filteredGenotypes = MinimumLikelihoodFilter(filteredGenotypes, args.minLikelihood, args.debugGenotypeFilters)
-    }
+    //    if (args.minLikelihood > 0) {
+    //      filteredGenotypes = MinimumLikelihoodFilter(filteredGenotypes, args.minLikelihood, args.debugGenotypeFilters)
+    //    }
 
     filteredGenotypes
   }

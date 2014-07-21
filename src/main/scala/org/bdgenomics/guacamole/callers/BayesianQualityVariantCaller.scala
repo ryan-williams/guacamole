@@ -80,6 +80,11 @@ case class Genotype(alleles: String*) {
       Seq(ADAMGenotypeAllele.Ref, ADAMGenotypeAllele.Alt)
     }
   }
+
+  def equals(otherGenotype: Genotype): Boolean = {
+    otherGenotype.alleles.toSet == alleles.toSet
+  }
+
 }
 
 /**
@@ -181,7 +186,7 @@ object BayesianQualityVariantCaller extends Command with Serializable with Loggi
     // We prefer to work with Strings than with Array[Byte] for nucleotide sequences, so we convert to Strings as we
     // extract sequences from the Pileup. If this turns into a production variant caller, we may want to use the more
     // efficient Array[Byte] type everywhere.
-    val possibleAlleles = pileup.elements.map(e => Bases.basesToString(e.sequencedBases)).distinct
+    val possibleAlleles = pileup.elements.map(e => Bases.basesToString(e.sequencedBases)).distinct.sorted
     val possibleGenotypes =
       for (i <- 0 until possibleAlleles.size; j <- i until possibleAlleles.size)
         yield Genotype(possibleAlleles(i), possibleAlleles(j))
@@ -193,9 +198,16 @@ object BayesianQualityVariantCaller extends Command with Serializable with Loggi
    *
    * @return Sequence of (Genotype, Likelihood)
    */
-  def computeLikelihoods(pileup: Pileup, includeAlignmentLikelihood: Boolean = true): Seq[(Genotype, Double)] = {
+  def computeLikelihoods(pileup: Pileup, includeAlignmentLikelihood: Boolean = true, normalize: Boolean = false): Seq[(Genotype, Double)] = {
     val possibleGenotypes = getPossibleGenotypes(pileup)
-    possibleGenotypes.map(g => (g, computeGenotypeLikelihoods(pileup, g, possibleGenotypes.size - 1, includeAlignmentLikelihood)))
+    val genotypeLikelihoods = possibleGenotypes.map(g => (g, computeGenotypeLikelihoods(pileup, g, possibleGenotypes.size - 1, includeAlignmentLikelihood)))
+    if (normalize) {
+      val totalLikelihood = genotypeLikelihoods.map(_._2).sum
+      genotypeLikelihoods.map(genotypeLikelihood => (genotypeLikelihood._1, genotypeLikelihood._2 / totalLikelihood))
+    } else {
+      genotypeLikelihoods
+    }
+
   }
 
   /**
@@ -272,5 +284,10 @@ object BayesianQualityVariantCaller extends Command with Serializable with Loggi
    * @return 0.0 (default uniform prior)
    */
   protected def computeGenotypeLogPrior(genotype: Genotype): Double = 0.0
+
+  def normalize(likelihoods: Map[Genotype, Double]): Map[Genotype, Double] = {
+    val totalLikelihood = likelihoods.map(_._2).sum
+    likelihoods.map(genotypeLikelihood => (genotypeLikelihood._1, genotypeLikelihood._2 / totalLikelihood))
+  }
 }
 

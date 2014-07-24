@@ -17,16 +17,16 @@ class SomaticBetaBinomialCallerSuite extends SparkFunSuite {
 
   val caller = SomaticBetaBinomialCaller
 
-//    val o1 = "/tmp/somatic.logodds.fn.chr20.vcf"
-//    TestUtil.deleteIfExists(o1)
-//    caller.run(
-//      Array[String](
-//        "-tumor-reads", TestUtil.testDataPath("tumor.chr20.tough.sam"),
-//        "-normal-reads", TestUtil.testDataPath("normal.chr20.tough.sam"),
-//        "-parallelism", "1",
-//        "-out", o1,
-//        "-loci", "20:49074448-49074449,20:42999694-42999695,20:33652547-33652548,20:25031215-25031216,20:44061033-44061034,20:45175149-45175150")
-//        ++ algorithmParameters)
+  //    val o1 = "/tmp/somatic.logodds.fn.chr20.vcf"
+  //    TestUtil.deleteIfExists(o1)
+  //    caller.run(
+  //      Array[String](
+  //        "-tumor-reads", TestUtil.testDataPath("tumor.chr20.tough.sam"),
+  //        "-normal-reads", TestUtil.testDataPath("normal.chr20.tough.sam"),
+  //        "-parallelism", "1",
+  //        "-out", o1,
+  //        "-loci", "20:49074448-49074449,20:42999694-42999695,20:33652547-33652548,20:25031215-25031216,20:44061033-44061034,20:45175149-45175150")
+  //        ++ algorithmParameters)
 
   val o3 = "/tmp/somatic.logodds.fp.chr20.vcf"
   TestUtil.deleteIfExists(o3)

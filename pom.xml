@@ -238,6 +238,12 @@
       <version>1.9.2</version>
       <scope>test</scope>
     </dependency>
+      <dependency>
+          <groupId>org.scalacheck</groupId>
+          <artifactId>scalacheck_${scala.version.prefix}</artifactId>
+          <version>1.10.1</version>
+           <scope>test</scope>
+      </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-client</artifactId>

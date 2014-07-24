@@ -19,6 +19,7 @@ import org.scalatest.matchers.ShouldMatchers
 import org.apache.spark.rdd.RDD
 import org.apache.commons.io.FileUtils
 import java.io.{ FileNotFoundException, IOError, File }
+import org.bdgenomics.guacamole.pileup.Pileup
 
 object TestUtil extends ShouldMatchers {
 
@@ -74,12 +75,25 @@ object TestUtil extends ShouldMatchers {
     resource.getFile
   }
 
-  def loadReads(sc: SparkContext, filename: String): ReadSet = {
+  def loadTumorNormalReads(sc: SparkContext,
+                           tumorFile: String,
+                           normalFile: String): (Seq[MappedRead], Seq[MappedRead]) = {
+    val filters = Read.InputFilters(mapped = true, nonDuplicate = true, hasMdTag = true, passedVendorQualityChecks = true)
+    (loadReads(sc, tumorFile, filters = filters).mappedReads.collect(), loadReads(sc, normalFile, filters = filters).mappedReads.collect())
+  }
+
+  def loadReads(sc: SparkContext,
+                filename: String,
+                filters: Read.InputFilters = Read.InputFilters.empty): ReadSet = {
     /* grab the path to the SAM file we've stashed in the resources subdirectory */
     val path = testDataPath(filename)
     assert(sc != null)
     assert(sc.hadoopConfiguration != null)
-    ReadSet(sc, path)
+    ReadSet(sc, path, filters = filters)
+  }
+
+  def loadTumorNormalPileup(tumorReads: Seq[MappedRead], normalReads: Seq[MappedRead], locus: Long): (Pileup, Pileup) = {
+    (Pileup(tumorReads, locus), Pileup(normalReads, locus))
   }
 
   def assertAlmostEqual(a: Double, b: Double, epsilon: Double = 1e-6) {

@@ -67,6 +67,8 @@ case class PileupElement(
     }
   }
 
+  //lazy val nearbyMutations = read.mdTag.map(_.)
+
   /* If you only care about what kind of CigarOperator is at this position, but not its associated sequence, then you
    * can use these state variables.
    */

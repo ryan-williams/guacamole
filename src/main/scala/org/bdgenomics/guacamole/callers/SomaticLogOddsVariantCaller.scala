@@ -40,7 +40,6 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
     @Opt(name = "snvCorrelationPercent")
     var snvCorrelationPercent: Int = 35
 
-
   }
 
   override def run(rawArgs: Array[String]): Unit = {
@@ -277,13 +276,13 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
   //
 
   def passTumorGenotype(pileup: Pileup,
-                   genotype: Genotype,
-                   referenceBase: String,
-                   alternateBase: String,
-                   minAlternateReadDepth: Int = 1,
-                   strandBiasThreshold: Int,
-                   snvWindowRange: Int,
-                   maxCorrelatedSNVPercent: Int): Boolean = {
+                        genotype: Genotype,
+                        referenceBase: String,
+                        alternateBase: String,
+                        minAlternateReadDepth: Int = 1,
+                        strandBiasThreshold: Int,
+                        snvWindowRange: Int,
+                        maxCorrelatedSNVPercent: Int): Boolean = {
 
     val (alternateReadDepth, alternateForwardReadDepth) = computeDepthAndForwardDepth(alternateBase, pileup)
     val (referenceReadDepth, referenceForwardReadDepth) = computeDepthAndForwardDepth(referenceBase, pileup)
@@ -299,10 +298,9 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
       referenceForwardReadDepth)
 
     //if (pileup.elements.filter(_.hasNearbyMismatches(snvWindowRange)).size.toFloat /  pileup.depth > maxCorrelatedSNVPercent) return false
-    val correlatedSNVs = pileup.elements.filter( el =>
-      el.hasNearbyMismatches(snvWindowRange)
-    //  && el => Bases.basesToString(el.sequencedBases) == alternateBase
-    ).size
+    val correlatedSNVs = pileup.elements.filter(el =>
+      el.hasNearbyMismatches(snvWindowRange) //  && el => Bases.basesToString(el.sequencedBases) == alternateBase
+      ).size
     val snvCorrelationPercent = 100.0 * correlatedSNVs / pileup.nonReferenceDepth
     if (snvCorrelationPercent > maxCorrelatedSNVPercent) {
       return false
@@ -316,11 +314,11 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
   }
 
   def passNormalGenotype(pileup: Pileup,
-                   genotype: Genotype,
-                   referenceBase: String,
-                   alternateBase: String,
-                   minAlternateReadDepth: Int = 1,
-                   maxAlternateReadDepth: Int = 20): Boolean = {
+                         genotype: Genotype,
+                         referenceBase: String,
+                         alternateBase: String,
+                         minAlternateReadDepth: Int = 1,
+                         maxAlternateReadDepth: Int = 20): Boolean = {
 
     val (alternateReadDepth, alternateForwardReadDepth) = computeDepthAndForwardDepth(alternateBase, pileup)
     val (referenceReadDepth, referenceForwardReadDepth) = computeDepthAndForwardDepth(referenceBase, pileup)

@@ -96,7 +96,7 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
         maxPercentAbnormalInsertSize).iterator)
 
     genotypes.persist()
-    val filteredGenotypes = genotypes //GenotypeFilter(genotypes, args)
+    val filteredGenotypes = GenotypeFilter(genotypes, args)
     Common.progress("Computed %,d genotypes".format(filteredGenotypes.count))
 
     Common.writeVariantsFromArguments(args, filteredGenotypes)
@@ -178,6 +178,10 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
 
     if (tumorMostLikelyGenotype._1.isVariant(referenceBase)) {
       val alternateBase = tumorMostLikelyGenotype._1.getNonReferenceAlleles(referenceBase)(0)
+
+      // Filter deletions
+      if (alternateBase.equals("")) return Seq.empty
+
       if (passGenotype(filteredTumorPileup,
         tumorMostLikelyGenotype._1,
         tumorMostLikelyGenotype._2,
@@ -201,7 +205,7 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
               alternateBase,
               0,
               minReadDepth,
-              0,
+              1,
               None,
               Some(maxNormalAlternateReadDepth)))
           .map(genotypeLikelihood => (genotypeLikelihood._1, genotypeLikelihood._2 * normalPrior(genotypeLikelihood._1))))
@@ -266,10 +270,6 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
   //    referenceReadDepth - referenceForwardReadDepth,
   //    alternateReadDepth - alternateForwardReadDepth)
   //
-  //  val fisherStrandBiasScore = fisherStrandBiasFilter(alternateReadDepth,
-  //    alternateForwardReadDepth,
-  //    referenceReadDepth,
-  //    referenceForwardReadDepth)
 
   def passGenotype(pileup: Pileup,
                    genotype: Genotype,
@@ -278,7 +278,7 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
                    alternateBase: String,
                    minLikelihood: Int = 0,
                    minReadDepth: Int = 0,
-                   minAlternateReadDepth: Int = 0,
+                   minAlternateReadDepth: Int = 1,
                    strandBiasThreshold: Option[Int] = None,
                    maxAlternateReadDepth: Option[Int] = None): Boolean = {
 
@@ -297,17 +297,20 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
       referenceReadDepth - referenceForwardReadDepth,
       alternateReadDepth - alternateForwardReadDepth)
 
-    if (strandBiasThreshold.isDefined && (strandBiasScore * 100 > strandBiasThreshold.get)) return false
+    val fisherStrandBiasScore = fisherStrandBiasFilter(alternateReadDepth,
+      alternateForwardReadDepth,
+      referenceReadDepth,
+      referenceForwardReadDepth)
 
-    if (PhredUtils.successProbabilityToPhred(likelihood - 1e-10) < minLikelihood && (alternateReadDepth + referenceReadDepth) < minReadDepth) return false
+    if (strandBiasThreshold.isDefined && (strandBiasScore * 100 > strandBiasThreshold.get) && fisherStrandBiasScore > 0.95) return false
 
     return true
   }
 
   def GATKStrandBias(a: Int, b: Int, c: Int, d: Int): Double = {
     math.max(
-      ((b.toFloat / (a + b)) * (c.toFloat / (c + d))) / ((a + b).toFloat / (a + b + c + d)),
-      ((d.toFloat / (c + d)) * (a.toFloat / (a + b))) / ((a + b).toFloat / (a + b + c + d)))
+      (b.toFloat * c.toFloat),
+      (d.toFloat * a.toFloat)) / (((c + d) * (a + b)) * ((a + b).toFloat / (a + b + c + d)))
 
   }
 

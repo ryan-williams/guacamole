@@ -206,9 +206,9 @@ object GenotypeFilter {
       filteredGenotypes = MinimumReadDepthFilter(filteredGenotypes, args.minReadDepth, args.debugGenotypeFilters)
     }
 
-    if (args.minAlternateReadDepth > 0) {
-      filteredGenotypes = MinimumAlternateReadDepthFilter(filteredGenotypes, args.minAlternateReadDepth, args.debugGenotypeFilters)
-    }
+    //    if (args.minAlternateReadDepth > 0) {
+    //      filteredGenotypes = MinimumAlternateReadDepthFilter(filteredGenotypes, args.minAlternateReadDepth, args.debugGenotypeFilters)
+    //    }
 
     //  TODO: Removed until these fields are returned to genotype
     //    if (args.lowStrandBiasLimit >= 0 || args.highStrandBiasLimit <= 100) {

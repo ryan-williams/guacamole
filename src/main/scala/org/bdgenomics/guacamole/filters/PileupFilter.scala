@@ -163,9 +163,10 @@ object PileupFilter {
 
     if (filterDeletionOverlap) {
       elements = DeletionEvidencePileupFilter(elements)
-    } else {
-      elements = elements.filter(!_.isDeletion)
     }
+    //    } else {
+    //      elements = elements.filter(!_.isDeletion)
+    //    }
 
     if (filterAmbiguousMapped) {
       elements = AmbiguousMappingPileupFilter(elements)

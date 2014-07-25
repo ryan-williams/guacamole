@@ -17,3 +17,19 @@ object QualityAlignedReadsFilter {
   }
 }
 
+/**
+ * Filter to remove pileup elements close to edge of reads
+ */
+object EdgeBaseFilter {
+  /**
+   *
+   * @param elements sequence of pileup elements to filter
+   * @param minimumDistanceFromEndFromRead Threshold to define whether a read was poorly aligned
+   * @return filtered sequence of elements - those who were further from directional end minimumDistanceFromEndFromRead
+   */
+  def apply(elements: Seq[PileupElement], minimumDistanceFromEndFromRead: Int): Seq[PileupElement] = {
+    elements.filter(_.distanceFromReadDirectionEnd >= minimumDistanceFromEndFromRead)
+  }
+}
+
+

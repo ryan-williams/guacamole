@@ -50,7 +50,7 @@ object MinimumReadDepthFilter {
                           minReadDepth: Int,
                           includeNull: Boolean = true): Boolean = {
     if (genotype.readDepth != null) {
-      genotype.readDepth > minReadDepth
+      genotype.readDepth >= minReadDepth
     } else {
       includeNull
     }
@@ -104,7 +104,7 @@ object MinimumAlternateReadDepthFilter {
                                    minAlternateReadDepth: Int,
                                    includeNull: Boolean = true): Boolean = {
     if (genotype.alternateReadDepth != null) {
-      genotype.alternateReadDepth > minAlternateReadDepth
+      genotype.alternateReadDepth >= minAlternateReadDepth
     } else {
       includeNull
     }
@@ -185,11 +185,8 @@ object GenotypeFilter {
     @Option(name = "-maxNormalAlternateReadDepth", usage = "Maximum number of alternate reads in the normal sample")
     var maxNormalAlternateReadDepth: Int = 0
 
-    @Option(name = "-lowStrandBiasLimit", usage = "Minimum allowed % of reads on the forward strand. (To prevent strand bias)")
+    @Option(name = "-strandBiasLimit", usage = "Minimum allowed % of reads on the forward strand. (To prevent strand bias)")
     var lowStrandBiasLimit: Int = 0
-
-    @Option(name = "-highStrandBiasLimit", usage = "Maximum allowed % of reads on the forward strand. (To prevent strand bias)")
-    var highStrandBiasLimit: Int = 100
 
     @Option(name = "-debug-genotype-filters", usage = "Print count of genotypes after each filtering step")
     var debugGenotypeFilters = false
@@ -209,6 +206,32 @@ object GenotypeFilter {
     //    if (args.minAlternateReadDepth > 0) {
     //      filteredGenotypes = MinimumAlternateReadDepthFilter(filteredGenotypes, args.minAlternateReadDepth, args.debugGenotypeFilters)
     //    }
+
+    //  TODO: Removed until these fields are returned to genotype
+    //    if (args.lowStrandBiasLimit >= 0 || args.highStrandBiasLimit <= 100) {
+    //      filteredGenotypes = StrandBiasFilter(genotypes, args.lowStrandBiasLimit, args.highStrandBiasLimit, args.maxStrandBiasAltReadDepth)
+    //    }
+
+    //    if (args.minLikelihood > 0) {
+    //      filteredGenotypes = MinimumLikelihoodFilter(filteredGenotypes, args.minLikelihood, args.debugGenotypeFilters)
+    //    }
+
+    filteredGenotypes
+  }
+
+  def apply(genotypes: Seq[ADAMGenotype],
+            minReadDepth: Int,
+            minAlternateReadDepth: Int,
+            minLikelihood: Int): Seq[ADAMGenotype] = {
+    var filteredGenotypes = genotypes
+
+    if (minReadDepth > 0) {
+      filteredGenotypes = filteredGenotypes.filter(MinimumReadDepthFilter.hasMinimumReadDepth(_, minReadDepth))
+    }
+
+    if (minAlternateReadDepth > 0) {
+      filteredGenotypes = filteredGenotypes.filter(MinimumAlternateReadDepthFilter.hasMinimumAlternateReadDepth(_, minAlternateReadDepth))
+    }
 
     //  TODO: Removed until these fields are returned to genotype
     //    if (args.lowStrandBiasLimit >= 0 || args.highStrandBiasLimit <= 100) {

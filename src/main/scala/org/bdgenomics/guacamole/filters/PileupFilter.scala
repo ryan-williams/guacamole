@@ -120,22 +120,25 @@ object PileupFilter {
     var minAlignmentQuality: Int = 30
 
     @Option(name = "-maxMappingComplexity", usage = "Maximum percent of reads that can be mapped with low quality (indicative of a complex region")
-    var maxMappingComplexity: Int = 20
+    var maxMappingComplexity: Int = 50
 
     @Option(name = "-minAlignmentForComplexity", usage = "Minimum read mapping quality for a read (Phred-scaled) that counts towards poorly mapped for complexity")
-    var minAlignmentForComplexity: Int = 25
-
-    @Option(name = "-filterAmbiguousMapped", usage = "Filter any reads with duplicate mapping or alignment quality = 0")
-    var filterAmbiguousMapped: Boolean = false
-
-    @Option(name = "-filterMultiAllelic", usage = "Filter any pileups > 2 bases considered")
-    var filterMultiAllelic: Boolean = false
+    var minAlignmentForComplexity: Int = 5
 
     @Option(name = "-maxPercentAbnormalInsertSize", usage = "Filter pileups where % of reads with abnormal insert size is greater than specified")
     var maxPercentAbnormalInsertSize: Int = 0
 
     @Option(name = "-filterDeletionOverlap", usage = "Filter any that overlaps a deletion")
     var filterDeletionOverlap: Boolean = false
+
+    @Option(name = "-filterMultiAllelic", usage = "Filter any pileups > 2 bases considered")
+    var filterMultiAllelic: Boolean = false
+
+    @Option(name = "-filterAmbiguousMapped", usage = "Filter any reads with duplicate mapping or alignment quality = 0")
+    var filterAmbiguousMapped: Boolean = false
+
+    @Option(name = "-minEdgeDistance", usage = "Filter reads where the base in the pileup is closer than minEdgeDistance to the (directional) end of the read")
+    var minEdgeDistance: Int = 0
 
   }
 
@@ -146,7 +149,8 @@ object PileupFilter {
       args.minAlignmentForComplexity,
       args.minAlignmentQuality,
       args.maxPercentAbnormalInsertSize,
-      args.filterDeletionOverlap)
+      args.filterDeletionOverlap,
+      args.minEdgeDistance)
 
   }
 
@@ -157,7 +161,8 @@ object PileupFilter {
             minAlignmentForComplexity: Int,
             minAlignmentQuality: Int,
             maxPercentAbnormalInsertSize: Int,
-            filterDeletionOverlap: Boolean): Pileup = {
+            filterDeletionOverlap: Boolean,
+            minEdgeDistance: Int = 0): Pileup = {
 
     var elements: Seq[PileupElement] = pileup.elements
 
@@ -186,6 +191,10 @@ object PileupFilter {
 
     if (minAlignmentQuality > 0) {
       elements = QualityAlignedReadsFilter(elements, minAlignmentQuality)
+    }
+
+    if (minEdgeDistance > 0) {
+      elements = EdgeBaseFilter(elements, minEdgeDistance)
     }
 
     Pileup(pileup.locus, elements)

@@ -82,8 +82,6 @@ case class Pileup(locus: Long, elements: Seq[PileupElement]) {
 
   lazy val nonReferenceDepth = depth - referenceDepth
 
-  //lazy val countOfReadMismatches = elements.view.map(_.read).map(_.mdTag.get.mismatches.size)
-
   /**
    * Returns a new [[Pileup]] at a different locus on the same contig.
    *

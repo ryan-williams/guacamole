@@ -69,6 +69,8 @@ case class PileupElement(
 
   val mutationsOnRead = read.mdTag.map(_.countOfMismatches)
 
+  lazy val distanceFromReadDirectionEnd = if (read.isPositiveStrand) read.end - locus else locus - read.start
+
   /**
    *
    * @param k window of bases around to check for mismatches on the read
@@ -76,7 +78,17 @@ case class PileupElement(
   def nearbyMismatches(k: Int): Int = {
 
     read.mdTag.map(tag =>
-      tag.mismatches.keys.filter(mmpos => math.abs((locus - mmpos).toInt) <= k)).size
+      tag.mismatches.keys.filter((mismatch: Long) => mismatch != locus
+        && math.abs((locus - mismatch).toInt) <= k).size)
+      .getOrElse(0)
+  }
+
+  /**
+   *
+   * @param k window of bases around to check for mismatches on the read
+   */
+  def hasNearbyMismatches(k: Int): Boolean = {
+    nearbyMismatches(k) > 0
   }
 
   /* If you only care about what kind of CigarOperator is at this position, but not its associated sequence, then you

@@ -34,10 +34,10 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
     @Opt(name = "-log-odds", metaVar = "X", usage = "Make a call if the probability of variant is greater than this value (Phred-scaled)")
     var logOdds: Int = 35
 
-    @Opt(name = "snvWindowRange")
+    @Opt(name = "-snvWindowRange")
     var snvWindowRange: Int = 20
 
-    @Opt(name = "snvCorrelationPercent")
+    @Opt(name = "-snvCorrelationPercent")
     var snvCorrelationPercent: Int = 35
 
   }

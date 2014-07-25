@@ -1,10 +1,10 @@
 package org.bdgenomics.guacamole.data
 
 import org.bdgenomics.guacamole.callers.Genotype
-import org.bdgenomics.adam.avro.{ ADAMContig, ADAMVariant, ADAMGenotype }
 import scala.collection.JavaConversions
 import org.bdgenomics.guacamole.Bases
 import org.bdgenomics.adam.util.PhredUtils
+import org.bdgenomics.formats.avro.{ ADAMVariant, ADAMContig, ADAMGenotype }
 
 object CalledGenotype {
 

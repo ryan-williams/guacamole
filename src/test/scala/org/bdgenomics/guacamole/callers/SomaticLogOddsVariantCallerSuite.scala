@@ -4,8 +4,7 @@ import org.bdgenomics.guacamole.{ MappedRead, TestUtil }
 import org.bdgenomics.guacamole.TestUtil.SparkFunSuite
 import org.bdgenomics.guacamole.pileup.Pileup
 import org.scalatest.matchers.ShouldMatchers
-import org.scalatest.prop.{ TableDrivenPropertyChecks, GeneratorDrivenPropertyChecks }
-import org.scalacheck.Gen
+import org.scalatest.prop.TableDrivenPropertyChecks
 
 class SomaticLogOddsVariantCallerSuite extends SparkFunSuite with ShouldMatchers with TableDrivenPropertyChecks {
 

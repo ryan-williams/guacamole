@@ -18,8 +18,6 @@
 
 package org.bdgenomics.guacamole.callers
 
-import org.bdgenomics.adam.avro.{ ADAMContig, ADAMVariant, ADAMGenotypeAllele, ADAMGenotype }
-import org.bdgenomics.adam.avro.ADAMGenotypeAllele.{ NoCall, Ref, Alt, OtherAlt }
 import org.bdgenomics.guacamole._
 import org.apache.spark.SparkContext._
 import scala.collection.JavaConversions
@@ -29,6 +27,8 @@ import org.bdgenomics.guacamole.Common.Arguments._
 import org.apache.spark.rdd.RDD
 import org.apache.spark.Logging
 import org.bdgenomics.guacamole.pileup.Pileup
+import org.bdgenomics.formats.avro.ADAMGenotypeAllele._
+import org.bdgenomics.formats.avro.{ ADAMContig, ADAMVariant, ADAMGenotypeAllele, ADAMGenotype }
 
 /**
  * Simple somatic variant caller.

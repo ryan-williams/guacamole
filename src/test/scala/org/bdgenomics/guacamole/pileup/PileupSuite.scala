@@ -18,7 +18,7 @@
 
 package org.bdgenomics.guacamole.pileup
 
-import org.bdgenomics.adam.avro.ADAMRecord
+import org.bdgenomics.formats.avro.ADAMRecord
 import org.scalatest.matchers.ShouldMatchers
 import org.bdgenomics.adam.rdd.ADAMContext._
 import org.apache.spark.rdd.RDD

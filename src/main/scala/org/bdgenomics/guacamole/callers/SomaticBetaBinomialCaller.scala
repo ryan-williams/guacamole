@@ -5,7 +5,6 @@ import org.apache.spark.Logging
 import org.bdgenomics.guacamole.Common.Arguments.{ TumorNormalReads, Output }
 import org.kohsuke.args4j.{ Option => Opt }
 import org.bdgenomics.adam.cli.Args4j
-import org.bdgenomics.adam.avro.{ ADAMContig, ADAMVariant, ADAMGenotype }
 import org.apache.spark.rdd.RDD
 import org.bdgenomics.guacamole.concordance.GenotypesEvaluator
 import org.bdgenomics.guacamole.concordance.GenotypesEvaluator.GenotypeConcordance
@@ -14,8 +13,8 @@ import scala.collection.JavaConversions
 import org.bdgenomics.adam.util.PhredUtils
 import org.bdgenomics.guacamole.filters.GenotypeFilter.GenotypeFilterArguments
 import org.bdgenomics.guacamole.filters.PileupFilter.PileupFilterArguments
-import org.bdgenomics.guacamole.filters.{ FishersExactTest, PileupFilter, GenotypeFilter }
-import org.apache.commons.math3.util.ArithmeticUtils
+import org.bdgenomics.guacamole.filters.{ PileupFilter, GenotypeFilter }
+import org.bdgenomics.formats.avro.{ ADAMVariant, ADAMContig, ADAMGenotype }
 
 /**
  * Simple subtraction based somatic variant caller

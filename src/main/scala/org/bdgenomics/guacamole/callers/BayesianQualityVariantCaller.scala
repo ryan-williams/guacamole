@@ -4,7 +4,6 @@ import org.bdgenomics.guacamole._
 import org.apache.spark.Logging
 import org.bdgenomics.adam.cli.Args4j
 import org.bdgenomics.guacamole.pileup.{ PileupElement, Pileup }
-import org.bdgenomics.adam.avro.{ ADAMVariant, ADAMContig, ADAMGenotypeAllele, ADAMGenotype }
 import scala.collection.JavaConversions
 import org.apache.spark.rdd.RDD
 import org.kohsuke.args4j.Option
@@ -15,7 +14,8 @@ import org.bdgenomics.guacamole.concordance.GenotypesEvaluator
 import org.bdgenomics.guacamole.concordance.GenotypesEvaluator.GenotypeConcordance
 import org.bdgenomics.guacamole.filters.GenotypeFilter.GenotypeFilterArguments
 import org.bdgenomics.guacamole.filters.PileupFilter.PileupFilterArguments
-import org.bdgenomics.guacamole.filters.{ QualityAlignedReadsFilter, MinimumReadDepthFilter, GenotypeFilter }
+import org.bdgenomics.guacamole.filters.{ QualityAlignedReadsFilter, GenotypeFilter }
+import org.bdgenomics.formats.avro.{ ADAMContig, ADAMVariant, ADAMGenotype, ADAMGenotypeAllele }
 
 /**
  * A Genotype is a sequence of alleles of length equal to the ploidy of the organism.

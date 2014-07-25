@@ -19,15 +19,7 @@
 
 package org.bdgenomics.guacamole
 
-import org.bdgenomics.adam.avro.{ ADAMGenotype }
 import org.scalatest.matchers.ShouldMatchers
-import org.bdgenomics.adam.rdd.ADAMContext._
-import org.apache.spark.SparkContext._
-import org.apache.spark.rdd.RDD
-import org.apache.spark.rdd.OrderedRDDFunctions
-import org.bdgenomics.guacamole.somatic.{ Reference, SimpleRead, SimpleSomaticVariantCaller }
-import net.sf.samtools.SAMRecord
-import org.bdgenomics.adam.projections.ADAMNucleotideContigFragmentField
 
 class SimpleSomaticVariantCallerSuite extends TestUtil.SparkFunSuite with ShouldMatchers {
   // Disabling for now to allow Spark 1.0 upgrade to go through.

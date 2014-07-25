@@ -67,7 +67,15 @@ case class PileupElement(
     }
   }
 
-  //lazy val nearbyMutations = read.mdTag.map(_.)
+  val mutationsOnRead = read.mdTag.map(_.countOfMismatches)
+
+  //  /**
+  //   *
+  //   * @param k window of bases around to check for mismatches on the read
+  //   */
+  //  def nearbyMismatches(k: Int): Int = {
+  //    read.mdTag.mismatches.key().filter(math.abs(locus - mismatches.key()) <= k).size
+  //  }
 
   /* If you only care about what kind of CigarOperator is at this position, but not its associated sequence, then you
    * can use these state variables.

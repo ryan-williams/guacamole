@@ -20,7 +20,6 @@ package org.bdgenomics.guacamole
 
 import org.bdgenomics.adam.cli.{ SparkArgs, ParquetArgs, Args4jBase }
 import org.kohsuke.args4j.{ Option => Opt }
-import org.bdgenomics.adam.avro.ADAMGenotype
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{ SparkConf, Logging, SparkContext }
 import org.bdgenomics.adam.rdd.ADAMContext._
@@ -34,6 +33,7 @@ import org.codehaus.jackson.JsonFactory
 import java.io.OutputStream
 import org.apache.hadoop.fs.{ Path, FileSystem }
 import org.apache.hadoop.conf.Configuration
+import org.bdgenomics.formats.avro.ADAMGenotype
 
 /**
  * Collection of functions that are useful to multiple variant calling implementations, and specifications of command-

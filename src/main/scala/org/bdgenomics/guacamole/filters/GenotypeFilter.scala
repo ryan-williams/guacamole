@@ -186,7 +186,7 @@ object GenotypeFilter {
     var maxNormalAlternateReadDepth: Int = 0
 
     @Option(name = "-strandBiasLimit", usage = "Minimum allowed % of reads on the forward strand. (To prevent strand bias)")
-    var lowStrandBiasLimit: Int = 0
+    var strandBiasLimit: Int = 0
 
     @Option(name = "-debug-genotype-filters", usage = "Print count of genotypes after each filtering step")
     var debugGenotypeFilters = false

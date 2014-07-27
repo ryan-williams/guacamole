@@ -57,7 +57,7 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
     val minReadDepth = args.minReadDepth
     val minAlternateReadDepth = args.minAlternateReadDepth
 
-    val lowStrandBiasLimit = args.lowStrandBiasLimit
+    val strandBiasLimit = args.strandBiasLimit
     val snvWindowRange = args.snvWindowRange
     val snvCorrelationPercent = args.snvCorrelationPercent
 
@@ -89,7 +89,7 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
         minLikelihood,
         oddsThreshold,
         minAlignmentQuality,
-        lowStrandBiasLimit,
+        strandBiasLimit,
         snvWindowRange,
         snvCorrelationPercent,
         maxNormalAlternateReadDepth,
@@ -131,7 +131,7 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
                                  minLikelihood: Int,
                                  logOddsThreshold: Int,
                                  minAlignmentQuality: Int,
-                                 lowStrandBiasLimit: Int,
+                                 strandBiasLimit: Int,
                                  snvWindowRange: Int,
                                  snvCorrelationPercent: Int,
                                  maxNormalAlternateReadDepth: Int,
@@ -195,7 +195,7 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
         referenceBase,
         alternateBase,
         minAlternateReadDepth,
-        lowStrandBiasLimit,
+        strandBiasLimit,
         snvWindowRange,
         snvCorrelationPercent)) {
         val normalLikelihoods =
@@ -230,7 +230,7 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
             normalPileup.locus,
             tumorMostLikelyGenotype._1,
             tumorMostLikelyGenotype._2,
-            filteredTumorPileup.depth, alternateReadDepth, 0)
+            math.floor((filteredNormalPileup.depth + filteredTumorPileup.depth) / 2.0).toInt, alternateReadDepth, 0)
         }
       }
     }
@@ -299,10 +299,11 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
 
     //if (pileup.elements.filter(_.hasNearbyMismatches(snvWindowRange)).size.toFloat /  pileup.depth > maxCorrelatedSNVPercent) return false
     val correlatedSNVs = pileup.elements.filter(el =>
-      el.hasNearbyMismatches(snvWindowRange) //  && el => Bases.basesToString(el.sequencedBases) == alternateBase
-      ).size
-    val snvCorrelationPercent = 100.0 * correlatedSNVs / pileup.nonReferenceDepth
-    if (snvCorrelationPercent > maxCorrelatedSNVPercent) {
+      el.hasNearbyMismatches(snvWindowRange) && Bases.basesToString(el.sequencedBases) == alternateBase).size
+    val nearbySNVs = pileup.elements.filter(el => el.hasNearbyMismatches(snvWindowRange)).size
+    val snvCorrelationPercent = 100.0 * correlatedSNVs / alternateReadDepth
+    val snvNearbyPercent = 100.0 * nearbySNVs / pileup.depth
+    if (snvCorrelationPercent > maxCorrelatedSNVPercent || snvNearbyPercent > maxCorrelatedSNVPercent) {
       return false
     }
 
@@ -323,10 +324,9 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
     val (alternateReadDepth, alternateForwardReadDepth) = computeDepthAndForwardDepth(alternateBase, pileup)
     val (referenceReadDepth, referenceForwardReadDepth) = computeDepthAndForwardDepth(referenceBase, pileup)
 
-    val isCorrectAndMinimalAlternate = !genotype.isVariant(referenceBase) ||
-      (genotype.alleles.toSet.contains(alternateBase)
-        && alternateReadDepth > minAlternateReadDepth
-        && alternateReadDepth < maxAlternateReadDepth)
+    val isCorrectAndMinimalAlternate =
+      (!genotype.isVariant(referenceBase) && alternateReadDepth < maxAlternateReadDepth) ||
+        (genotype.alleles.toSet.contains(alternateBase)) // && alternateReadDepth > minAlternateReadDepth)
 
     return isCorrectAndMinimalAlternate
   }

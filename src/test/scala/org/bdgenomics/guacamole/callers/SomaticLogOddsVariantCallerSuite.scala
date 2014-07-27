@@ -21,10 +21,10 @@ class SomaticLogOddsVariantCallerSuite extends SparkFunSuite with ShouldMatchers
   val logOddsThreshold = 97
   val minLikelihood = 30
   val minAlignmentQuality = 1
-  val minReadDepth = 7
+  val minReadDepth = 8
   val minAlternateReadDepth = 2
   val maxNormalAlternateReadDepth = 5
-  val maxMappingComplexity = 50
+  val maxMappingComplexity = 30
   val minAlignmentForComplexity = 5
   val maxPercentAbnormalInsertSize = 100
   val lowStrandBiasLimit = 130
@@ -81,7 +81,8 @@ class SomaticLogOddsVariantCallerSuite extends SparkFunSuite with ShouldMatchers
       "synthetic.challenge.set1.tumor.v2.withMDTags.chr2.syn1fp.sam",
       "synthetic.challenge.set1.normal.v2.withMDTags.chr2.syn1fp.sam")
     //194059121
-    val positivePositions = Array[Long](216094721, 3529313, 8789794, 104043280, 104175801, 126651101, 241901237)
+    val positivePositions = Array[Long](216094721, 3529313, 8789794, 104043280, 104175801,
+      126651101, 241901237, 57270796, 120757852)
     testVariants(tumorReads, normalReads, positivePositions, isTrue = false)
   }
 
@@ -89,7 +90,7 @@ class SomaticLogOddsVariantCallerSuite extends SparkFunSuite with ShouldMatchers
     val (tumorReads, normalReads) = TestUtil.loadTumorNormalReads(sc,
       "synthetic.challenge.set1.tumor.v2.withMDTags.chr2.complexvar.sam",
       "synthetic.challenge.set1.normal.v2.withMDTags.chr2.complexvar.sam")
-    val positivePositions = Array[Long](134307261, 90376213, 3638733, 112529049)
+    val positivePositions = Array[Long](134307261, 90376213, 3638733, 112529049, 91662497)
     testVariants(tumorReads, normalReads, positivePositions, isTrue = false)
   }
 
@@ -100,7 +101,7 @@ class SomaticLogOddsVariantCallerSuite extends SparkFunSuite with ShouldMatchers
     //233600940
 
     // not right test for 131624817
-    val positivePositions = Array[Long](629817, 142480348, 16050085, 41093029, 106566442, 110447062)
+    val positivePositions = Array[Long](629817, 142480348, 16050085, 41093029, 106566442, 110447062, 233662198)
     testVariants(tumorReads, normalReads, positivePositions, isTrue = false)
   }
 

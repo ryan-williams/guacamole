@@ -20,7 +20,11 @@ package org.bdgenomics.guacamole
 
 import org.apache.spark.Logging
 import java.util.logging.Level
+<<<<<<< HEAD
 import org.bdgenomics.guacamole.callers.{ SomaticLogOddsVariantCaller, SomaticThresholdVariantCaller, BayesianQualityVariantCaller, ThresholdVariantCaller }
+=======
+import org.bdgenomics.guacamole.callers.{ DistanceBetweenGenomes, SomaticThresholdVariantCaller, BayesianQualityVariantCaller, ThresholdVariantCaller }
+>>>>>>> First cut of DistanceBetweenGenomes command
 import org.bdgenomics.guacamole.somatic.SimpleSomaticVariantCaller
 import org.bdgenomics.adam.util.ParquetLogger
 import org.bdgenomics.guacamole.Common.progress
@@ -42,7 +46,9 @@ object Guacamole extends Logging {
     SimpleSomaticVariantCaller,
     BayesianQualityVariantCaller,
     GenotypesEvaluator,
-    SomaticLogOddsVariantCaller)
+    SomaticLogOddsVariantCaller,
+    DistanceBetweenGenomes
+  )
 
   private def printUsage() = {
     println("Usage: java ... <command> [other args]\n")

@@ -77,6 +77,12 @@ object Common extends Logging {
       var tumorReads: String = ""
     }
 
+    /** Argument for accepting a glob of paths giving reads. */
+    trait MultipleReadSets extends Base with NoSequenceDictionary {
+      @Opt(name = "-reads", metaVar = "X", required = true, usage = "Aligned reads")
+      var reads: String = ""
+    }
+
     /** Argument for writing output genotypes. */
     trait Output extends Base {
       @Opt(name = "-out", metaVar = "VARIANTS_OUT", required = false,
@@ -132,6 +138,30 @@ object Common extends Logging {
     sc: SparkContext,
     filters: Read.InputFilters): ReadSet = {
     ReadSet(sc, args.reads, filters, token = 0, contigLengthsFromDictionary = !args.noSequenceDictionary)
+  }
+
+  /**
+   * Given arguments specifying multiple files containing reads, return multiple ReadSet instances.
+   *
+   * @param args parsed arguments
+   * @param sc spark context
+   * @param filters input filters to apply
+   * @return
+   */
+  def loadMultipleReadSetsFromArguments(
+    args: Arguments.MultipleReadSets,
+    sc: SparkContext,
+    filters: Read.InputFilters): Seq[ReadSet] = {
+
+    val filesystem = FileSystem.get(sc.hadoopConfiguration)
+    val files: Seq[String] = filesystem.globStatus(new Path(args.reads)).map(_.getPath.toString)
+    files.zipWithIndex.map(filenameAndIndex =>
+      ReadSet(
+        sc,
+        filenameAndIndex._1,
+        filters,
+        token = filenameAndIndex._2,
+        contigLengthsFromDictionary = !args.noSequenceDictionary))
   }
 
   /**
@@ -319,7 +349,7 @@ object Common extends Logging {
     val time = if (lastProgressTime == 0)
       Calendar.getInstance.getTime.toString
     else
-      "%.2f sec. later".format((current - lastProgressTime) / 1000.0)
+      "%03.2f sec. later".format((current - lastProgressTime) / 1000.0)
     println("--> [%15s]: %s".format(time, message))
     System.out.flush()
     lastProgressTime = current

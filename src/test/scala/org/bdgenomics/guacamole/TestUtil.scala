@@ -50,27 +50,34 @@ object TestUtil extends Matchers {
     deserialized should equal(item)
   }
 
+  def intQualityScoresToASCII(length: Int, maybeScores: Option[Iterable[Int]]): String = maybeScores match {
+    case None => (0 until length).map(x => '@').mkString
+    case Some(scores) => {
+      val result = scores.map(q => q + 33).map(_.toChar).mkString
+      assert(result.length == length, "Length of quality scores (%d) != length of sequence (%d)".format(result.length, length))
+      result
+    }
+  }
+
+  def makeUnmappedRead(sequence: String, qualityScores: Option[Iterable[Int]] = None): Read = {
+    Read(sequence = sequence, baseQualities = intQualityScoresToASCII(sequence.length, qualityScores))
+  }
+
   def makeRead(sequence: String,
                cigar: String,
                mdtag: String,
                start: Long = 1,
                chr: String = "chr1",
-               qualityScores: Option[Array[Int]] = None,
+               qualityScores: Option[Iterable[Int]] = None,
                alignmentQuality: Int = 30): MappedRead = {
-
-    val qualityScoreString = if (qualityScores.isDefined) {
-      qualityScores.get.map(q => q + 33).map(_.toChar).mkString
-    } else {
-      sequence.map(x => '@').mkString
-    }
-
-    Read(sequence,
+    Read(
+      sequence = sequence,
       cigarString = cigar,
       mdTagString = mdtag,
       start = start,
       referenceContig = chr,
-      baseQualities = qualityScoreString,
-      alignmentQuality = alignmentQuality).getMappedReadOpt.get
+      baseQualities = intQualityScoresToASCII(sequence.length, qualityScores),
+      alignmentQuality = alignmentQuality).getMappedRead
   }
 
   def makePairedRead(

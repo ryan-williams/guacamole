@@ -18,11 +18,17 @@
 
 package org.bdgenomics.guacamole.callers
 
+import java.io.{ BufferedWriter, OutputStreamWriter }
+
+import com.google.common.collect.ImmutableRangeSet
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{ Path, FileSystem }
+import org.apache.spark.storage.StorageLevel
 import org.bdgenomics.formats.avro.{ ADAMContig, ADAMVariant, ADAMGenotypeAllele, ADAMGenotype }
 import org.bdgenomics.formats.avro.ADAMGenotypeAllele.{ NoCall, Ref, Alt, OtherAlt }
 import org.bdgenomics.guacamole._
 import org.apache.spark.SparkContext._
-import scala.collection.JavaConversions
+import scala.collection.{ mutable, JavaConversions }
 import org.kohsuke.args4j.Option
 import org.bdgenomics.adam.cli.Args4j
 import org.bdgenomics.guacamole.Common.Arguments._
@@ -35,105 +41,170 @@ object DistanceBetweenGenomes extends Command with Serializable with Logging {
   override val description = "call variants using a simple threshold"
 
   private class Arguments extends Base with MultipleReadSets with DistributedUtil.Arguments {
-    @Option(name = "-k", metaVar = "K", usage = "Kmer length")
-    var k: Int = 2
+    @Option(name = "-k-min", metaVar = "K", usage = "Kmer length min (inclusive)")
+    var kMin: Int = 8
 
-    @Option(name = "-smoother", metaVar = "K", usage = "Smoothing factor")
-    var smoother: Int = 1
+    @Option(name = "-k-max", metaVar = "K", usage = "Kmer length max (exclusive)")
+    var kMax: Int = 10
 
-    @Option(name = "-max-reads", metaVar = "X", usage = "Max reads per sample to consider. Default (0) uses all reads.")
-    var maxReads: Int = 0
+    @Option(name = "-prior-q", metaVar = "K", usage = "Smoothing quality factor")
+    var priorQuality: Double = 3.0
+
+    @Option(name = "-max-files", metaVar = "X", usage = "Max files to consider. Default (0) uses all files.")
+    var maxFiles: Int = 0
+
+    @Option(name = "-num-partitions", metaVar = "X", usage = "Number of spark partitions to use. Default (0) does no repartitioning.")
+    var numPartitions: Int = 0
+
+    @Option(name = "-out", metaVar = "X", usage = "Output file in csv format.")
+    var out: String = _
   }
+
+  def phredToProbability(phred: Double) = math.pow(10, phred * -1 / 10.0)
+
+  val storageLevel = StorageLevel.MEMORY_ONLY
 
   override def run(rawArgs: Array[String]): Unit = {
     val args = Args4j[Arguments](rawArgs)
     val sc = Common.createSparkContext(args, appName = Some(name))
 
-    val readSets = Common.loadMultipleReadSetsFromArguments(args, sc, Read.InputFilters(nonDuplicate = true))
-    val readRDDs: Seq[RDD[Read]] = if (args.maxReads == 0) {
-      readSets.map(_.reads)
-    } else {
-      readSets.map(readSet => sc.parallelize(readSet.reads.take(args.maxReads)))
-    }
-    val reads = sc.union(readRDDs.head, readRDDs: _*)
-    reads.persist()
+    val kValues = (args.kMin until args.kMax).toSeq
+    val smoothers = kValues.map(k => (k, math.pow(1 - phredToProbability(args.priorQuality), k))).toMap
+    Common.progress("Will write results to: %s".format(args.out))
+    Common.progress("K = %s".format(kValues.mkString(", ")))
+    Common.progress("Smoothing by: %f .. %f".format(smoothers(kValues.min), smoothers(kValues.max)))
+
+    val readSetsAll = Common.loadMultipleReadSetsFromArguments(args, sc, Read.InputFilters(nonDuplicate = true))
+    val readSets = if (args.maxFiles == 0) readSetsAll else readSetsAll.take(args.maxFiles)
+    val readRDDs: Seq[RDD[Read]] = readSets.map(_.reads)
+
+    val readsUnioned = sc.union(readRDDs.head, readRDDs: _*)
+    val reads = if (args.numPartitions > 0) readsUnioned.repartition(args.numPartitions) else readsUnioned
+    reads.persist(storageLevel)
     Common.progress("Loaded %,d files with %,d non-duplicate reads into %,d partitions.".format(
       readSets.length, reads.count, reads.partitions.length))
 
     val tokensAndSamples = reads.map(read => (read.token, read.sampleName)).distinct.collect.sorted
     for ((token, sample) <- tokensAndSamples) {
-      Common.progress("Sample %s from file #%d".format(sample, token))
+      Common.progress("Sample %s from file #%d = %s".format(sample, token, readSets(token).source))
     }
 
-    val k = args.k
-    val smoother = args.smoother
-    val numTokens = readSets.length
-    val kmersKeyedByStringAndToken = reads.mapPartitions(readsIterator => extractKmers(k, readsIterator)).reduceByKey(_ + _)
-    kmersKeyedByStringAndToken.persist()
+    val numSamples = readSets.length
+    val kmersKeyedByStringAndToken = reads.mapPartitions(readsIterator => extractKmers(kValues, readsIterator)).reduceByKey(_ + _)
+    kmersKeyedByStringAndToken.persist(storageLevel)
     reads.unpersist()
 
-    val totalsByToken = kmersKeyedByStringAndToken.map(tuple => (tuple._1._2, tuple._2)).reduceByKey(_ + _).collectAsMap()
-    totalsByToken.toSeq.sorted.foreach(pair => {
-      Common.progress("Total %d-mer occurrences for file #%5d: %,20d".format(k, pair._1, pair._2))
+    val totalsByKAndToken = kmersKeyedByStringAndToken.map(
+      tuple => ((tuple._1._1.length, tuple._1._2), tuple._2)).reduceByKey(_ + _).collectAsMap()
+    totalsByKAndToken.toSeq.sorted.foreach(pair => {
+      Common.progress("Total weight for file #%5d at k=%d: %f".format(pair._1._2, pair._1._1, pair._2))
     })
 
     val kmersGroupedByString = kmersKeyedByStringAndToken.map(kmerTagCount =>
       (kmerTagCount._1._1, (kmerTagCount._1._2, kmerTagCount._2))).groupByKey
 
-    kmersGroupedByString.persist()
+    kmersGroupedByString.persist(storageLevel)
     kmersKeyedByStringAndToken.unpersist()
 
-    val numKmers = kmersGroupedByString.count()
-    Common.progress("Total unique %d-mers: %,d (out of 4^%d=%,d possible)".format(k, numKmers, k, math.pow(4, k).toInt))
+    val numKmersOfLength = kmersGroupedByString.map(_._1.length).countByValue
 
-    Common.progress("Kmers: %s".format(kmersGroupedByString.keys.collect.mkString(" ")))
+    Common.progress("Total unique kmers: %,d".format(numKmersOfLength.values.sum))
+    numKmersOfLength.foreach(pair => {
+      val k = pair._1
+      val count = pair._2
+      Common.progress("Total unique %d-mers (out of 4^%d=%,d possible): %,d".format(k, k, math.pow(4, k).toInt, count))
+    })
 
-
-    val klDivergence = kmersGroupedByString.mapPartitions(iterator => {
-      val result = Array.fill[Double](numTokens * numTokens)(0)
+    val klDivergences = kmersGroupedByString.mapPartitions(iterator => {
+      val results = kValues.map(k => (k, Array.fill[Double](numSamples * numSamples)(0))).toMap
       for ((sequence, tokenCounts) <- iterator) {
-        val counts = Array.fill[Long](numTokens)(0)
+        val k = sequence.length
+        val counts = Array.fill[Double](numSamples)(0)
         for ((token, count) <- tokenCounts) {
           counts(token) = count
         }
-        for (token1 <- 0 until numTokens; token2 <- 0 until numTokens) {
-          def prob(token: Int): Double = (counts(token) + smoother).toDouble / (totalsByToken(token) + smoother * numKmers)
-          val prob1 = prob(token1)
-          val prob2 = prob(token2)
-          assert(prob1 > 0)
-          assert(prob2 > 0)
-          result(token1 * numTokens + token2) += math.log(prob1 / prob2) * prob1
+        for (token1 <- 0 until numSamples; token2 <- 0 until numSamples) {
+          def probability(token: Int): Double = {
+            val result = (counts(token) + smoothers(k)) / (totalsByKAndToken((k, token)) + smoothers(k) * numKmersOfLength(k))
+            assert(result > 0, "Invalid prob for file %d: %f. Count=%f total=%f".format(
+              token, result, counts(token), totalsByKAndToken((k, token))))
+            result
+          }
+          val prob1 = probability(token1)
+          val prob2 = probability(token2)
+          results(k)(token1 * numSamples + token2) += math.log(prob1 / prob2) * prob1
         }
       }
-      Iterator(result)
-    }).reduce((result1: Array[Double], result2: Array[Double]) => {
-      val result = Array.fill[Double](result1.length)(0.0)
-      var i = 0
-      while (i < result.length) {
-        result(i) = result1(i) + result2(i)
-        i += 1
-      }
-      result
+      Iterator(results)
+    }).reduce((results1: Map[Int, Array[Double]], results2: Map[Int, Array[Double]]) => {
+      val results = kValues.map(k => (k, Array.fill[Double](numSamples * numSamples)(0))).toMap
+      results.keys.foreach(k => {
+        var i = 0
+        while (i < results(k).length) {
+          results(k)(i) = results1(k)(i) + results2(k)(i)
+          i += 1
+        }
+      })
+      results
     })
 
     Common.progress("Done computing KL divergences.")
-    for (token1 <- 0 until numTokens; token2 <- 0 until numTokens) {
-      Common.progress("D(%d || %d) = %f".format(token1, token2, klDivergence(token1 * numTokens + token2)))
-    }
+    kValues.foreach(k => {
+      for (token1 <- 0 until numSamples; token2 <- 0 until numSamples) {
+        Common.progress("D(%d || %d) at k=%d = %f".format(token1, token2, k, klDivergences(k)(token1 * numSamples + token2)))
+      }
+    })
 
+    if (args.out.nonEmpty) {
+      val filesystem = FileSystem.get(new Configuration())
+      val path = new Path(args.out)
+      val writer = new BufferedWriter(new OutputStreamWriter(filesystem.create(path, true)))
+      writer.write("K, Index 1, File 1, Index 2, File 2, Distance\n")
+      kValues.foreach(k => {
+        for (token1 <- 0 until numSamples; token2 <- 0 until numSamples) {
+          writer.write("%d, %d, %s, %d, %s, %f\n".format(
+            k,
+            token1,
+            readSets(token1).source,
+            token2,
+            readSets(token2).source,
+            klDivergences(k)(token1 * numSamples + token2)))
+        }
+      })
+      writer.close()
+      Common.progress("Wrote: %s".format(args.out))
+    }
     DelayedMessages.default.print()
   }
 
-  def extractKmers(k: Int, reads: TraversableOnce[Read]): Iterator[((String, Int), Long)] = {
-    val counts = scala.collection.mutable.HashMap[(Int, String), Long]().withDefaultValue(0L) // (token, kmer) -> count
+  // kValues must be sorted
+  def extractKmers(kValues: Seq[Int], reads: TraversableOnce[Read]): Iterator[((String, Int), Double)] = {
+    val counts = scala.collection.mutable.HashMap[(Int, String), Double]().withDefaultValue(0) // (token, kmer) -> count
     reads.foreach(read => {
       val sequence = Bases.basesToString(read.sequence).toUpperCase
-      var end = k
-      while (end < sequence.length) {
-        val kmer = sequence.substring(end - k, end + 1)
-        counts((read.token, kmer)) = counts((read.token, kmer)) + 1
-        end += 1
-      }
+      val sequenceProbabilities = read.baseQualities.map(phred => 1 - phredToProbability(phred))
+      val skipIndices = sequence.zip(sequenceProbabilities).zipWithIndex.filter(pair => {
+        val base: Char = pair._1._1
+        val prob: Double = pair._1._2
+        (base != 'A' && base != 'T' && base != 'C' && base != 'G') || (!(prob > 0))
+      }).map(_._2).toList
+      kValues.foreach(k => {
+        var nextSkipIndex = skipIndices
+        var start = 0 // kmer is subsequence from start to start + k
+        while (start + k <= sequence.length) {
+          if (nextSkipIndex.nonEmpty && start + k > nextSkipIndex.head) {
+            // Kmer has a nonstandard base (e.g. "N") or quality 0 at this index. Skip ahead.
+            start = math.max(start, nextSkipIndex.head)
+            nextSkipIndex = nextSkipIndex.tail
+          } else {
+            val kmer = sequence.substring(start, start + k)
+            val probability = sequenceProbabilities.slice(start, start + k).product
+            assert(probability > 0)
+            counts((read.token, kmer)) += probability
+          }
+          start += 1
+        }
+      })
     })
     counts.map(kv => ((kv._1._2, kv._1._1), kv._2)).toIterator
   }

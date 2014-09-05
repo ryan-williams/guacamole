@@ -15,7 +15,7 @@ import org.apache.log4j.{ Level, Logger }
 import org.apache.spark.SparkContext
 import org.bdgenomics.adam.cli.SparkArgs
 import org.bdgenomics.guacamole.pileup.Pileup
-import org.bdgenomics.guacamole.reads.{ MateProperties, Read, MappedRead }
+import org.bdgenomics.guacamole.reads.{UnmappedRead, MateProperties, Read, MappedRead}
 import org.scalatest._
 
 import scala.math._
@@ -60,7 +60,7 @@ object TestUtil extends Matchers {
   }
 
   def makeUnmappedRead(sequence: String, qualityScores: Option[Iterable[Int]] = None): Read = {
-    Read(sequence = sequence, baseQualities = intQualityScoresToASCII(sequence.length, qualityScores))
+    UnmappedRead(sequence = sequence, baseQualities = intQualityScoresToASCII(sequence.length, qualityScores))
   }
 
   def makeRead(sequence: String,

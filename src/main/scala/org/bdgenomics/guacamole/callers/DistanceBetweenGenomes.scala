@@ -24,10 +24,9 @@ import com.google.common.collect.ImmutableRangeSet
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{ Path, FileSystem }
 import org.apache.spark.storage.StorageLevel
-import org.bdgenomics.formats.avro.{ ADAMContig, ADAMVariant, ADAMGenotypeAllele, ADAMGenotype }
-import org.bdgenomics.formats.avro.ADAMGenotypeAllele.{ NoCall, Ref, Alt, OtherAlt }
 import org.bdgenomics.guacamole._
 import org.apache.spark.SparkContext._
+import org.bdgenomics.guacamole.reads.Read
 import scala.collection.{ mutable, JavaConversions }
 import org.kohsuke.args4j.Option
 import org.bdgenomics.adam.cli.Args4j

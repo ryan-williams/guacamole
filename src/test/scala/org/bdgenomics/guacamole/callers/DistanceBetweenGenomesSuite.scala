@@ -1,6 +1,6 @@
 package org.bdgenomics.guacamole.callers
 
-import org.scalatest.matchers.ShouldMatchers._
+import org.scalatest.Matchers._
 import org.bdgenomics.guacamole.TestUtil.SparkFunSuite
 import org.bdgenomics.guacamole.TestUtil
 

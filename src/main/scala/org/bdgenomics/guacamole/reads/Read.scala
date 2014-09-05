@@ -75,10 +75,11 @@ object Read extends Logging {
    * @param isPaired include only reads are paired-end reads
    */
   case class InputFilters(
-    mapped: Boolean = false,
-    nonDuplicate: Boolean = false,
-    passedVendorQualityChecks: Boolean = false,
-    isPaired: Boolean = false) {}
+      mapped: Boolean = false,
+      nonDuplicate: Boolean = false,
+      passedVendorQualityChecks: Boolean = false,
+      isPaired: Boolean = false) {
+  }
   object InputFilters {
     val empty = InputFilters()
   }

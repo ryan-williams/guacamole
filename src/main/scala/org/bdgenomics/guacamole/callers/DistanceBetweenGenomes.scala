@@ -43,7 +43,7 @@ object DistanceBetweenGenomes extends Command with Serializable with Logging {
     @Option(name = "-k-min", metaVar = "K", usage = "Kmer length min (inclusive)")
     var kMin: Int = 8
 
-    @Option(name = "-k-max", metaVar = "K", usage = "Kmer length max (exclusive)")
+    @Option(name = "-k-max", metaVar = "K", usage = "Kmer length max (inclusive)")
     var kMax: Int = 10
 
     @Option(name = "-prior-q", metaVar = "K", usage = "Smoothing quality factor")
@@ -67,7 +67,7 @@ object DistanceBetweenGenomes extends Command with Serializable with Logging {
     val args = Args4j[Arguments](rawArgs)
     val sc = Common.createSparkContext(args, appName = Some(name))
 
-    val kValues = (args.kMin until args.kMax).toSeq
+    val kValues = (args.kMin to args.kMax).toSeq
     val smoothers = kValues.map(k => (k, math.pow(1 - phredToProbability(args.priorQuality), k))).toMap
     Common.progress("Will write results to: %s".format(args.out))
     Common.progress("K = %s".format(kValues.mkString(", ")))
@@ -96,7 +96,7 @@ object DistanceBetweenGenomes extends Command with Serializable with Logging {
     val totalsByKAndToken = kmersKeyedByStringAndToken.map(
       tuple => ((tuple._1._1.length, tuple._1._2), tuple._2)).reduceByKey(_ + _).collectAsMap()
     totalsByKAndToken.toSeq.sorted.foreach(pair => {
-      Common.progress("Total weight for file #%5d at k=%d: %f".format(pair._1._2, pair._1._1, pair._2))
+      Common.progress("Total weight for file #d at k=%d: %f".format(pair._1._2, pair._1._1, pair._2))
     })
 
     val kmersGroupedByString = kmersKeyedByStringAndToken.map(kmerTagCount =>
@@ -178,6 +178,7 @@ object DistanceBetweenGenomes extends Command with Serializable with Logging {
 
   // kValues must be sorted
   def extractKmers(kValues: Seq[Int], reads: TraversableOnce[Read]): Iterator[((String, Int), Double)] = {
+    log.debug("KMER EXTRACT BEGIN: reads=%d".format(reads.size))
     val counts = scala.collection.mutable.HashMap[(Int, String), Double]().withDefaultValue(0) // (token, kmer) -> count
     reads.foreach(read => {
       val sequence = Bases.basesToString(read.sequence).toUpperCase
@@ -205,7 +206,9 @@ object DistanceBetweenGenomes extends Command with Serializable with Logging {
         }
       })
     })
-    counts.map(kv => ((kv._1._2, kv._1._1), kv._2)).toIterator
+    val result = counts.map(kv => ((kv._1._2, kv._1._1), kv._2))
+    log.debug("KMER EXTRACT DONE: reads=%d kmers=%d".format(reads.size, result.size))
+    result.toIterator
   }
 }
 

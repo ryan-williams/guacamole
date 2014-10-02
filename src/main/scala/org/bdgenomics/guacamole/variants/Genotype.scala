@@ -4,7 +4,6 @@ import com.esotericsoftware.kryo.io.{ Input, Output }
 import com.esotericsoftware.kryo.{ Kryo, Serializer }
 import org.bdgenomics.adam.util.PhredUtils
 import org.bdgenomics.formats.avro.GenotypeAllele
-import org.bdgenomics.guacamole.Bases.BasesOrdering
 import org.bdgenomics.guacamole.pileup.PileupElement
 
 /**
@@ -29,7 +28,9 @@ case class Genotype(alleles: Allele*) {
     alleles.filter(_.isVariant)
   }
 
-  def computeElementLikelihood(element: PileupElement, includeAlignmentLikelihood: Boolean = false): Double = {
+  def computeElementLikelihood(element: PileupElement,
+                               variantAlleleFrequency: Double,
+                               includeAlignmentLikelihood: Boolean = false): Double = {
     val baseCallProbability = PhredUtils.phredToSuccessProbability(element.qualityScore)
     val successProbability = if (includeAlignmentLikelihood) {
       baseCallProbability * element.read.alignmentLikelihood
@@ -38,10 +39,11 @@ case class Genotype(alleles: Allele*) {
     }
 
     alleles.map(allele =>
-      if (allele == element.allele)
-        successProbability
-      else
-        (1 - successProbability)
+      if (allele == element.allele) {
+        successProbability * (if (allele.isVariant && numberOfVariantAlleles == 1) variantAlleleFrequency else (1 - variantAlleleFrequency))
+      } else {
+        (1 - successProbability) * (if (allele.isVariant && numberOfVariantAlleles == 1) variantAlleleFrequency else (1 - variantAlleleFrequency))
+      }
     ).sum
   }
 
@@ -52,25 +54,29 @@ case class Genotype(alleles: Allele*) {
    */
   lazy val numberOfVariantAlleles: Int = getNonReferenceAlleles.size
 
-  def likelihoodOfReads(elements: Seq[PileupElement], includeAlignmentLikelihood: Boolean = false) = {
+  def likelihoodOfReads(elements: Seq[PileupElement],
+                        variantAlleleFrequency: Double = 0.5,
+                        includeAlignmentLikelihood: Boolean = false) = {
     val depth = elements.size
     val elementLikelihoods =
       // TODO(ryan): we could memoize a lot of computation here by keeping around a count of each genotype's
       // frequency in the Pileup, which we've already had an opportunity to compute and save.
       elements.map(
-        computeElementLikelihood(_, includeAlignmentLikelihood)
+        computeElementLikelihood(_, variantAlleleFrequency, includeAlignmentLikelihood)
       )
 
-    elementLikelihoods.product / math.pow(ploidy, depth)
+    elementLikelihoods.product
   }
 
-  def logLikelihoodOfReads(elements: Seq[PileupElement], includeAlignmentLikelihood: Boolean = false): Double = {
+  def logLikelihoodOfReads(elements: Seq[PileupElement],
+                           variantAlleleFrequency: Double = 0.5,
+                           includeAlignmentLikelihood: Boolean = false): Double = {
     val depth = elements.size
     val unnormalizedLikelihood =
       elements
-        .map(el => math.log(computeElementLikelihood(el, includeAlignmentLikelihood)))
+        .map(el => math.log(computeElementLikelihood(el, variantAlleleFrequency, includeAlignmentLikelihood)))
         .sum
-    unnormalizedLikelihood - depth * math.log(ploidy)
+    unnormalizedLikelihood
   }
 
   /**

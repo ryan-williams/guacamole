@@ -54,7 +54,7 @@ case class Pileup(locus: Long, elements: Seq[PileupElement]) {
    */
   lazy val referenceBase: Byte = head.referenceBase
 
-  private[pileup] lazy val possibleAlleles = elements.map(_.allele).distinct.sorted
+  lazy val possibleAlleles = elements.map(_.allele).distinct.sorted
 
   /**
    * Generate possible genotypes from a pileup
@@ -75,10 +75,11 @@ case class Pileup(locus: Long, elements: Seq[PileupElement]) {
    * @return Sequence of (Genotype, Likelihood)
    */
   def computeLikelihoods(prior: Genotype => Double = computeUniformGenotypePrior,
+                         variantAlleleFrequency: Double = 0.5,
                          includeAlignmentLikelihood: Boolean = true,
                          normalize: Boolean = false): Seq[(Genotype, Double)] = {
 
-    val genotypeLikelihoods = possibleGenotypes.map(_.likelihoodOfReads(elements, includeAlignmentLikelihood))
+    val genotypeLikelihoods = possibleGenotypes.map(_.likelihoodOfReads(elements, variantAlleleFrequency, includeAlignmentLikelihood))
 
     if (normalize) {
       normalizeLikelihoods(possibleGenotypes.zip(genotypeLikelihoods))
@@ -96,7 +97,7 @@ case class Pileup(locus: Long, elements: Seq[PileupElement]) {
   def computeLogLikelihoods(prior: Genotype => Double = computeUniformGenotypeLogPrior,
                             includeAlignmentLikelihood: Boolean = false): Seq[(Genotype, Double)] = {
     possibleGenotypes.map(g =>
-      (g, prior(g) + g.logLikelihoodOfReads(elements, includeAlignmentLikelihood))
+      (g, prior(g) + g.logLikelihoodOfReads(elements, 0.5, includeAlignmentLikelihood))
     )
   }
 

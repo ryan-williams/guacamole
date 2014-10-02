@@ -30,7 +30,7 @@ class SomaticLogOddsVariantCallerSuite extends SparkFunSuite with Matchers with 
 
   val filterMultiAllelic = false
 
-  val minLikelihood = 70
+  val minLikelihood = 0
   val minVAF = 5
 
   def testVariants(tumorReads: Seq[MappedRead], normalReads: Seq[MappedRead], positions: Array[Long], shouldFindVariant: Boolean = false) = {
@@ -38,11 +38,12 @@ class SomaticLogOddsVariantCallerSuite extends SparkFunSuite with Matchers with 
     forAll(positionsTable) {
       (locus: Long) =>
         val (tumorPileup, normalPileup) = TestUtil.loadTumorNormalPileup(tumorReads, normalReads, locus)
-
+        println(tumorPileup.locus, shouldFindVariant)
         val calledGenotypes = SomaticLogOddsVariantCaller.findPotentialVariantAtLocus(
           tumorPileup,
           normalPileup,
-          logOddsThreshold,
+          950,
+          950,
           maxMappingComplexity,
           minAlignmentForComplexity,
           minAlignmentQuality,

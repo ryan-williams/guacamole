@@ -3,14 +3,14 @@ package org.bdgenomics.guacamole.callers
 import org.apache.spark.Logging
 import org.apache.spark.rdd.RDD
 import org.bdgenomics.adam.cli.Args4j
-import org.bdgenomics.guacamole._
 import org.bdgenomics.guacamole.Common.Arguments.{ Output, TumorNormalReads }
-import org.bdgenomics.guacamole.filters.{ SomaticAlternateReadDepthFilter, SomaticReadDepthFilter, PileupFilter, SomaticGenotypeFilter }
+import org.bdgenomics.guacamole._
 import org.bdgenomics.guacamole.filters.PileupFilter.PileupFilterArguments
 import org.bdgenomics.guacamole.filters.SomaticGenotypeFilter.SomaticGenotypeFilterArguments
+import org.bdgenomics.guacamole.filters.{ PileupFilter, SomaticAlternateReadDepthFilter, SomaticGenotypeFilter, SomaticReadDepthFilter }
 import org.bdgenomics.guacamole.pileup.Pileup
 import org.bdgenomics.guacamole.reads.Read
-import org.bdgenomics.guacamole.variants.{ Allele, CalledSomaticAllele, AlleleConversions, AlleleEvidence }
+import org.bdgenomics.guacamole.variants._
 import org.kohsuke.args4j.{ Option => Opt }
 
 /**
@@ -39,6 +39,12 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
 
     @Opt(name = "-odds", usage = "Minimum log odds threshold for possible variant candidates")
     var oddsThreshold: Int = 20
+
+    @Opt(name = "-tumorLogOdds", usage = "Minimum log odds threshold for possible variant candidates")
+    var tumorLogOdds: Int = 20
+
+    @Opt(name = "-normalLogOdds", usage = "Minimum log odds threshold for possible variant candidates")
+    var normalLogOdds: Int = 20
 
   }
 
@@ -73,6 +79,8 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
       normalReads.mappedReads
     )
 
+    val tumorLogOdds = args.tumorLogOdds
+    val normalLogOdds = args.normalLogOdds
     var potentialGenotypes: RDD[CalledSomaticAllele] =
       DistributedUtil.pileupFlatMapTwoRDDs[CalledSomaticAllele](
         tumorReads.mappedReads,
@@ -83,7 +91,8 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
           findPotentialVariantAtLocus(
             pileupTumor,
             pileupNormal,
-            oddsThreshold,
+            tumorLogOdds,
+            normalLogOdds,
             maxMappingComplexity,
             minAlignmentForComplexity,
             minAlignmentQuality,
@@ -159,6 +168,7 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
   def findPotentialVariantAtLocus(tumorPileup: Pileup,
                                   normalPileup: Pileup,
                                   oddsThreshold: Int,
+                                  normalLogOdds: Int,
                                   maxMappingComplexity: Int = 100,
                                   minAlignmentForComplexity: Int = 1,
                                   minAlignmentQuality: Int = 1,
@@ -197,51 +207,91 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
      * Find the most likely genotype in the tumor sample
      * This is either the reference genotype or an heterozygous genotype with some alternate base
      */
-    val (mostLikelyTumorGenotype, mostLikelyTumorGenotypeLikelihood) =
+    val referenceAllele = Allele(Seq(filteredTumorPileup.referenceBase), Seq(filteredTumorPileup.referenceBase))
+    val lodScores =
+      filteredTumorPileup
+        .possibleAlleles
+        .filter(_.isVariant)
+        .map(allele => {
+          val variantAlleleFrequency = filteredTumorPileup.elements.count(_.allele == allele).toFloat / filteredTumorPileup.depth
+          val genotype = Genotype(referenceAllele, allele)
+          (allele,
+            genotype.logLikelihoodOfReads(
+              filteredTumorPileup.elements,
+              variantAlleleFrequency,
+              includeAlignmentLikelihood = true
+            ),
+              genotype.logLikelihoodOfReads(
+                filteredTumorPileup.elements,
+                0,
+                includeAlignmentLikelihood = true
+              ),
+                variantAlleleFrequency
+          )
+        })
+
+    val possibleSomaticAlleles = lodScores.filter(t3 => t3._2 - t3._3 > oddsThreshold / 100.0)
+
+    val possibleSomaticAllelesGermline = possibleSomaticAlleles.map(alleleLOD => {
+      val genotype = Genotype(referenceAllele, alleleLOD._1)
+      (alleleLOD._1, alleleLOD._2, alleleLOD._3,
+        genotype.logLikelihoodOfReads(
+          filteredNormalPileup.elements,
+          0,
+          includeAlignmentLikelihood = true
+        ),
+          genotype.logLikelihoodOfReads(
+            filteredNormalPileup.elements,
+            0.5,
+            includeAlignmentLikelihood = true
+          ))
+    })
+    //  possibleSomaticAllelesGermline.foreach( v => println(v._1, v._2, v._3, v._2 - v._3, v._4, v._5, v._4 - v._5))
+
+    val filteredPossibleSomaticAllelesGermline = possibleSomaticAllelesGermline.filter(s => s._4 - s._5 > normalLogOdds / 100.0)
+
+    //  println(filteredPossibleSomaticAllelesGermline.size)
+
+    /**
+     * Find the most likely genotype in the tumor sample
+     * This is either the reference genotype or an heterozygous genotype with some alternate base
+     */
+    lazy val tumorLikelihoods =
       filteredTumorPileup.computeLikelihoods(
         includeAlignmentLikelihood = true,
         normalize = true
-      ).maxBy(_._2)
+      )
 
     // The following lazy vals are only evaluated if mostLikelyTumorGenotype.hasVariantAllele
     lazy val normalLikelihoods =
       filteredNormalPileup.computeLikelihoods(
-        includeAlignmentLikelihood = false,
+        includeAlignmentLikelihood = true,
         normalize = true
-      ).toMap
-
-    lazy val normalVariantGenotypes = normalLikelihoods.filter(_._1.hasVariantAllele)
+      )
 
     // NOTE(ryan): for now, compare non-reference alleles found in tumor to the sum of all likelihoods of variant
     // genotypes in the normal sample.
     // TODO(ryan): in the future, we may want to pay closer attention to the likelihood of the most likely tumor
     // genotype in the normal sample.
-    lazy val normalVariantsTotalLikelihood = normalVariantGenotypes.map(_._2).sum
-    lazy val somaticOdds = mostLikelyTumorGenotypeLikelihood / normalVariantsTotalLikelihood
+    for {
+      alleleScores <- filteredPossibleSomaticAllelesGermline.headOption.toSeq
+      allele: Allele = alleleScores._1
+      genotype: Genotype = Genotype(referenceAllele, allele)
+      tumorVariantLikelihood = tumorLikelihoods.filter(_._1.hasVariantAllele).map(_._2).sum
+      normalVariantLikelihood = normalLikelihoods.filter(_._1.hasVariantAllele).map(_._2).sum
+      tumorEvidence: AlleleEvidence = AlleleEvidence(tumorVariantLikelihood, allele, filteredTumorPileup)
+      normalEvidence = AlleleEvidence(normalVariantLikelihood, allele, filteredNormalPileup)
+    } yield {
 
-    if (mostLikelyTumorGenotype.hasVariantAllele && somaticOdds * 100 >= oddsThreshold) {
-      for {
-        // NOTE(ryan): currently only look at the first non-ref allele in the most likely tumor genotype.
-        // removeCorrelatedGenotypes depends on there only being one variant per locus.
-        // TODO(ryan): if we want to handle the possibility of two non-reference alleles at a locus, iterate over all
-        // non-reference alleles here and rework downstream assumptions accordingly.
-        allele <- mostLikelyTumorGenotype.getNonReferenceAlleles.headOption.toSeq
-        tumorEvidence = AlleleEvidence(mostLikelyTumorGenotypeLikelihood, allele, filteredTumorPileup)
-        normalEvidence = AlleleEvidence(normalVariantsTotalLikelihood, allele, filteredNormalPileup)
-      } yield {
-        CalledSomaticAllele(
-          tumorPileup.sampleName,
-          tumorPileup.referenceName,
-          tumorPileup.locus,
-          allele,
-          math.log(somaticOdds),
-          tumorEvidence,
-          normalEvidence
-        )
-      }
-    } else {
-      Seq()
+      CalledSomaticAllele(
+        tumorPileup.sampleName,
+        tumorPileup.referenceName,
+        tumorPileup.locus,
+        allele,
+        alleleScores._2 - alleleScores._3,
+        tumorEvidence,
+        normalEvidence
+      )
     }
-
   }
 }

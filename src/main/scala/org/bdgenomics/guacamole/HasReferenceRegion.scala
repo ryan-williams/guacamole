@@ -28,4 +28,8 @@ trait HasReferenceRegion {
     start - halfWindowSize <= locus && end + halfWindowSize > locus
   }
 
+  def overlaps(other: HasReferenceRegion): Boolean = {
+    (start >= other.start && start < end) || (end < other.end && end > other.start)
+  }
+
 }

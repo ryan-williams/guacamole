@@ -464,7 +464,7 @@ object DistributedUtil extends Logging {
    * @tparam T type of value returned by function
    * @return flatMap results, RDD[T]
    */
-  private def windowTaskFlatMapMultipleRDDs[M <: HasReferenceRegion: ClassTag, T: ClassTag](
+  def windowTaskFlatMapMultipleRDDs[M <: HasReferenceRegion: ClassTag, T: ClassTag](
     regionRDDs: PerSample[RDD[M]],
     lociPartitions: LociMap[Long],
     halfWindowSize: Long,

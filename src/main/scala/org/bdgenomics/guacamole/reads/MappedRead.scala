@@ -78,6 +78,57 @@ case class MappedRead(
       mdTagString,
       Bases.basesToString(sequence)
     )
+
+  /**
+   *
+   *  In mated paired end, we expect the following pair structure
+   *
+   *  r1 -------> <-------- r2
+   *  Where the read with earlier start position is oriented positively 5' -> 3' and its mate (which starts later)
+   *  *must* be oriented negatively.
+   *
+   *  Translocation
+   *  Reads mapped to different chromosomes
+   *  r1 -------> ..... (????)
+   *
+   *  Inversions:
+   *  Reads mapped in the same directions
+   *  r1 -------> --------> r2 or r1 <------- <-------- r2
+   *
+   *  Tandem Duplications:
+   *  Reads mapped in the incorrect directions
+   *  r1 <------- --------> r2
+   */
+
+  lazy val inTranslocatedRegion: Boolean = {
+    (isMapped && matePropertiesOpt.exists(!_.isMateMapped)) ||
+      matePropertiesOpt.exists(_.mateReferenceContig.exists(_ != referenceContig))
+  }
+
+  lazy val inDuplicatedRegion: Boolean = {
+    matePropertiesOpt match {
+      case Some(mateProperties) =>
+        (mateProperties.mateReferenceContig, mateProperties.mateStart) match {
+          case (Some(mateReferenceContig), Some(mateStart)) => {
+            referenceContig == mateReferenceContig &&
+              ((start < mateStart && !isPositiveStrand) || (start > mateStart && isPositiveStrand))
+          }
+          case _ => false
+        }
+
+      case None => false
+    }
+  }
+
+  lazy val inInvertedRegion: Boolean = {
+    matePropertiesOpt match {
+      case Some(mateProperties) => {
+        mateProperties.isMateMapped && isPositiveStrand == mateProperties.isMatePositiveStrand
+      }
+      case None => false
+    }
+  }
+
 }
 
 case class MissingMDTagException(record: SAMRecord)

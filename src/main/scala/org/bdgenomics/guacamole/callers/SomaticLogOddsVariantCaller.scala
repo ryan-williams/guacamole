@@ -7,7 +7,7 @@ import org.bdgenomics.guacamole.Common.Arguments.{ Output, TumorNormalReads }
 import org.bdgenomics.guacamole._
 import org.bdgenomics.guacamole.filters.PileupFilter.PileupFilterArguments
 import org.bdgenomics.guacamole.filters.SomaticGenotypeFilter.SomaticGenotypeFilterArguments
-import org.bdgenomics.guacamole.filters.{ PileupFilter, SomaticAlternateReadDepthFilter, SomaticGenotypeFilter, SomaticReadDepthFilter }
+import org.bdgenomics.guacamole.filters.{ PileupFilter, SomaticAlternateReadDepthFilter, SomaticReadDepthFilter }
 import org.bdgenomics.guacamole.pileup.Pileup
 import org.bdgenomics.guacamole.reads.Read
 import org.bdgenomics.guacamole.variants._
@@ -34,12 +34,6 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
       with PileupFilterArguments
       with TumorNormalReads {
 
-    @Opt(name = "-snvWindowRange", usage = "Number of bases before and after to check for additional matches or deletions")
-    var snvWindowRange: Int = 20
-
-    @Opt(name = "-odds", usage = "Minimum log odds threshold for possible variant candidates")
-    var oddsThreshold: Int = 20
-
     @Opt(name = "-tumorLogOdds", usage = "Minimum log odds threshold for possible variant candidates")
     var tumorLogOdds: Int = 20
 
@@ -60,16 +54,12 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
       "Tumor and normal samples have different sequence dictionaries. Tumor dictionary: %s.\nNormal dictionary: %s."
         .format(tumorReads.sequenceDictionary, normalReads.sequenceDictionary))
 
-    val snvWindowRange = args.snvWindowRange
-
     val maxMappingComplexity = args.maxMappingComplexity
     val minAlignmentForComplexity = args.minAlignmentForComplexity
 
     val filterMultiAllelic = args.filterMultiAllelic
     val minAlignmentQuality = args.minAlignmentQuality
     val maxReadDepth = args.maxTumorReadDepth
-
-    val oddsThreshold = args.oddsThreshold
 
     val loci = Common.loci(args, normalReads)
     val lociPartitions = DistributedUtil.partitionLociAccordingToArgs(
@@ -120,24 +110,24 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
     Common.progress("Computed %,d potential genotypes".format(potentialGenotypes.count))
 
     val genotypeLociPartitions = DistributedUtil.partitionLociUniformly(args.parallelism, loci)
-    val genotypes: RDD[CalledSomaticAllele] =
-      DistributedUtil.windowFlatMapWithState[CalledSomaticAllele, CalledSomaticAllele, Option[String]](
-        Seq(potentialGenotypes),
-        genotypeLociPartitions,
-        skipEmpty = true,
-        snvWindowRange.toLong,
-        None,
-        removeCorrelatedGenotypes
-      )
-    genotypes.persist()
-    Common.progress("Computed %,d genotypes after regional analysis".format(genotypes.count))
+    //    val genotypes: RDD[CalledSomaticAllele] =
+    //      DistributedUtil.windowFlatMapWithState[CalledSomaticAllele, CalledSomaticAllele, Option[String]](
+    //        Seq(potentialGenotypes),
+    //        genotypeLociPartitions,
+    //        skipEmpty = true,
+    //        snvWindowRange.toLong,
+    //        None,
+    //        removeCorrelatedGenotypes
+    //      )
+    //    genotypes.persist()
+    //    Common.progress("Computed %,d genotypes after regional analysis".format(genotypes.count))
 
-    val filteredGenotypes: RDD[CalledSomaticAllele] = SomaticGenotypeFilter(genotypes, args)
-    Common.progress("Computed %,d genotypes after basic filtering".format(filteredGenotypes.count))
+    //    val filteredGenotypes: RDD[CalledSomaticAllele] = SomaticGenotypeFilter(genotypes, args)
+    //    Common.progress("Computed %,d genotypes after basic filtering".format(filteredGenotypes.count))
 
     Common.writeVariantsFromArguments(
       args,
-      filteredGenotypes.flatMap(AlleleConversions.calledSomaticAlleleToADAMGenotype)
+      potentialGenotypes.flatMap(AlleleConversions.calledSomaticAlleleToADAMGenotype)
     )
 
     DelayedMessages.default.print()
@@ -167,7 +157,7 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
 
   def findPotentialVariantAtLocus(tumorPileup: Pileup,
                                   normalPileup: Pileup,
-                                  oddsThreshold: Int,
+                                  tumorLogOdds: Int,
                                   normalLogOdds: Int,
                                   maxMappingComplexity: Int = 100,
                                   minAlignmentForComplexity: Int = 1,
@@ -212,38 +202,45 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
       filteredTumorPileup
         .possibleAlleles
         .filter(_.isVariant)
+        .filter(allele => allele.altBases.size == 1 && allele.refBases.size == 1)
         .map(allele => {
           val variantAlleleFrequency = filteredTumorPileup.elements.count(_.allele == allele).toFloat / filteredTumorPileup.depth
           val genotype = Genotype(referenceAllele, allele)
-          (allele,
+          (
+            allele,
             genotype.logLikelihoodOfReads(
               filteredTumorPileup.elements,
               variantAlleleFrequency,
-              includeAlignmentLikelihood = true
+              includeAlignmentLikelihood = false
             ),
               genotype.logLikelihoodOfReads(
                 filteredTumorPileup.elements,
                 0,
-                includeAlignmentLikelihood = true
+                includeAlignmentLikelihood = false
               ),
                 variantAlleleFrequency
           )
         })
 
-    val possibleSomaticAlleles = lodScores.filter(t3 => t3._2 - t3._3 > oddsThreshold / 100.0)
+    val possibleSomaticAlleles = lodScores.filter(t3 => t3._2 - t3._3 > tumorLogOdds / 100.0)
 
     val possibleSomaticAllelesGermline = possibleSomaticAlleles.map(alleleLOD => {
       val genotype = Genotype(referenceAllele, alleleLOD._1)
-      (alleleLOD._1, alleleLOD._2, alleleLOD._3,
+      (
+        alleleLOD._1, // allele
+        alleleLOD._2, // VAF = f tumor likelihood
+        alleleLOD._3, // VAF = 0 tumor likelihood
+        // VAF = 0 normal likelihood
         genotype.logLikelihoodOfReads(
           filteredNormalPileup.elements,
           0,
-          includeAlignmentLikelihood = true
+          includeAlignmentLikelihood = false
         ),
+          // VAF = 0.5 normal likelihood
           genotype.logLikelihoodOfReads(
             filteredNormalPileup.elements,
             0.5,
-            includeAlignmentLikelihood = true
+            includeAlignmentLikelihood = false
           ))
     })
     //  possibleSomaticAllelesGermline.foreach( v => println(v._1, v._2, v._3, v._2 - v._3, v._4, v._5, v._4 - v._5))

@@ -1,13 +1,15 @@
 package org.bdgenomics.guacamole.callers
 
 import org.apache.spark.Logging
+import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.bdgenomics.adam.cli.Args4j
 import org.bdgenomics.guacamole.Common.Arguments.{ Base, Output, Reads }
+import org.bdgenomics.guacamole.DistributedUtil.PerSample
 import org.bdgenomics.guacamole.filters.GenotypeFilter.GenotypeFilterArguments
 import org.bdgenomics.guacamole.reads.{ MappedRead, Read }
 import org.bdgenomics.guacamole.variants.{ AlleleConversions, Breakpoint, CalledAllele }
-import org.bdgenomics.guacamole.{ Command, Common, DelayedMessages, DistributedUtil }
+import org.bdgenomics.guacamole._
 import org.kohsuke.args4j.{ Option => Opt }
 
 object PairedEndAlignmentSVCaller extends Command with Serializable with Logging {
@@ -22,10 +24,52 @@ object PairedEndAlignmentSVCaller extends Command with Serializable with Logging
 
   }
 
-  def discoverBreakpoints(lastBreakpointOpt: Option[Breakpoint],
-                          readsAtLocus: Seq[MappedRead],
-                          threshold: Double,
-                          minDepth: Int): (Option[Breakpoint], Seq[CalledAllele]) = {
+  def callVariantsInSample(mappedReads: RDD[MappedRead],
+                           lociPartitions: LociMap[Long],
+                           threshold: Double,
+                           minDepth: Int): RDD[CalledAllele] = {
+
+    DistributedUtil.windowTaskFlatMapMultipleRDDs(
+      Seq(mappedReads),
+      lociPartitions,
+      0L,
+      (task, taskLoci, tasksAndElementsPerSample: PerSample[Iterator[MappedRead]]) => {
+        DistributedUtil.collectByContig[MappedRead, CalledAllele](
+          tasksAndElementsPerSample,
+          taskLoci,
+          skipEmpty = true,
+          halfWindowSize = 0L,
+          (windowsIterator) => {
+            var lastBreakpoint: Option[Breakpoint] = None
+            // At each locus, either:
+            // - find a new breakpoint
+            // - extend the current breakpoint
+            // - end the last breakpoint
+            val variants = windowsIterator.flatMap(windows => {
+              val window = windows(0)
+              val (currentBreakpoint, currentVariant) =
+                discoverBreakpointAtLocus(
+                  lastBreakpoint,
+                  window.currentRegions(),
+                  threshold,
+                  minDepth
+                )
+              // Update the the current breakpoint state
+              lastBreakpoint = currentBreakpoint
+              // Collect the possible variant called at this locus
+              currentVariant
+            })
+            variants ++ lastBreakpoint.map(_.callAllele)
+          }
+        )
+      }
+    )
+  }
+
+  def discoverBreakpointAtLocus(lastBreakpointOpt: Option[Breakpoint],
+                                readsAtLocus: Seq[MappedRead],
+                                threshold: Double,
+                                minDepth: Int): (Option[Breakpoint], Seq[CalledAllele]) = {
 
     val readsSupportingBreakpoint = readsAtLocus.filter(r => r.inDuplicatedRegion || r.inInvertedRegion)
     val breakpointRatio = readsSupportingBreakpoint.size.toFloat / readsAtLocus.size
@@ -33,7 +77,7 @@ object PairedEndAlignmentSVCaller extends Command with Serializable with Logging
       val newBreakpoint = Breakpoint(readsSupportingBreakpoint)
       lastBreakpointOpt match {
         case Some(lastBreakpoint) => {
-          if (newBreakpoint.overlaps(lastBreakpoint)) {
+          if (newBreakpoint.overlapsBreakpoint(lastBreakpoint)) {
             (Some(newBreakpoint.merge(lastBreakpoint)), Seq.empty)
           } else {
             (Some(newBreakpoint), Seq(lastBreakpoint.callAllele))
@@ -59,7 +103,6 @@ object PairedEndAlignmentSVCaller extends Command with Serializable with Logging
 
     Common.progress("Loaded %,d mapped non-duplicate MdTag-containing reads into %,d partitions.".format(
       mappedReads.count, mappedReads.partitions.length))
-
     val loci = Common.loci(args, readSet)
     val lociPartitions = DistributedUtil.partitionLociAccordingToArgs(
       args,
@@ -68,36 +111,9 @@ object PairedEndAlignmentSVCaller extends Command with Serializable with Logging
     )
 
     val threshold = args.threshold / 100.0
-    val minDepth = args.minReadDepth
-    val genotypes = DistributedUtil.windowTaskFlatMapMultipleRDDs(
-      Seq(mappedReads),
-      lociPartitions,
-      0L,
-      (task, taskLoci, taskRegionsSeq: Seq[Iterator[MappedRead]]) => {
-        DistributedUtil.collectByContig[MappedRead, CalledAllele](
-          taskRegionsSeq,
-          taskLoci,
-          true,
-          0L,
-          (windowsIterator) => {
-            var lastBreakpoint: Option[Breakpoint] = None
-            val variants = windowsIterator.flatMap(windows => {
-              val window = windows(0)
-              val (currentBreakpoint, currentVariants) =
-                discoverBreakpoints(
-                  lastBreakpoint,
-                  window.currentRegions(),
-                  threshold,
-                  minDepth
-                )
-              lastBreakpoint = currentBreakpoint
-              currentVariants
-            })
-            variants ++ lastBreakpoint.map(_.callAllele)
-          }
-        )
-      }
-    )
+    val minReadDepth = args.minReadDepth
+
+    val genotypes = callVariantsInSample(mappedReads, lociPartitions, threshold, minReadDepth)
 
     genotypes.persist(StorageLevel.MEMORY_ONLY_SER)
 

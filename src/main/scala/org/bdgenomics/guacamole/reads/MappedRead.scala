@@ -110,8 +110,7 @@ case class MappedRead(
       case Some(mateProperties) =>
         (mateProperties.mateReferenceContig, mateProperties.mateStart) match {
           case (Some(mateReferenceContig), Some(mateStart)) => {
-            referenceContig == mateReferenceContig &&
-              ((start < mateStart && !isPositiveStrand) || (start > mateStart && isPositiveStrand))
+            referenceContig == mateReferenceContig && ((start < mateStart && !isPositiveStrand) || (start > mateStart && isPositiveStrand))
           }
           case _ => false
         }

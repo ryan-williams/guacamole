@@ -7,7 +7,7 @@ import org.bdgenomics.guacamole.Common.Arguments.{ Output, TumorNormalReads }
 import org.bdgenomics.guacamole._
 import org.bdgenomics.guacamole.filters.PileupFilter.PileupFilterArguments
 import org.bdgenomics.guacamole.filters.SomaticGenotypeFilter.SomaticGenotypeFilterArguments
-import org.bdgenomics.guacamole.filters.{ PileupFilter, SomaticAlternateReadDepthFilter, SomaticReadDepthFilter }
+import org.bdgenomics.guacamole.filters.{ SomaticGenotypeFilter, PileupFilter, SomaticAlternateReadDepthFilter, SomaticReadDepthFilter }
 import org.bdgenomics.guacamole.pileup.Pileup
 import org.bdgenomics.guacamole.reads.Read
 import org.bdgenomics.guacamole.variants._
@@ -122,12 +122,12 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
     //    genotypes.persist()
     //    Common.progress("Computed %,d genotypes after regional analysis".format(genotypes.count))
 
-    //    val filteredGenotypes: RDD[CalledSomaticAllele] = SomaticGenotypeFilter(genotypes, args)
-    //    Common.progress("Computed %,d genotypes after basic filtering".format(filteredGenotypes.count))
+    val filteredGenotypes: RDD[CalledSomaticAllele] = SomaticGenotypeFilter(potentialGenotypes, args)
+    Common.progress("Computed %,d genotypes after basic filtering".format(filteredGenotypes.count))
 
     Common.writeVariantsFromArguments(
       args,
-      potentialGenotypes.flatMap(AlleleConversions.calledSomaticAlleleToADAMGenotype)
+      filteredGenotypes.flatMap(AlleleConversions.calledSomaticAlleleToADAMGenotype)
     )
 
     DelayedMessages.default.print()
@@ -207,21 +207,23 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
           val variantAlleleFrequency = filteredTumorPileup.elements.count(_.allele == allele).toFloat / filteredTumorPileup.depth
           val genotype = Genotype(referenceAllele, allele)
           (
-            allele,
+            allele, // allele
             genotype.logLikelihoodOfReads(
               filteredTumorPileup.elements,
               variantAlleleFrequency,
               includeAlignmentLikelihood = false
-            ),
+            ), // VAF = f tumor likelihood
               genotype.logLikelihoodOfReads(
                 filteredTumorPileup.elements,
                 0,
                 includeAlignmentLikelihood = false
-              ),
+              ), // VAF = 0 tumor likelihood
                 variantAlleleFrequency
           )
         })
 
+    // LOD(T)_vaf=f - LOD(T)_vaf=0  = T
+    // Keep variants where T = LOD(T)_vaf=f - LOD(T)_vaf=0 > tumorLogOdds
     val possibleSomaticAlleles = lodScores.filter(t3 => t3._2 - t3._3 > tumorLogOdds / 100.0)
 
     val possibleSomaticAllelesGermline = possibleSomaticAlleles.map(alleleLOD => {
@@ -243,8 +245,9 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
             includeAlignmentLikelihood = false
           ))
     })
-    //  possibleSomaticAllelesGermline.foreach( v => println(v._1, v._2, v._3, v._2 - v._3, v._4, v._5, v._4 - v._5))
 
+    // LOD(N)_vaf=0 - LOD(N)_vaf=0.5  = G
+    // Keep variants where G = LOD(N)_vaf=0 - LOD(N)_vaf=0.5 > normalLogOdds
     val filteredPossibleSomaticAllelesGermline = possibleSomaticAllelesGermline.filter(s => s._4 - s._5 > normalLogOdds / 100.0)
 
     //  println(filteredPossibleSomaticAllelesGermline.size)
@@ -276,8 +279,8 @@ object SomaticLogOddsVariantCaller extends Command with Serializable with Loggin
       genotype: Genotype = Genotype(referenceAllele, allele)
       tumorVariantLikelihood = tumorLikelihoods.filter(_._1.hasVariantAllele).map(_._2).sum
       normalVariantLikelihood = normalLikelihoods.filter(_._1.hasVariantAllele).map(_._2).sum
-      tumorEvidence: AlleleEvidence = AlleleEvidence(tumorVariantLikelihood, allele, filteredTumorPileup)
-      normalEvidence = AlleleEvidence(normalVariantLikelihood, allele, filteredNormalPileup)
+      tumorEvidence: AlleleEvidence = AlleleEvidence(math.exp(alleleScores._2), allele, filteredTumorPileup)
+      normalEvidence = AlleleEvidence(math.exp(alleleScores._4), allele, filteredNormalPileup)
     } yield {
 
       CalledSomaticAllele(

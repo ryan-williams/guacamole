@@ -237,7 +237,18 @@ object Common extends Logging {
     } else if (outputPath.toLowerCase.endsWith(".vcf")) {
       progress("Writing genotypes to VCF file: %s.".format(outputPath))
       val sc = subsetGenotypes.sparkContext
-      sc.adamVCFSave(outputPath, subsetGenotypes.toVariantContext.coalesce(1))
+
+      // The following block eagerly generates the variant contexts
+      // This is done so that the coalesce operation is performed after
+      // this conversion. Otherwise, the coalesce will be performed before any computation
+      val variantContexts = subsetGenotypes.toVariantContext
+      variantContexts.persist()
+      variantContexts.count() // Count is unused but forces the computation of variant contexts
+
+      val coalescedVariantContexts = variantContexts.coalesce(1)
+      sc.adamVCFSave(outputPath, coalescedVariantContexts)
+
+      variantContexts.unpersist()
     } else {
       progress("Writing genotypes to: %s.".format(outputPath))
       subsetGenotypes.adamSave(outputPath,

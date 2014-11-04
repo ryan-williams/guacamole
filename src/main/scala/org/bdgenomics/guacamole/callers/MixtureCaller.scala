@@ -43,7 +43,7 @@ object MixtureCaller extends Command with Serializable with Logging {
       with TumorNormalReads {
 
     @Opt(name = "--readsToSample", usage = "Minimum log odds threshold for possible variant candidates")
-    var tumorLogOdds: Int = 20
+    var readsToSample: Int = 1000
 
   }
 
@@ -58,6 +58,8 @@ object MixtureCaller extends Command with Serializable with Logging {
     assert(tumorReads.sequenceDictionary == normalReads.sequenceDictionary,
       "Tumor and normal samples have different sequence dictionaries. Tumor dictionary: %s.\nNormal dictionary: %s."
         .format(tumorReads.sequenceDictionary, normalReads.sequenceDictionary))
+
+    val readsToSample = args.readsToSample
 
     val loci = Common.loci(args, normalReads)
     val lociPartitions = DistributedUtil.partitionLociAccordingToArgs(
@@ -85,7 +87,7 @@ object MixtureCaller extends Command with Serializable with Logging {
       pileup => generateVariantLocus(pileup).iterator
     )
     val numVariantLoci = variantLoci.count
-
+    variantLoci.persist()
     Common.progress("%d non-zero variant loci in sample %s".format(numVariantLoci, sampleName))
 
     val sampledVAFs =

@@ -1,19 +1,18 @@
 package org.bdgenomics.guacamole.callers
 
 import com.esotericsoftware.kryo.io.Input
-import com.esotericsoftware.kryo.{Kryo, Serializer, io}
+import com.esotericsoftware.kryo.{ Kryo, Serializer, io }
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics
 import org.apache.spark.Logging
 import org.apache.spark.rdd.RDD
 import org.bdgenomics.adam.cli.Args4j
-import org.bdgenomics.guacamole.Common.Arguments.{Output, TumorNormalReads}
+import org.bdgenomics.guacamole.Common.Arguments.{ Output, TumorNormalReads }
 import org.bdgenomics.guacamole._
 import org.bdgenomics.guacamole.filters.PileupFilter.PileupFilterArguments
 import org.bdgenomics.guacamole.filters.SomaticGenotypeFilter.SomaticGenotypeFilterArguments
 import org.bdgenomics.guacamole.pileup.Pileup
-import org.bdgenomics.guacamole.reads.{MappedRead, Read}
-import org.kohsuke.args4j.{Option, Option => Opt}
-
+import org.bdgenomics.guacamole.reads.{ MappedRead, Read }
+import org.kohsuke.args4j.{ Option => Opt }
 
 case class VariantLocus(locus: Long, variantAlleleFrequency: Double)
 
@@ -37,11 +36,11 @@ object MixtureCaller extends Command with Serializable with Logging {
   override val description = "cluster variant allele frequencies"
 
   private class Arguments
-    extends DistributedUtil.Arguments
-    with Output
-    with SomaticGenotypeFilterArguments
-    with PileupFilterArguments
-    with TumorNormalReads {
+      extends DistributedUtil.Arguments
+      with Output
+      with SomaticGenotypeFilterArguments
+      with PileupFilterArguments
+      with TumorNormalReads {
 
     @Opt(name = "--readsToSample", usage = "Minimum log odds threshold for possible variant candidates")
     var tumorLogOdds: Int = 20
@@ -78,6 +77,7 @@ object MixtureCaller extends Command with Serializable with Logging {
                                    lociPartitions: LociMap[Long],
                                    readsToSample: Int = 1000): RDD[VariantLocus] = {
     val sampleName = reads.take(1)(0).sampleName
+
     val variantLoci = DistributedUtil.pileupFlatMap[VariantLocus](
       reads,
       lociPartitions,
@@ -91,9 +91,9 @@ object MixtureCaller extends Command with Serializable with Logging {
     val sampledVAFs =
       if (numVariantLoci > readsToSample)
         variantLoci
-      .sample(withReplacement =  false, readsToSample.toFloat / numVariantLoci)
-      .collect()
-     else
+          .sample(withReplacement = false, fraction = readsToSample.toFloat / numVariantLoci)
+          .collect()
+      else
         variantLoci.collect()
 
     val stats = new DescriptiveStatistics()
@@ -103,14 +103,13 @@ object MixtureCaller extends Command with Serializable with Logging {
       stats.getMin, stats.getMax, stats.getPercentile(50), stats.getMean, stats.getPercentile(25), stats.getPercentile(75)
     ))
 
-
     variantLoci
   }
 
   def generateVariantLocus(pileup: Pileup): Option[VariantLocus] = {
     if (pileup.referenceDepth != pileup.depth) {
       Some(VariantLocus(pileup.locus, (pileup.depth - pileup.referenceDepth).toFloat / pileup.depth))
-    }  else {
+    } else {
       None
     }
   }

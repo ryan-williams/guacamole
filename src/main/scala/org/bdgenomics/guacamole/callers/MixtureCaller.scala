@@ -5,6 +5,7 @@ import com.esotericsoftware.kryo.{ Kryo, Serializer, io }
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics
 import org.apache.spark.Logging
 import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
 import org.bdgenomics.adam.cli.Args4j
 import org.bdgenomics.guacamole.Common.Arguments.{ Output, TumorNormalReads }
 import org.bdgenomics.guacamole._
@@ -86,8 +87,8 @@ object MixtureCaller extends Command with Serializable with Logging {
       skipEmpty = true,
       pileup => generateVariantLocus(pileup).iterator
     )
+    variantLoci.persist(StorageLevel.MEMORY_ONLY)
     val numVariantLoci = variantLoci.count
-    variantLoci.persist()
     Common.progress("%d non-zero variant loci in sample %s".format(numVariantLoci, sampleName))
 
     val sampledVAFs =
@@ -101,7 +102,7 @@ object MixtureCaller extends Command with Serializable with Logging {
     val stats = new DescriptiveStatistics()
     sampledVAFs.foreach(v => stats.addValue(v.variantAlleleFrequency))
 
-    Common.progress("Variant loci stats (min: %d, max: %d, median: %d, mean: %d, 25% : %d, 75%: %d)".format(
+    Common.progress("Variant loci stats (min: %f, max: %f, median: %f, mean: %f, 25: %f, 75: %f)".format(
       stats.getMin, stats.getMax, stats.getPercentile(50), stats.getMean, stats.getPercentile(25), stats.getPercentile(75)
     ))
 

@@ -42,6 +42,10 @@ object DistributedUtil extends Logging {
     @Opt(name = "-partition-accuracy",
       usage = "Num micro partitions to use per task in loci partitioning. Set to 0 to partition loci uniformly. Default: 250.")
     var partitioningAccuracy: Int = 250
+
+    @Opt(name = "-partition-sample",
+      usage = "Sample % of reads to use to compute loci partitioning. Default: 100%.")
+    var partitioningSample: Int = -1
   }
 
   type PerSample[A] = Seq[A]
@@ -58,6 +62,7 @@ object DistributedUtil extends Logging {
         tasks,
         loci,
         args.partitioningAccuracy,
+        if (args.partitioningSample > 0) Some(args.partitioningSample) else None,
         regionRDDs: _*)
     }
   }
@@ -149,6 +154,7 @@ object DistributedUtil extends Logging {
    *                 Specifically, this is the number of micro partitions to use per task to estimate the region depth.
    *                 In the extreme case, setting this to greater than the number of loci per task will result in an
    *                 exact calculation.
+   * @param samplePercentOpt % of reads to use for the computation (if None use 100% of the reads)
    * @param regionRDDs: region RDD 1, region RDD 2, ...
    *                Any number RDD[ReferenceRegion] arguments giving the regions to base the partitioning on.
    * @return LociMap of locus -> task assignments.
@@ -156,6 +162,7 @@ object DistributedUtil extends Logging {
   def partitionLociByApproximateDepth[M <: HasReferenceRegion: ClassTag](tasks: Int,
                                                                          lociUsed: LociSet,
                                                                          accuracy: Int,
+                                                                         samplePercentOpt: Option[Int],
                                                                          regionRDDs: RDD[M]*): LociMap[Long] = {
     val sc = regionRDDs(0).sparkContext
 
@@ -175,7 +182,12 @@ object DistributedUtil extends Logging {
     val regionCounts = regionRDDs.map(regions => {
       progress("Collecting region counts for RDD %d of %d.".format(num, regionRDDs.length))
       num += 1
-      regions.flatMap(region =>
+      val sampledRegions = samplePercentOpt match {
+        case Some(samplePercent) => regions.sample(withReplacement = false, fraction = samplePercent / 100.0)
+        case _                   => regions
+      }
+
+      sampledRegions.flatMap(region =>
         broadcastMicroPartitions.value.onContig(region.referenceContig).getAll(region.start, region.end)
       ).countByValue()
     })

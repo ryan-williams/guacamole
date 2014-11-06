@@ -77,7 +77,7 @@ object DistributedUtil extends Logging {
   def partitionLociUniformly(tasks: Long, loci: LociSet): LociMap[Long] = {
     assume(tasks >= 1)
     val lociPerTask = math.max(1, loci.count.toDouble / tasks.toDouble)
-    progress("Splitting loci evenly among %,d tasks = ~%,.0f loci per task".format(tasks, lociPerTask))
+    //progress("Splitting loci evenly among %,d tasks = ~%,.0f loci per task".format(tasks, lociPerTask))
     val builder = LociMap.newBuilder[Long]
     var lociAssigned = 0L
     var task = 0L
@@ -491,7 +491,7 @@ object DistributedUtil extends Logging {
 
     assume(regionRDDs.length > 0)
     val sc = regionRDDs(0).sparkContext
-    progress("Loci partitioning: %s".format(lociPartitions.truncatedString()))
+    //progress("Loci partitioning: %s".format(lociPartitions.truncatedString()))
     val lociPartitionsBoxed: Broadcast[LociMap[Long]] = sc.broadcast(lociPartitions)
     val numTasks = lociPartitions.asInverseMap.map(_._1).max + 1
 

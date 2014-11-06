@@ -212,7 +212,7 @@ object TestUtil extends Matchers {
     }
   }
 
-  trait SparkFunSuite extends FunSuite with BeforeAndAfter {
+  trait HasSparkContext {
 
     val sparkPortProperty = "spark.driver.port"
 
@@ -263,6 +263,9 @@ object TestUtil extends Matchers {
           }
       }
     }
+  }
+
+  trait SparkFunSuite extends FunSuite with BeforeAndAfter with HasSparkContext {
 
     def sparkTest(name: String, silenceSpark: Boolean = true)(body: => Unit) {
       if (runOnly.isEmpty || runOnly == name) {

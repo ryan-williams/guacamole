@@ -9,8 +9,9 @@ import debox.Buffer
 object MDTagUtils {
 
   /**
-   * Given a mdtag, read sequence, cigar, and a reference start position, returns the reference.
    * Adopted from ADAM's mdTag.getReference to operate on Seq[Byte] instead of strings
+   *
+   * Given a mdtag, read sequence, cigar, and a reference start position, returns the reference.
    *
    * @param readSequence The base sequence of the read.
    * @param cigar The cigar for the read.

@@ -96,7 +96,7 @@ object GermlineStandardCaller extends Command with Serializable with Logging {
     pileup.bySample.toSeq.flatMap({
       case (sampleName, samplePileup) =>
         val filteredPileupElements = QualityAlignedReadsFilter(samplePileup.elements, minAlignmentQuality)
-        val genotypeLikelihoods = Pileup(samplePileup.locus, filteredPileupElements).computeLogLikelihoods()
+        val genotypeLikelihoods = Pileup(samplePileup.locus, samplePileup.referenceBase, filteredPileupElements).computeLogLikelihoods()
         val mostLikelyGenotype = genotypeLikelihoods.maxBy(_._2)
 
         def buildVariants(genotype: Genotype, probability: Double): Seq[CalledAllele] = {

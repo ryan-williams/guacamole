@@ -19,7 +19,7 @@
 package org.bdgenomics.guacamole.pileup
 
 import htsjdk.samtools.{ CigarElement, CigarOperator }
-import org.bdgenomics.guacamole.CigarUtils
+import org.bdgenomics.guacamole.{ Bases, CigarUtils }
 import org.bdgenomics.guacamole.reads.MappedRead
 import org.bdgenomics.guacamole.variants.Allele
 
@@ -40,6 +40,7 @@ import scala.annotation.tailrec
 case class PileupElement(
     read: MappedRead,
     locus: Long,
+    referenceBase: Byte,
     readPosition: Int,
     cigarElementIdx: Int,
     cigarElementLocus: Long,
@@ -59,8 +60,6 @@ case class PileupElement(
   lazy val referenceStringIdx =
     (cigarElementLocus - read.start).toInt +
       (if (cigarElement.getOperator.consumesReferenceBases()) indexWithinCigarElement else 0)
-
-  lazy val referenceBase = read.referenceBases(referenceStringIdx)
 
   lazy val cigarElementReadLength = CigarUtils.getReadLength(cigarElement)
   lazy val cigarElementReferenceLength = CigarUtils.getReferenceLength(cigarElement)
@@ -124,7 +123,7 @@ case class PileupElement(
       case (CigarOperator.M, _) | (CigarOperator.EQ, _) | (CigarOperator.X, _) =>
         val base: Byte = read.sequence(readPosition)
         val quality = read.baseQualities(readPosition)
-        if (read.mdTag.isMatch(locus)) {
+        if (base == referenceBase) {
           Match(base, quality)
         } else {
           Mismatch(base, quality, referenceBase)
@@ -185,9 +184,11 @@ case class PileupElement(
         0
       }
 
+    val nextLocus = locus + (cigarElementReferenceLength - indexWithinCigarElement)
     PileupElement(
       read,
-      locus + (cigarElementReferenceLength - indexWithinCigarElement),
+      nextLocus,
+      Bases.N, // placeholder before we advance to a proper locus
       readPosition + readPositionOffset,
       cigarElementIdx + 1,
       cigarElementLocus + cigarElementReferenceLength,
@@ -216,7 +217,7 @@ case class PileupElement(
    * @return A new [[PileupElement]] at the given locus.
    */
   @tailrec
-  final def advanceToLocus(newLocus: Long): PileupElement = {
+  final def advanceToLocus(newLocus: Long, newReferenceBase: Byte): PileupElement = {
     assume(newLocus >= locus, "Can't rewind to locus %d from %d. Pileups only advance.".format(newLocus, locus))
     assume(newLocus < read.end, "This read stops at position %d. Can't advance to %d".format(read.end, newLocus))
     if (currentCigarElementContainsLocus(newLocus)) {
@@ -231,6 +232,7 @@ case class PileupElement(
 
       this.copy(
         locus = newLocus,
+        referenceBase = newReferenceBase,
         readPosition = readPosition + readPositionOffset,
         indexWithinCigarElement = (newLocus - cigarElementLocus).toInt
       )
@@ -241,7 +243,7 @@ case class PileupElement(
       // [[advanceToLocus]] calls, since it represents a zero-width interval of reference bases.
       this
     } else
-      advanceToNextCigarElement.advanceToLocus(newLocus)
+      advanceToNextCigarElement.advanceToLocus(newLocus, newReferenceBase)
   }
 
   /**
@@ -251,6 +253,12 @@ case class PileupElement(
    */
   lazy val distanceFromSequencingEnd = if (read.isPositiveStrand) read.end - locus else locus - read.start
 
+  // For testing only!
+  private[pileup] def advanceToLocus(locus: Long): PileupElement = {
+    val referenceBase = read.getReferenceBaseAtLocus(locus)
+    this.advanceToLocus(locus, referenceBase)
+  }
+
 }
 
 object PileupElement {
@@ -258,15 +266,22 @@ object PileupElement {
   /**
    * Create a new [[PileupElement]] backed by the given read at the specified locus. The read must overlap the locus.
    */
-  def apply(read: MappedRead, locus: Long): PileupElement = {
+  def apply(read: MappedRead, locus: Long, referenceBase: Byte): PileupElement = {
     PileupElement(
       read = read,
       locus = read.start,
+      referenceBase = Bases.N,
       readPosition = 0,
       cigarElementIdx = 0,
       cigarElementLocus = read.start,
       indexWithinCigarElement = 0
-    ).advanceToLocus(locus)
+    ).advanceToLocus(locus, referenceBase)
+  }
+
+  // For testing only!
+  private[pileup] def apply(read: MappedRead, locus: Long): PileupElement = {
+    val referenceBase = read.getReferenceBaseAtLocus(locus)
+    PileupElement(read, locus, referenceBase)
   }
 }
 

@@ -52,7 +52,7 @@ case class MappedRead(
 
   final override lazy val getMappedReadOpt = Some(this)
 
-  lazy val mdTag = MdTag(mdTagString, start)
+  def mdTag = MdTag(mdTagString, start)
 
   lazy val referenceBases =
     try {
@@ -60,6 +60,10 @@ case class MappedRead(
     } catch {
       case e: IllegalStateException => throw new CigarMDTagMismatchException(cigar, mdTag, e)
     }
+
+  def getReferenceBaseAtLocus(referenceLocus: Long): Byte = {
+    referenceBases((referenceLocus - start).toInt)
+  }
 
   lazy val alignmentLikelihood = PhredUtils.phredToSuccessProbability(alignmentQuality)
 

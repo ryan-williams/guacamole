@@ -18,6 +18,7 @@
 
 package org.bdgenomics.guacamole.pileup
 
+import org.bdgenomics.guacamole.reads.MappedRead
 import org.bdgenomics.guacamole.{ Bases, TestUtil }
 import org.bdgenomics.guacamole.TestUtil.assertBases
 import org.bdgenomics.guacamole.TestUtil.Implicits._
@@ -171,6 +172,7 @@ class PileupSuite extends TestUtil.SparkFunSuite with Matchers with TableDrivenP
     val pileup = PileupElement(
       read = contigStartInsertionRead,
       locus = 1,
+      referenceBase = Bases.N,
       readPosition = 0,
       cigarElementIdx = 0,
       cigarElementLocus = 1,

@@ -18,9 +18,9 @@
 
 package org.bdgenomics.guacamole.pileup
 
-import org.bdgenomics.guacamole.{ Bases, TestUtil }
+import debox.Buffer
 import org.bdgenomics.guacamole.TestUtil.assertBases
-import org.bdgenomics.guacamole.TestUtil.Implicits._
+import org.bdgenomics.guacamole.{ Bases, TestUtil }
 import org.scalatest.Matchers
 import org.scalatest.prop.TableDrivenPropertyChecks
 
@@ -54,7 +54,7 @@ class PileupSuite extends TestUtil.SparkFunSuite with Matchers with TableDrivenP
 
     insertPileup.elements(0).alignment should equal(Match('A', 31.toByte))
     insertPileup.elements(1).alignment should equal(Match('A', 31.toByte))
-    insertPileup.elements(2).alignment should equal(Insertion("ACCC", Seq(31, 31, 31, 31).map(_.toByte)))
+    insertPileup.elements(2).alignment should equal(Insertion(Bases.stringToBases("ACCC"), debox.Buffer.fromIterable(Seq(31, 31, 31, 31).map(_.toByte))))
   }
 
   sparkTest("create pileup from long insert reads; different qualities in insertion") {
@@ -69,8 +69,8 @@ class PileupSuite extends TestUtil.SparkFunSuite with Matchers with TableDrivenP
 
     insertPileup.elements.forall(
       _.alignment match {
-        case Match(_, quality)       => quality == 25
-        case Insertion(_, qualities) => qualities.sameElements(Seq(25, 5, 5, 5))
+        case Match(_, quality)       => quality == 25.toByte
+        case Insertion(_, qualities) => qualities.equals(Buffer.fromArray(Array[Byte](25, 5, 5, 5)))
         case _                       => false
       }) should be(true)
   }
@@ -111,7 +111,7 @@ class PileupSuite extends TestUtil.SparkFunSuite with Matchers with TableDrivenP
 
     val lastPileup = Pileup(reads, 8)
     lastPileup.elements.foreach(e => assertBases(e.sequencedBases, "A"))
-    lastPileup.elements.forall(_.sequencedBases.headOption.exists(_ == Bases.A)) should be(true)
+    lastPileup.elements.forall(_.sequencedBases(0) == Bases.A) should be(true)
 
     lastPileup.elements.forall(_.isMatch) should be(true)
     lastPileup.elements.forall(_.qualityScore == 25) should be(true)
@@ -163,7 +163,7 @@ class PileupSuite extends TestUtil.SparkFunSuite with Matchers with TableDrivenP
   test("insertion at contig start includes trailing base") {
     val contigStartInsertionRead = TestUtil.makeRead("AAAAAACGT", "5I4M", "4", 0, "chr1")
     val pileup = PileupElement(contigStartInsertionRead, 0)
-    pileup.alignment should equal(Insertion("AAAAAA", List(31, 31, 31, 31, 31, 31)))
+    pileup.alignment should equal(Insertion(Bases.stringToBases("AAAAAA"), debox.Buffer(31, 31, 31, 31, 31, 31)))
   }
 
   test("pileup alignment at insertion cigar-element throws") {
@@ -245,7 +245,7 @@ class PileupSuite extends TestUtil.SparkFunSuite with Matchers with TableDrivenP
     val at5 = PileupElement(decadentRead1, 5)
     assert(at5 != null)
     assertBases(at5.sequencedBases, "A")
-    assert(at5.sequencedBases.headOption.exists(_ == Bases.A))
+    assert(at5.sequencedBases(0) == Bases.A)
 
     // At the end of the read:
     assert(PileupElement(decadentRead1, 74) != null)
@@ -257,9 +257,9 @@ class PileupSuite extends TestUtil.SparkFunSuite with Matchers with TableDrivenP
 
     // Inside the deletion
     val at29 = PileupElement(decadentRead1, 5 + 29)
-    assert(at29.sequencedBases.size === 0)
+    assert(at29.sequencedBases.length === 0)
     val at38 = PileupElement(decadentRead1, 5 + 38)
-    assert(at38.sequencedBases.size === 0)
+    assert(at38.sequencedBases.length === 0)
     // Just after the deletion
     assertBases(PileupElement(decadentRead1, 5 + 39).sequencedBases, "A")
 
@@ -270,7 +270,7 @@ class PileupSuite extends TestUtil.SparkFunSuite with Matchers with TableDrivenP
     assertBases(read2At10.sequencedBases, "A")
     // right after the insert
     val read2At20 = PileupElement(read2Record, 20)
-    assertBases(read2At20.sequencedBases: String, "A")
+    assertBases(read2At20.sequencedBases, "A")
 
     // advanceToLocus is a no-op on the same locus,
     // and fails in lower loci
@@ -306,7 +306,7 @@ class PileupSuite extends TestUtil.SparkFunSuite with Matchers with TableDrivenP
 
     val read4At30 = read4At20.advanceToLocus(20 + 9)
     read4At30.isInsertion should be(true)
-    (read4At30.sequencedBases: String) should equal("CGTACGTACGT")
+    (read4At30.sequencedBases) should equal(Bases.stringToBases("CGTACGTACGT"))
   }
 
   sparkTest("Read5: ACGTACGTACGTACG, 5M4=1X5=") {

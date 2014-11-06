@@ -122,7 +122,7 @@ object GermlineThresholdCaller extends Command with Serializable with Logging {
           case Nil =>
             if (emitNoCall)
               variant(
-                Allele(Seq(pileup.referenceBase), Bases.ALT),
+                Allele(debox.Buffer(pileup.referenceBase), Bases.ALT),
                 NoCall :: NoCall :: Nil
               ) :: Nil
             else
@@ -132,7 +132,7 @@ object GermlineThresholdCaller extends Command with Serializable with Logging {
           case (allele, count) :: Nil if !allele.isVariant =>
             if (emitRef) {
               variant(
-                Allele(Seq(pileup.referenceBase), Bases.ALT),
+                Allele(debox.Buffer(pileup.referenceBase), Bases.ALT),
                 Ref :: Ref :: Nil
               ) :: Nil
             } else {
@@ -153,7 +153,7 @@ object GermlineThresholdCaller extends Command with Serializable with Logging {
 
           // Multiple reference bases
           case (allele1, count1) :: (allele2, count2) :: rest => {
-            if (allele1.refBases == Seq(Bases.N) || allele2.refBases == Seq(Bases.N)) {
+            if (allele1.refBases == debox.Buffer(Bases.N) || allele2.refBases == debox.Buffer(Bases.N)) {
               log.warn("Reference base N found and ignored in sample = %s at (chr, pos) = (%s, %d)"
                 .format(sampleName, samplePileup.referenceName, samplePileup.locus))
               // Find the non-N reference

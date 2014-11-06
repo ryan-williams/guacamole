@@ -32,7 +32,7 @@ object ReadsUtil {
   def makeGenotype(alleles: String*): Genotype = {
     // If we later change Genotype to work with Array[byte] instead of strings, we can use this function to convert
     // to byte arrays.
-    Genotype(alleles.map(allele => Allele(Seq(referenceBase), Bases.stringToBases(allele))): _*)
+    Genotype(alleles.map(allele => Allele(debox.Buffer(referenceBase), Bases.stringToBases(allele))): _*)
   }
 
   val errorPhred30 = PhredUtils.phredToErrorProbability(30)

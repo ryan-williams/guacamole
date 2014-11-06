@@ -18,6 +18,8 @@
 
 package org.bdgenomics.guacamole
 
+import debox.Buffer
+
 /**
  * We represent a nucleotide base as a Byte, whose value is equal to the ASCII value of the character representing the
  * base (e.g. A, C, T, G). We represent a nucleotide sequence as an Array[Byte].
@@ -49,10 +51,10 @@ object Bases {
   val N = "N".getBytes()(0)
 
   // Unknown alternate base
-  val ALT = "<ALT>".getBytes().toSeq
+  val ALT = Buffer.fromArray("<ALT>".getBytes())
 
-  object BasesOrdering extends Ordering[Seq[Byte]] {
-    override def compare(x: Seq[Byte], y: Seq[Byte]): Int = {
+  object BasesOrdering extends Ordering[Buffer[Byte]] {
+    override def compare(x: Buffer[Byte], y: Buffer[Byte]): Int = {
       Bases.basesToString(x).compare(Bases.basesToString(y))
     }
   }
@@ -67,19 +69,19 @@ object Bases {
     assert(isStandardBase(base), "Invalid base: %s".format(base.toChar.toString))
   }
 
-  /** Are all the given bases standard? */
-  def allStandardBases(bases: Seq[Byte]) = {
-    assert(bases.forall(b => isStandardBase(b)), "Invalid base array: %s".format(bases.map(_.toChar).mkString))
-  }
-
-  /** Throw an error if any of the given bases are not standard. */
-  def assertAllStandardBases(bases: Seq[Byte]) = {
-    assert(bases.forall(b => isStandardBase(b)), "Invalid base array: %s".format(bases.map(_.toChar).mkString))
-  }
+  //  /** Are all the given bases standard? */
+  //  def allStandardBases(bases: Buffer[Byte]) = {
+  //    assert(bases.forall(b => isStandardBase(b)), "Invalid base array: %s".format(bases.map(_.toChar).mkString))
+  //  }
+  //
+  //  /** Throw an error if any of the given bases are not standard. */
+  //  def assertAllStandardBases(bases: Buffer[Byte]) = {
+  //    assert(bases.forall(b => isStandardBase(b)), "Invalid base array: %s".format(bases.map(_.toChar).mkString))
+  //  }
 
   /** Convert a string (e.g. "AAAGGC") to a byte array. */
-  def stringToBases(string: String): Seq[Byte] = {
-    string.toUpperCase.getBytes
+  def stringToBases(string: String): Buffer[Byte] = {
+    Buffer.unsafe(string.toUpperCase.getBytes)
   }
 
   /** Convert a base to a 1-character string. */
@@ -88,8 +90,8 @@ object Bases {
   }
 
   /** Convert a base sequence to a String. */
-  def basesToString(bases: Iterable[Byte]): String = {
-    bases.map(_.toChar).mkString
+  def basesToString(bases: Buffer[Byte]): String = {
+    bases.map(_.toChar).elems.mkString
   }
 
 }

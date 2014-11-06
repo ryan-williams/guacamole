@@ -211,6 +211,13 @@
           <id>central</id>
           <url>http://repo1.maven.org/maven2</url>
       </repository>
+      <repository>
+          <snapshots>
+              <enabled>false</enabled>
+          </snapshots>
+          <id>spire</id>
+          <url>http://dl.bintray.com/non/maven</url>
+      </repository>
   </repositories>
 
   <dependencies>
@@ -265,5 +272,12 @@
       <artifactId>hadoop-client</artifactId>
       <version>${hadoop.version}</version>
     </dependency>
+    <dependency>
+        <groupId>org.spire-math</groupId>
+        <artifactId>debox_${scala.version.prefix}</artifactId>
+        <version>0.6.0</version>
+
+    </dependency>
+
   </dependencies>
 </project>

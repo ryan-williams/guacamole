@@ -18,6 +18,7 @@
 
 package org.bdgenomics.guacamole.reads
 
+import debox.Buffer
 import htsjdk.samtools._
 import org.apache.spark.{ Logging, SparkContext }
 import org.apache.spark.rdd.RDD
@@ -49,11 +50,11 @@ trait Read {
   val token: Int
 
   /** The nucleotide sequence. */
-  val sequence: Seq[Byte]
+  val sequence: Buffer[Byte]
   lazy val sequenceStr = Bases.basesToString(sequence)
 
   /** The base qualities, phred scaled.  These are numbers, and are NOT character encoded. */
-  val baseQualities: Seq[Byte]
+  val baseQualities: Buffer[Byte]
 
   /** Is this read a duplicate of another? */
   val isDuplicate: Boolean
@@ -119,13 +120,13 @@ object Read extends Logging {
     isPositiveStrand: Boolean = true,
     matePropertiesOpt: Option[MateProperties] = None): Read = {
 
-    val sequenceArray = sequence.map(_.toByte).toArray
+    val sequenceArray = Buffer.fromArray(sequence.map(_.toByte).toArray)
     val qualityScoresArray = {
       // If no base qualities are set, we set them all to 0.
       if (baseQualities.isEmpty)
-        sequenceArray.map(_ => 0.toByte).toSeq.toArray
+        sequenceArray.map(_ => 0.toByte)
       else
-        baseQualities.map(q => (q - 33).toByte).toArray
+        Buffer.fromIterable(baseQualities.map(q => (q - 33).toByte))
     }
 
     if (referenceContig.isEmpty) {
@@ -204,8 +205,8 @@ object Read extends Logging {
         case Some(mdTagString) =>
           val result = MappedRead(
             token,
-            record.getReadString.getBytes,
-            record.getBaseQualities,
+            Buffer.unsafe(record.getReadString.getBytes), // unsafe avoids copying the array and just transfers it
+            Buffer.unsafe(record.getBaseQualities),
             record.getDuplicateReadFlag,
             sampleName.intern,
             record.getReferenceName.intern,
@@ -234,8 +235,8 @@ object Read extends Logging {
     } else {
       val result = UnmappedRead(
         token,
-        record.getReadString.getBytes,
-        record.getBaseQualities,
+        Buffer.unsafe(record.getReadString.getBytes), // unsafe avoids copying the array and just transfers it
+        Buffer.unsafe(record.getBaseQualities),
         record.getDuplicateReadFlag,
         sampleName,
         record.getReadFailsVendorQualityCheckFlag,

@@ -19,8 +19,7 @@
 package org.bdgenomics.guacamole.reads
 
 import htsjdk.samtools.TextCigarCodec
-import org.bdgenomics.guacamole.TestUtil
-import org.bdgenomics.guacamole.TestUtil.Implicits._
+import org.bdgenomics.guacamole.{ Bases, TestUtil }
 import org.scalatest.Matchers
 
 class MappedReadSerializerSuite extends TestUtil.SparkFunSuite with Matchers {
@@ -28,8 +27,8 @@ class MappedReadSerializerSuite extends TestUtil.SparkFunSuite with Matchers {
   test("serialize / deserialize mapped read") {
     val read = MappedRead(
       5, // token
-      "TCGACCCTCGA",
-      Array[Byte]((10 to 20).map(_.toByte): _*),
+      Bases.stringToBases("TCGACCCTCGA"),
+      debox.Buffer[Byte]((10 to 20).map(_.toByte): _*),
       true,
       "some sample name",
       "chr5",
@@ -78,8 +77,8 @@ class MappedReadSerializerSuite extends TestUtil.SparkFunSuite with Matchers {
   test("serialize / deserialize mapped read with mdtag") {
     val read = MappedRead(
       5, // token
-      "TCGACCCTCGA",
-      Array[Byte]((10 to 20).map(_.toByte): _*),
+      Bases.stringToBases("TCGACCCTCGA"),
+      debox.Buffer[Byte]((10 to 20).map(_.toByte): _*),
       true,
       "some sample name",
       "chr5",
@@ -128,8 +127,8 @@ class MappedReadSerializerSuite extends TestUtil.SparkFunSuite with Matchers {
   test("serialize / deserialize mapped read with unmapped pair") {
     val read = MappedRead(
       5, // token
-      "TCGACCCTCGA",
-      Array[Byte]((10 to 20).map(_.toByte): _*),
+      Bases.stringToBases("TCGACCCTCGA"),
+      debox.Buffer[Byte]((10 to 20).map(_.toByte): _*),
       true,
       "some sample name",
       "chr5",

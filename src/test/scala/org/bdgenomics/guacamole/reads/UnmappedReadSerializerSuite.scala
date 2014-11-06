@@ -18,8 +18,7 @@
 
 package org.bdgenomics.guacamole.reads
 
-import org.bdgenomics.guacamole.TestUtil
-import org.bdgenomics.guacamole.TestUtil.Implicits._
+import org.bdgenomics.guacamole.{ Bases, TestUtil }
 import org.scalatest.Matchers
 
 class UnmappedReadSerializerSuite extends TestUtil.SparkFunSuite with Matchers {
@@ -27,8 +26,8 @@ class UnmappedReadSerializerSuite extends TestUtil.SparkFunSuite with Matchers {
   test("serialize / deserialize unmapped read") {
     val read = UnmappedRead(
       22, // token
-      "TCGACCCTCGA",
-      Array[Byte]((10 to 20).map(_.toByte): _*),
+      Bases.stringToBases("TCGACCCTCGA"),
+      debox.Buffer[Byte]((10 to 20).map(_.toByte): _*),
       true,
       "some sample name",
       false,

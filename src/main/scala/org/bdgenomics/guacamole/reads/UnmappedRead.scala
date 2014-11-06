@@ -18,14 +18,16 @@
 
 package org.bdgenomics.guacamole.reads
 
+import debox.Buffer
+
 /**
  * An unmapped read. See the [[Read]] trait for field descriptions.
  *
  */
 case class UnmappedRead(
     token: Int,
-    sequence: Seq[Byte],
-    baseQualities: Seq[Byte],
+    sequence: Buffer[Byte],
+    baseQualities: Buffer[Byte],
     isDuplicate: Boolean,
     sampleName: String,
     failedVendorQualityChecks: Boolean,

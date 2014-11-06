@@ -28,7 +28,7 @@ class UnmappedReadSuite extends TestUtil.SparkFunSuite with Matchers {
     val read = UnmappedRead(
       5, // token
       "TCGACCCTCGA",
-      Array[Byte]((10 to 20).map(_.toByte): _*),
+      debox.Buffer[Byte]((10 to 20).map(_.toByte): _*),
       true,
       "some sample name",
       false,

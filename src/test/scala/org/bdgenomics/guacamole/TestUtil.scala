@@ -129,7 +129,7 @@ object TestUtil extends Matchers {
     ).getMappedReadOpt.get
   }
 
-  def assertBases(bases1: Iterable[Byte], bases2: String) = Bases.basesToString(bases1) should equal(bases2)
+  def assertBases(bases1: debox.Buffer[Byte], bases2: String) = Bases.basesToString(bases1) should equal(bases2)
 
   def testDataPath(filename: String): String = {
     val resource = ClassLoader.getSystemClassLoader.getResource(filename)

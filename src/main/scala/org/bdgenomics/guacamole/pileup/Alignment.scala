@@ -18,6 +18,7 @@
 
 package org.bdgenomics.guacamole.pileup
 
+import debox.Buffer
 import org.bdgenomics.guacamole.Bases
 
 /**
@@ -30,8 +31,8 @@ import org.bdgenomics.guacamole.Bases
  *  - the base quality scores of the bases read.
  */
 private[pileup] sealed abstract class Alignment {
-  def sequencedBases: Seq[Byte] = Seq[Byte]()
-  def referenceBases: Seq[Byte] = Seq[Byte]()
+  def sequencedBases: Buffer[Byte] = Buffer[Byte]()
+  def referenceBases: Buffer[Byte] = Buffer[Byte]()
 
   override def toString: String =
     "%s(%s,%s)".format(
@@ -41,13 +42,13 @@ private[pileup] sealed abstract class Alignment {
     )
 }
 
-case class Insertion(override val sequencedBases: Seq[Byte], baseQualities: Seq[Byte]) extends Alignment {
-  override val referenceBases: Seq[Byte] = sequencedBases.headOption.toSeq
+case class Insertion(override val sequencedBases: Buffer[Byte], baseQualities: Buffer[Byte]) extends Alignment {
+  override val referenceBases: Buffer[Byte] = sequencedBases.slice(0, 1)
 }
 
 class MatchOrMisMatch(val base: Byte, val baseQuality: Byte, val referenceBase: Byte) extends Alignment {
-  override val sequencedBases: Seq[Byte] = Seq(base)
-  override val referenceBases: Seq[Byte] = Seq(referenceBase)
+  override val sequencedBases: Buffer[Byte] = Buffer(base)
+  override val referenceBases: Buffer[Byte] = Buffer(referenceBase)
 }
 object MatchOrMisMatch {
   def unapply(m: MatchOrMisMatch): Option[(Byte, Byte)] = Some((m.base, m.baseQuality))
@@ -69,14 +70,14 @@ case class Mismatch(override val base: Byte, override val baseQuality: Byte, ove
  *
  * @param referenceBases
  */
-case class Deletion(override val referenceBases: Seq[Byte], baseQuality: Byte) extends Alignment {
+case class Deletion(override val referenceBases: Buffer[Byte], baseQuality: Byte) extends Alignment {
   override def equals(other: Any): Boolean = other match {
     case Deletion(otherBases, _) =>
-      referenceBases.sameElements(otherBases)
+      referenceBases.equals(otherBases)
     case _ =>
       false
   }
-  override val sequencedBases = referenceBases.headOption.toSeq
+  override val sequencedBases = referenceBases.slice(0, 1)
 }
 object Deletion {
   def apply(referenceBases: String, baseQuality: Byte): Deletion =

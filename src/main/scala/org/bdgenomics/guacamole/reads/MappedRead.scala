@@ -18,6 +18,7 @@
 
 package org.bdgenomics.guacamole.reads
 
+import debox.Buffer
 import htsjdk.samtools.{ SAMRecord, Cigar }
 import org.bdgenomics.adam.util.{ PhredUtils, MdTag }
 import org.bdgenomics.guacamole.{ Bases, HasReferenceRegion }
@@ -34,8 +35,8 @@ import scala.collection.JavaConversions
  */
 case class MappedRead(
     token: Int,
-    sequence: Seq[Byte],
-    baseQualities: Seq[Byte],
+    sequence: Buffer[Byte],
+    baseQualities: Buffer[Byte],
     isDuplicate: Boolean,
     sampleName: String,
     referenceContig: String,

@@ -151,8 +151,8 @@ case class PileupElement(
    * the inserted sequence starting at the current locus. Otherwise, this is
    * an array of length 1.
    */
-  lazy val sequencedBases: Seq[Byte] = alignment.sequencedBases
-  lazy val referenceBases: Seq[Byte] = alignment.referenceBases
+  lazy val sequencedBases: debox.Buffer[Byte] = alignment.sequencedBases
+  lazy val referenceBases: debox.Buffer[Byte] = alignment.referenceBases
 
   lazy val allele: Allele = Allele(referenceBases, sequencedBases)
 
@@ -167,7 +167,7 @@ case class PileupElement(
     case Clipped | MidDeletion  => read.alignmentQuality
     case Deletion(_, qs)        => qs
     case MatchOrMisMatch(_, qs) => qs
-    case Insertion(_, qss)      => qss.min
+    case Insertion(_, qss)      => qss.elems.min
   }
 
   /**

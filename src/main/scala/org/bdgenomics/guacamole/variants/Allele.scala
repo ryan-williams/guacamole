@@ -20,16 +20,17 @@ package org.bdgenomics.guacamole.variants
 
 import com.esotericsoftware.kryo.io.{ Input, Output }
 import com.esotericsoftware.kryo.{ Kryo, Serializer }
+import debox.Buffer
 import org.bdgenomics.guacamole.Bases
 import org.bdgenomics.guacamole.Bases.BasesOrdering
 
-case class Allele(refBases: Seq[Byte], altBases: Seq[Byte]) extends Ordered[Allele] {
+case class Allele(refBases: Buffer[Byte], altBases: Buffer[Byte]) extends Ordered[Allele] {
   lazy val isVariant = refBases != altBases
 
   override def toString: String = "Allele(%s,%s)".format(Bases.basesToString(refBases), Bases.basesToString(altBases))
 
   override def equals(other: Any): Boolean = other match {
-    case otherAllele: Allele => refBases == otherAllele.refBases && altBases == otherAllele.altBases
+    case otherAllele: Allele => refBases.equals(otherAllele.refBases) && altBases.equals(otherAllele.altBases)
     case _                   => false
   }
   def ==(other: Allele): Boolean = equals(other)
@@ -45,16 +46,16 @@ case class Allele(refBases: Seq[Byte], altBases: Seq[Byte]) extends Ordered[Alle
 class AlleleSerializer extends Serializer[Allele] {
   def write(kryo: Kryo, output: Output, obj: Allele) = {
     output.writeInt(obj.refBases.length, true)
-    output.writeBytes(obj.refBases.toArray)
+    output.writeBytes(obj.refBases.elems)
     output.writeInt(obj.altBases.length, true)
-    output.writeBytes(obj.altBases.toArray)
+    output.writeBytes(obj.altBases.elems)
   }
 
   def read(kryo: Kryo, input: Input, klass: Class[Allele]): Allele = {
     val referenceBasesLength = input.readInt(true)
-    val referenceBases: Seq[Byte] = input.readBytes(referenceBasesLength)
+    val referenceBases: debox.Buffer[Byte] = debox.Buffer.unsafe(input.readBytes(referenceBasesLength))
     val alternateLength = input.readInt(true)
-    val alternateBases: Seq[Byte] = input.readBytes(alternateLength)
+    val alternateBases: debox.Buffer[Byte] = debox.Buffer.unsafe(input.readBytes(alternateLength))
     Allele(referenceBases, alternateBases)
   }
 }

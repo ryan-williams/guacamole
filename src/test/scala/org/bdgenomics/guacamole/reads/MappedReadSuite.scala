@@ -29,7 +29,7 @@ class MappedReadSuite extends TestUtil.SparkFunSuite with Matchers {
     val read = MappedRead(
       5, // token
       "TCGACCCTCGA",
-      Array[Byte]((10 to 20).map(_.toByte): _*),
+      debox.Buffer[Byte]((10 to 20).map(_.toByte): _*),
       true,
       "some sample name",
       "chr5",
@@ -62,7 +62,7 @@ class MappedReadSuite extends TestUtil.SparkFunSuite with Matchers {
     val uread = UnmappedRead(
       5, // token
       "TCGACCCTCGA",
-      Array[Byte]((10 to 20).map(_.toByte): _*),
+      debox.Buffer[Byte]((10 to 20).map(_.toByte): _*),
       true,
       "some sample name",
       false,
@@ -82,7 +82,7 @@ class MappedReadSuite extends TestUtil.SparkFunSuite with Matchers {
     val mread = MappedRead(
       5, // token
       "TCGACCCTCGA",
-      Array[Byte]((10 to 20).map(_.toByte): _*),
+      debox.Buffer[Byte]((10 to 20).map(_.toByte): _*),
       true,
       "some sample name",
       "chr5",

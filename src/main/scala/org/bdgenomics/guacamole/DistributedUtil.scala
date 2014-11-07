@@ -185,7 +185,7 @@ object DistributedUtil extends Logging {
     // Step (3)
     // Assign loci to tasks, taking into account region depth in each micro partition.
     val totalRegions = counts.sum
-    val regionsPerTask = math.max(1, totalRegions.toDouble / tasks.toDouble)
+    val regionsPerTask = math.max(1, totalRegions.toDouble / numMicroPartitions.toDouble)
     progress("Done collecting region counts. Total regions with micro partition overlaps: %,d = ~%,.0f regions per task."
       .format(totalRegions, regionsPerTask))
     progress("Regions per micro partition: min=%,d mean=%,.0f max=%,d.".format(
@@ -209,7 +209,7 @@ object DistributedUtil extends Logging {
           if (regionsRemainingForThisTask == 0)
             task += 1
           assert(regionsRemainingForThisTask > 0)
-          assert(task < tasks)
+          //assert(task < tasks)
 
           // Making the approximation of uniform depth within each micro partition, we assign a proportional number of
           // loci and regions to the current task. The proportion of loci we assign is the ratio of how many regions we have
@@ -573,21 +573,19 @@ object DistributedUtil extends Logging {
       // Two RDDs.
       case taskNumberRegionPairs1 :: taskNumberRegionPairs2 :: Nil => {
         // Cogroup-based implementation.
-        val partitioned = taskNumberRegionPairs1.cogroup(taskNumberRegionPairs2, new PartitionByKey(numTasks.toInt))
+        val partitioned = taskNumberRegionPairs1.cogroup(taskNumberRegionPairs2)
         partitioned.mapPartitionsWithIndex((taskNum: Int, taskNumAndRegionPairs) => {
-          if (taskNumAndRegionPairs.isEmpty) {
-            Iterator.empty
-          } else {
-            val taskLoci = lociPartitionsBoxed.value.asInverseMap(taskNum.toLong)
-            val taskNumAndPair = taskNumAndRegionPairs.next()
-            assert(taskNumAndRegionPairs.isEmpty)
-            assert(taskNumAndPair._1 == taskNum)
+          taskNumAndRegionPairs.flatMap(taskNumAndPair => {
+            val taskLoci = lociPartitionsBoxed.value.asInverseMap(taskNumAndPair._1.toLong)
+            //val taskNumAndPair = taskNumAndRegionPairs.next()
+            //assert(taskNumAndRegionPairs.isEmpty)
+            //assert(taskNumAndPair._1 == taskNum)
             val taskRegions1 = taskNumAndPair._2._1.toSeq.sortBy(region => (region.referenceContig, region.start))
             val taskRegions2 = taskNumAndPair._2._2.toSeq.sortBy(region => (region.referenceContig, region.start))
             regionsByTask.add(MutableHashMap(taskNum.toString -> (taskRegions1.length + taskRegions2.length)))
             val result = function(taskNum, taskLoci, Seq(taskRegions1.iterator, taskRegions2.iterator))
             result
-          }
+          })
         })
       }
 

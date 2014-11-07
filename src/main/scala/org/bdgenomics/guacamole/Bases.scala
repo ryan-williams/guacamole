@@ -53,7 +53,15 @@ object Bases {
 
   object BasesOrdering extends Ordering[Seq[Byte]] {
     override def compare(x: Seq[Byte], y: Seq[Byte]): Int = {
-      Bases.basesToString(x).compare(Bases.basesToString(y))
+      if (x.size != y.size) {
+        x.size.compare(y.size)
+      } else {
+        val diffBase = x.zip(y).find({ case (b1, b2) => b1.compare(b2) != 0 })
+        diffBase match {
+          case None                 => 0
+          case Some((xBase, yBase)) => xBase.compare(yBase)
+        }
+      }
     }
   }
 

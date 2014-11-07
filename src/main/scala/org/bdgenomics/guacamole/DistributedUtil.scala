@@ -185,7 +185,7 @@ object DistributedUtil extends Logging {
     // Step (3)
     // Assign loci to tasks, taking into account region depth in each micro partition.
     val totalRegions = counts.sum
-    val regionsPerTask = math.max(1, totalRegions.toDouble / numMicroPartitions.toDouble)
+    val regionsPerTask = math.max(1, totalRegions.toDouble / tasks.toDouble)
     progress("Done collecting region counts. Total regions with micro partition overlaps: %,d = ~%,.0f regions per task."
       .format(totalRegions, regionsPerTask))
     progress("Regions per micro partition: min=%,d mean=%,.0f max=%,d.".format(

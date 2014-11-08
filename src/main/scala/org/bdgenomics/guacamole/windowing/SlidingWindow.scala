@@ -50,16 +50,9 @@ case class SlidingWindow[Region <: HasReferenceRegion](halfWindowSize: Long,
   /** The new regions that were added to currentRegions as a result of the most recent call to setCurrentLocus. */
   var newRegions: Seq[Region] = Seq.empty
 
-  private var referenceName: Option[String] = None
-  private var mostRecentRegionStart: Long = 0
-  private val sortedRegions: BufferedIterator[Region] = rawSortedRegions.map(region => {
-    if (referenceName.isEmpty) referenceName = Some(region.referenceContig)
-    require(region.referenceContig == referenceName.get, "Regions must have the same reference name")
-    require(region.start >= mostRecentRegionStart, "Regions must be sorted by start locus")
-    mostRecentRegionStart = region.start
-
-    region
-  }).buffered
+  private val sortedRegions: BufferedIterator[Region] = rawSortedRegions.buffered
+  private var referenceName: Option[String] = if (sortedRegions.hasNext) Some(sortedRegions.head.referenceContig) else None
+  private var mostRecentRegionStart: Long = if (sortedRegions.hasNext) sortedRegions.head.start else 0
 
   private val currentRegionsPriorityQueue = {
     // Order regions by end locus, increasing.
@@ -114,6 +107,7 @@ case class SlidingWindow[Region <: HasReferenceRegion](halfWindowSize: Long,
       }
       newRegionsBuilder.result
     }
+
     currentRegionsPriorityQueue.enqueue(newRegions: _*)
     //    currentRegionsPriorityQueue.foreach(region =>
     //      assert(region.overlapsLocus(locus, halfWindowSize))   // Correctness check.

@@ -37,7 +37,9 @@ object Guacamole extends Logging {
     GermlineThresholdCaller,
     GermlineStandardCaller,
     SomaticStandardCaller,
-    SomaticPoCIndelCaller)
+    SomaticPoCIndelCaller,
+    ReadDepthHist
+  )
 
   private def printUsage() = {
     println("Usage: java ... <command> [other args]\n")

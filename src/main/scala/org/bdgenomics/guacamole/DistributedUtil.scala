@@ -20,7 +20,7 @@ package org.bdgenomics.guacamole
 
 import org.apache.commons.math3
 import org.apache.spark.rdd.RDD
-import org.apache.spark.{Partitioner, AccumulatorParam, SparkConf, Logging}
+import org.apache.spark.{ Partitioner, AccumulatorParam, SparkConf, Logging }
 import org.apache.spark.SparkContext._
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.serializer.JavaSerializer

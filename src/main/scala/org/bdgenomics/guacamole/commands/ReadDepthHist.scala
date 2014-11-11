@@ -43,8 +43,8 @@ object ReadDepthHist extends Command with Serializable with Logging {
       }).reduceByKeyLocally(_ + _)
 
     println("Loci per read depth:\n\n%s".format(
-      lociPerReadDepth.map({
-        case (depth, numLoci) => "%4d: %d".format(depth, numLoci)
+      lociPerReadDepth.toList.sortBy(_._1).map({
+        case (depth, numLoci) => "%8d: %d".format(depth, numLoci)
       }).mkString("\t", "\n\t", "")
     ))
   }

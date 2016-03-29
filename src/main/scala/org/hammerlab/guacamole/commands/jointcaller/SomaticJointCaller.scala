@@ -99,7 +99,8 @@ object SomaticJoint {
         reference,
         loci.result(readSets(0).contigLengths),
         forceCallLoci,
-        args)
+        args
+      )
 
       val calls = allCalls.map(_.onlyBest)
       calls.cache()

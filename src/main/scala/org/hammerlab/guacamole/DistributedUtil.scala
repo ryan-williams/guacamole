@@ -386,7 +386,7 @@ object DistributedUtil extends Logging {
               pileupAndWindow => initOrMovePileup(
                 Some(pileupAndWindow._1),
                 pileupAndWindow._2,
-                reference.getContig(windows(0).referenceName)))
+                reference.getContig(windows(0).referenceName)
               )
             )
           case None => windows.map(
@@ -539,8 +539,8 @@ object DistributedUtil extends Logging {
   }
 
   /**
-   * TaskPosition represents the task a read is assigned to and the start position on the reference genome of the read
-   * Each read is assigned to a task and the reads are sorted by (referenceContig, locus) when they are processed
+   * TaskPosition represents the task a read is assigned to and the start position on the reference genome of the read.
+   * Each read is assigned to a task and the reads are sorted by (referenceContig, locus) when they are processed.
    *
    * @param task Task ID
    * @param referenceContig Reference or chromosome name for reads
@@ -600,7 +600,7 @@ object DistributedUtil extends Logging {
     val sc = regionRDDs(0).sparkContext
     progress("Loci partitioning: %s".format(lociPartitions.truncatedString()))
     val lociPartitionsBC: Broadcast[LociMap[Long]] = sc.broadcast(lociPartitions)
-    val numTasks = lociPartitions.asInverseMap.map(_._1).max + 1
+    val numTasks = lociPartitions.asInverseMap.keys.max + 1
 
     // Counters
     val totalRegions = sc.accumulator(0L)

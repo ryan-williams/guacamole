@@ -317,7 +317,7 @@ class SomaticStandardCallerSuite extends GuacFunSuite with Matchers with TableDr
     )
 
     val tumorReads = Seq(
-      TestUtil.makeRead("TCATCTCAAAAGAGATCGA", "2M2D1M2I2M4I2M2D6M", 10, chr = "chr3"),  // md tag: "2^GA5^TC6""
+      TestUtil.makeRead("TCATCTCAAAAGAGATCGA", "2M2D1M2I2M4I2M2D6M", 10, chr = "chr3"), // md tag: "2^GA5^TC6""
       TestUtil.makeRead("TCATCTCAAAAGAGATCGA", "2M2D1M2I2M4I2M2D6M", 10, chr = "chr3"),
       TestUtil.makeRead("TCATCTCAAAAGAGATCGA", "2M2D1M2I2M4I2M2D6M", 10, chr = "chr3")
     )

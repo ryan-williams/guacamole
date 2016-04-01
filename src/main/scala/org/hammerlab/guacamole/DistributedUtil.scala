@@ -22,16 +22,16 @@ import org.apache.commons.math3
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.apache.spark.serializer.JavaSerializer
-import org.apache.spark.{AccumulatorParam, Logging, Partitioner, SparkConf}
-import org.hammerlab.guacamole.Common.Arguments.{Base, Loci}
+import org.apache.spark.{ AccumulatorParam, Logging, Partitioner, SparkConf }
+import org.hammerlab.guacamole.Common.Arguments.{ Base, Loci }
 import org.hammerlab.guacamole.Common._
 import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.reads.MappedRead
-import org.hammerlab.guacamole.reference.{ContigSequence, ReferenceGenome}
-import org.hammerlab.guacamole.windowing.{SlidingWindow, SplitIterator}
-import org.kohsuke.args4j.{Option ⇒ Args4jOption}
+import org.hammerlab.guacamole.reference.{ ContigSequence, ReferenceGenome }
+import org.hammerlab.guacamole.windowing.{ SlidingWindow, SplitIterator }
+import org.kohsuke.args4j.{ Option ⇒ Args4jOption }
 
-import scala.collection.mutable.{HashMap ⇒ MutableHashMap}
+import scala.collection.mutable.{ HashMap ⇒ MutableHashMap }
 import scala.reflect.ClassTag
 
 /**

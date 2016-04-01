@@ -1,19 +1,19 @@
 package org.hammerlab.guacamole.commands
 
-import java.io.{BufferedWriter, FileWriter}
+import java.io.{ BufferedWriter, FileWriter }
 
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics
 import org.apache.spark.SparkContext
-import org.apache.spark.mllib.clustering.{GaussianMixture, GaussianMixtureModel}
+import org.apache.spark.mllib.clustering.{ GaussianMixture, GaussianMixtureModel }
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.hammerlab.guacamole._
 import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.reads.Read.InputFilters
-import org.hammerlab.guacamole.reads.{MappedRead, Read}
-import org.hammerlab.guacamole.reference.{ReferenceGenome, ReferenceBroadcast}
-import org.kohsuke.args4j.{Argument, Option ⇒ Args4jOption}
+import org.hammerlab.guacamole.reads.{ MappedRead, Read }
+import org.hammerlab.guacamole.reference.{ ReferenceGenome, ReferenceBroadcast }
+import org.kohsuke.args4j.{ Argument, Option ⇒ Args4jOption }
 
 /**
  * VariantLocus is a locus and the variant allele frequency at that locus

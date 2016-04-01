@@ -3,7 +3,7 @@ package org.hammerlab.guacamole.commands.jointcaller
 import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.hammerlab.guacamole.reference.ReferenceBroadcast.ArrayBackedReferenceSequence
-import org.hammerlab.guacamole.util.{GuacFunSuite, TestUtil}
+import org.hammerlab.guacamole.util.{ GuacFunSuite, TestUtil }
 import org.scalatest.Matchers
 
 class ReadSubsequenceSuite extends GuacFunSuite with Matchers {
@@ -22,10 +22,10 @@ class ReadSubsequenceSuite extends GuacFunSuite with Matchers {
 
   sparkTest("ofFixedReferenceLength") {
     val reads = Seq(
-      TestUtil.makeRead("TCGATCGA", "8M", 1),         // no variant
-      TestUtil.makeRead("TCGACCCTCGA", "4M3I4M", 1),  // insertion
-      TestUtil.makeRead("TCGAGCGA", "8M", 1),         // snv
-      TestUtil.makeRead("TNGAGCGA", "8M", 1)          // contains N base
+      TestUtil.makeRead("TCGATCGA", "8M", 1), // no variant
+      TestUtil.makeRead("TCGACCCTCGA", "4M3I4M", 1), // insertion
+      TestUtil.makeRead("TCGAGCGA", "8M", 1), // snv
+      TestUtil.makeRead("TNGAGCGA", "8M", 1) // contains N base
     )
     val pileups = reads.map(read => Pileup(Seq(read), "chr1", 1, simpleReference.getContig("chr1")))
 
@@ -38,12 +38,12 @@ class ReadSubsequenceSuite extends GuacFunSuite with Matchers {
   sparkTest("ofNextAltAllele") {
     val ref = ArrayBackedReferenceSequence(sc, "NTCGATCGA")
     val reads = Seq(
-      TestUtil.makeRead("TCGATCGA", "8M", 1),         // no variant
-      TestUtil.makeRead("TCGAGCGA", "8M", 1),         // snv
-      TestUtil.makeRead("TCGACCCTCGA", "4M3I4M", 1),  // insertion
-      TestUtil.makeRead("TCGGCCCTCGA", "4M3I4M", 1),  // insertion
-      TestUtil.makeRead("TCAGCCCTCGA", "4M3I4M", 1),  // insertion
-      TestUtil.makeRead("TNGAGCGA", "8M", 1)          // contains N
+      TestUtil.makeRead("TCGATCGA", "8M", 1), // no variant
+      TestUtil.makeRead("TCGAGCGA", "8M", 1), // snv
+      TestUtil.makeRead("TCGACCCTCGA", "4M3I4M", 1), // insertion
+      TestUtil.makeRead("TCGGCCCTCGA", "4M3I4M", 1), // insertion
+      TestUtil.makeRead("TCAGCCCTCGA", "4M3I4M", 1), // insertion
+      TestUtil.makeRead("TNGAGCGA", "8M", 1) // contains N
     )
     val pileups = reads.map(read => Pileup(Seq(read), "chr1", 1, simpleReference.getContig("chr1")))
 

@@ -18,25 +18,25 @@
 
 package org.hammerlab.guacamole
 
-import java.io.{File, InputStreamReader, OutputStream}
+import java.io.{ File, InputStreamReader, OutputStream }
 
 import htsjdk.variant.vcf.VCFFileReader
 import org.apache.avro.generic.GenericDatumWriter
 import org.apache.avro.io.EncoderFactory
 import org.apache.commons.io.IOUtils
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{FileSystem, Path}
+import org.apache.hadoop.fs.{ FileSystem, Path }
 import org.apache.hadoop.mapred.FileAlreadyExistsException
 import org.apache.spark.rdd.RDD
-import org.apache.spark.{Logging, SparkConf, SparkContext}
+import org.apache.spark.{ Logging, SparkConf, SparkContext }
 import org.bdgenomics.adam.rdd.ADAMContext._
 import org.bdgenomics.formats.avro.Genotype
-import org.bdgenomics.utils.cli.{Args4jBase, ParquetArgs}
+import org.bdgenomics.utils.cli.{ Args4jBase, ParquetArgs }
 import org.codehaus.jackson.JsonFactory
 import org.hammerlab.guacamole.Common.Arguments.ReadLoadingConfigArgs
 import org.hammerlab.guacamole.Concordance.ConcordanceArgs
 import org.hammerlab.guacamole.reads.Read
-import org.kohsuke.args4j.{Option ⇒ Args4jOption}
+import org.kohsuke.args4j.{ Option ⇒ Args4jOption }
 
 /**
  * Basic functions that most commands need, and specifications of command-line arguments that they use.

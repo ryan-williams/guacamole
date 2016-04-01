@@ -21,7 +21,7 @@ package org.hammerlab.guacamole
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.bdgenomics.adam.models.SequenceDictionary
-import org.hammerlab.guacamole.reads.{MappedRead, PairedRead, Read}
+import org.hammerlab.guacamole.reads.{ MappedRead, PairedRead, Read }
 
 /**
  * A ReadSet contains an RDD of reads along with some metadata about them.

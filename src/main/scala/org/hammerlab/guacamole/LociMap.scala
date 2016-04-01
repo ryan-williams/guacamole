@@ -71,17 +71,18 @@ case class LociMap[T](private val map: Map[String, LociMap.SingleContig[T]]) {
    * @param contig The contig name
    * @return A [[LociSet.SingleContig]] instance giving the loci mapping on the specified contig.
    */
-  def onContig(contig: String): LociMap.SingleContig[T] = sortedMap.get(contig) match {
-    case Some(result) => result
-    case None         => LociMap.SingleContig[T](contig, LociMap.emptyRangeMap[T]())
-  }
+  def onContig(contig: String): LociMap.SingleContig[T] =
+    sortedMap.get(contig) match {
+      case Some(result) => result
+      case None         => LociMap.SingleContig[T](contig, LociMap.emptyRangeMap[T]())
+    }
 
   /** Returns the union of this LociMap with another. */
   def union(other: LociMap[T]): LociMap[T] = {
     LociMap.union(this, other)
   }
 
-  override def toString(): String = truncatedString(Int.MaxValue)
+  override def toString: String = truncatedString(Int.MaxValue)
 
   /**
    * String representation, truncated to maxLength characters.
@@ -336,7 +337,7 @@ object LociMap {
       })
     }
 
-    override def toString(): String = truncatedString(Int.MaxValue)
+    override def toString: String = truncatedString(Int.MaxValue)
   }
 }
 

@@ -92,13 +92,14 @@ object InputCollection {
     }
     checkLength("sample names", defaultedSampleNames)
 
-    val inputs = (0 until paths.length).map(index => {
+    val inputs = paths.indices.map(index => {
       Input(
         index = index,
         sampleName = defaultedSampleNames(index),
         path = paths(index),
         tissueType = TissueType.withName(defaultedTissueTypes(index)),
-        analyte = Analyte.withName(defaultedAnalytes(index)))
+        analyte = Analyte.withName(defaultedAnalytes(index))
+      )
     })
     InputCollection(inputs)
   }

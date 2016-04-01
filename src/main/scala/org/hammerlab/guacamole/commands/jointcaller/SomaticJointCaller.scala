@@ -8,7 +8,7 @@ import org.hammerlab.guacamole.DistributedUtil.PerSample
 import org.hammerlab.guacamole._
 import org.hammerlab.guacamole.reads._
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
-import org.kohsuke.args4j.{ Option => Args4jOption }
+import org.kohsuke.args4j.{ Option ⇒ Args4jOption }
 
 object SomaticJoint {
   class Arguments extends Parameters.CommandlineArguments with DistributedUtil.Arguments with NoSequenceDictionary with InputCollection.Arguments {
@@ -155,7 +155,7 @@ object SomaticJoint {
     val calls = DistributedUtil.pileupFlatMapMultipleRDDs(
       readSets.map(_.mappedReads),
       lociPartitions,
-      true, // skip empty. TODO: shouldn't skip empty positions if we might force call them. Need an efficient way to handle this.
+      skipEmpty = true, // TODO: shouldn't skip empty positions if we might force call them. Need an efficient way to handle this.
       pileups => {
         val normalPileups = inputs.normalDNA.map(input => pileups(input.index))
         val tumorDNAPileups = inputs.tumorDNA.map(input => pileups(input.index))
@@ -196,7 +196,9 @@ object SomaticJoint {
         } else {
           Iterator.empty
         }
-      }, reference = reference)
+      },
+      reference = reference
+    )
     calls
   }
 

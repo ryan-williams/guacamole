@@ -73,20 +73,34 @@ object GermlineThreshold {
         readSet.mappedReads.count, readSet.mappedReads.partitions.length))
 
       val (threshold, emitRef, emitNoCall) = (args.threshold, args.emitRef, args.emitNoCall)
+
       val numGenotypes = sc.accumulator(0L)
       DelayedMessages.default.say { () => "Called %,d genotypes.".format(numGenotypes.value) }
-      val lociPartitions = DistributedUtil.partitionLociAccordingToArgs(args, loci.result(readSet.contigLengths), readSet.mappedReads)
-      val genotypes: RDD[Genotype] = DistributedUtil.pileupFlatMap[Genotype](
-        readSet.mappedReads,
-        lociPartitions,
-        true, // skip empty pileups
-        pileup => {
-          val genotypes = callVariantsAtLocus(pileup, threshold, emitRef, emitNoCall)
-          numGenotypes += genotypes.length
-          genotypes.iterator
-        }, reference = reference)
+
+      val lociPartitions =
+        DistributedUtil.partitionLociAccordingToArgs(
+          args,
+          loci.result(readSet.contigLengths),
+          readSet.mappedReads
+        )
+
+      val genotypes: RDD[Genotype] =
+        DistributedUtil.pileupFlatMap[Genotype](
+          readSet.mappedReads,
+          lociPartitions,
+          skipEmpty = true,
+          pileup => {
+            val genotypes = callVariantsAtLocus(pileup, threshold, emitRef, emitNoCall)
+            numGenotypes += genotypes.length
+            genotypes.iterator
+          },
+          reference = reference
+        )
+
       readSet.mappedReads.unpersist()
+
       Common.writeVariantsFromArguments(args, genotypes)
+
       if (args.truthGenotypesFile != "")
         Concordance.printGenotypeConcordance(args, genotypes, sc)
 

@@ -55,10 +55,10 @@ case class LociSet(map: LociMap[Long]) {
   def union(other: LociSet): LociSet = LociSet(map.union(other.map))
 
   /** Returns a string representation of this LociSet, in the same format that LociSet.parse expects. */
-  override def toString(): String = truncatedString(Int.MaxValue)
+  override def toString: String = truncatedString(Int.MaxValue)
 
   /** String representation, truncated to maxLength characters. */
-  def truncatedString(maxLength: Int = 200): String = map.truncatedString(maxLength, false)
+  def truncatedString(maxLength: Int = 200): String = map.truncatedString(maxLength, includeValues = false)
 
   /** Returns a LociSet containing only those contigs TODO*/
   def filterContigs(function: String => Boolean): LociSet = {
@@ -159,12 +159,13 @@ object LociSet {
     }
 
     /**
-     * Parse a loci expression and add it to the builder. Example expressions:
-     *  "all" (all sites on all contigs)
-     *  "none" (no loci, used as a default in some places)
-     *  "chr1,chr3" (all sites on contigs chr1 and chr3)
-     *  "chr1:10000-20000,chr2" (sites x where 10000 <= x < 20000 on chr1, all sites on chr2)
-     */
+      * Parse a loci expression and add it to the builder. Example expressions:
+      *
+      *  "all": all sites on all contigs.
+      *  "none": no loci, used as a default in some places.
+      *  "chr1,chr3": all sites on contigs chr1 and chr3.
+      *  "chr1:10000-20000,chr2": sites x where 10000 <= x < 20000 on chr1, all sites on chr2.
+      */
     def putExpression(loci: String): Builder = {
       if (loci == "all") {
         putAllContigs()
@@ -261,7 +262,7 @@ object LociSet {
     def count(): Long = map.count
 
     /** Is this set empty? */
-    def isEmpty(): Boolean = map.isEmpty
+    def isEmpty: Boolean = map.isEmpty
 
     /** Iterator through loci in this set, sorted. */
     def iterator(): SingleContig.Iterator = new SingleContig.Iterator(this)
@@ -270,13 +271,14 @@ object LociSet {
     def union(other: SingleContig): SingleContig = SingleContig(map.union(other.map))
 
     /** Returns whether a given genomic region overlaps with any loci in this LociSet. */
-    def intersects(start: Long, end: Long) = !map.getAll(start, end).isEmpty
+    def intersects(start: Long, end: Long) = map.getAll(start, end).nonEmpty
 
-    override def toString(): String = truncatedString(Int.MaxValue)
+    override def toString: String = truncatedString(Int.MaxValue)
 
     /** String representation, truncated to maxLength characters. */
-    def truncatedString(maxLength: Int = 100): String = map.truncatedString(maxLength, false)
+    def truncatedString(maxLength: Int = 100): String = map.truncatedString(maxLength, includeValues = false)
   }
+
   object SingleContig {
 
     /**

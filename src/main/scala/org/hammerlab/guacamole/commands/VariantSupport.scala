@@ -96,7 +96,7 @@ object VariantSupport {
           DistributedUtil.pileupFlatMap[AlleleCount](
             sampleReads,
             lociPartitions,
-            true,
+            skipEmpty = true,
             pileupToAlleleCounts,
             reference = reference
           )

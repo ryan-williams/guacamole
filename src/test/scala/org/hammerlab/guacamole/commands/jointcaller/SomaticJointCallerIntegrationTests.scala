@@ -1,9 +1,9 @@
 package org.hammerlab.guacamole.commands.jointcaller
 
-import org.hammerlab.guacamole.VariantComparisonUtils.{ compareToCSV, compareToVCF, csvRecords }
-import org.hammerlab.guacamole.util.{ GuacFunSuite, TestUtil }
-import org.hammerlab.guacamole.{ CancerWGSTestUtils, LociSet, NA12878TestUtils }
-import org.scalatest.Matchers
+import org.hammerlab.guacamole.VariantComparisonUtils.{compareToCSV, compareToVCF, csvRecords}
+import org.hammerlab.guacamole.util.{GuacFunSuite, TestUtil}
+import org.hammerlab.guacamole.{CancerWGSTestUtils, LociSet, NA12878TestUtils}
+import org.scalatest.{Ignore, Matchers}
 
 // This test currently does not make any assertions, but outputs a performance comparison. We may want to add assertions
 // on the accuracy later.
@@ -28,11 +28,18 @@ class SomaticJointCallerIntegrationTests extends GuacFunSuite with Matchers {
 
         args.paths = CancerWGSTestUtils.cancerWGS1Bams.toArray
         val forceCallLoci = LociSet.newBuilder
-        csvRecords(CancerWGSTestUtils.cancerWGS1ExpectedSomaticCallsCSV).filter(!_.tumor.contains("decoy")).foreach(record => {
-          forceCallLoci.put("chr" + record.contig,
-            if (record.alt.nonEmpty) record.interbaseStart else record.interbaseStart - 1,
-            if (record.alt.nonEmpty) Some(record.interbaseStart + 1) else Some(record.interbaseStart))
-        })
+        csvRecords(CancerWGSTestUtils.cancerWGS1ExpectedSomaticCallsCSV)
+          .filterNot(_.tumor.contains("decoy"))
+          .foreach(record => {
+
+            val (start, end) =
+              if (record.alt.nonEmpty)
+                (record.interbaseStart, record.interbaseStart + 1)
+              else
+                (record.interbaseStart - 1, record.interbaseStart)
+
+            forceCallLoci.put("chr" + record.contig, start, Some(end))
+          })
         args.forceCallLoci = forceCallLoci.result.truncatedString(100000)
 
         SomaticJoint.Caller.run(args, sc)
@@ -41,7 +48,7 @@ class SomaticJointCallerIntegrationTests extends GuacFunSuite with Matchers {
       println("************* CANCER WGS1 SOMATIC CALLS *************")
 
       compareToCSV(
-        outDir + "/somatic.all_samples.vcf",
+        s"$outDir/somatic.all_samples.vcf",
         CancerWGSTestUtils.cancerWGS1ExpectedSomaticCallsCSV,
         CancerWGSTestUtils.referenceBroadcast(sc),
         Set("primary", "recurrence")

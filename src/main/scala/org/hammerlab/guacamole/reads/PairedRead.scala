@@ -1,8 +1,5 @@
 package org.hammerlab.guacamole.reads
 
-import htsjdk.samtools.SAMRecord
-import org.hammerlab.guacamole.reference.ReferenceGenome
-
 /**
  * PairedRead is a MappedRead or UnmappedRead with the additional mate information
  * @param read Unmapped or MappedRead base read

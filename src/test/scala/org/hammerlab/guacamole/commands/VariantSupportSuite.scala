@@ -1,10 +1,9 @@
 package org.hammerlab.guacamole.commands
 
-import org.hammerlab.guacamole.Bases
 import org.hammerlab.guacamole.pileup.Pileup
-import org.hammerlab.guacamole.reads.{ MappedRead, Read }
+import org.hammerlab.guacamole.reads.{MappedRead, Read}
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
-import org.hammerlab.guacamole.util.{ GuacFunSuite, TestUtil }
+import org.hammerlab.guacamole.util.{GuacFunSuite, TestUtil}
 import org.hammerlab.guacamole.windowing.SlidingWindow
 import org.scalatest.Matchers
 import org.scalatest.prop.TableDrivenPropertyChecks
@@ -95,7 +94,6 @@ class VariantSupportSuite extends GuacFunSuite with Matchers with TableDrivenPro
 
     val window = SlidingWindow[MappedRead]("20", 0L, gatkReads.toIterator)
     testAlleleCounts(window, loci: _*)
-
   }
 
   sparkTest("read evidence for simple snvs duplicate filtering") {

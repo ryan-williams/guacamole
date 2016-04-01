@@ -115,12 +115,13 @@ object VariantComparisonUtils {
   }
 
   /**
-   * Compute specificity and sensitivity of an experimental call set when compared against a CSV of known variants
-   * @param experimentalFile VCF file of called experimental variants
-   * @param expectedFile CSV file of expected variants
-   * @param referenceBroadcast Reference genome
-   * @param samplesToCompare Sample names to compare against in the expected variants file
-   */
+    * Compute specificity and sensitivity of an experimental call set when compared against a CSV of known variants
+    *
+    * @param experimentalFile VCF file of called experimental variants
+    * @param expectedFile CSV file of expected variants
+    * @param referenceBroadcast Reference genome
+    * @param samplesToCompare Sample names to compare against in the expected variants file
+    */
   def compareToCSV(experimentalFile: String,
                    expectedFile: String,
                    referenceBroadcast: ReferenceBroadcast,

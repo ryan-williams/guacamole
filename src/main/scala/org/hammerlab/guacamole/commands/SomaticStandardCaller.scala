@@ -66,10 +66,12 @@ object SomaticStandard {
     override def run(args: Arguments, sc: SparkContext): Unit = {
       Common.validateArguments(args)
       val loci = Common.lociFromArguments(args)
+
       val filters = Read.InputFilters(
         overlapsLoci = Some(loci),
         nonDuplicate = true,
-        passedVendorQualityChecks = true)
+        passedVendorQualityChecks = true
+      )
 
       val reference = ReferenceBroadcast(args.referenceFastaPath, sc)
 
@@ -80,9 +82,14 @@ object SomaticStandard {
           filters
         )
 
-      assert(tumorReads.sequenceDictionary == normalReads.sequenceDictionary,
-        "Tumor and normal samples have different sequence dictionaries. Tumor dictionary: %s.\nNormal dictionary: %s."
-          .format(tumorReads.sequenceDictionary, normalReads.sequenceDictionary))
+      assert(
+        tumorReads.sequenceDictionary == normalReads.sequenceDictionary,
+        List(
+          "Tumor and normal samples have different sequence dictionaries:",
+          s"Tumor dictionary: ${tumorReads.sequenceDictionary}",
+          s"Normal dictionary: ${normalReads.sequenceDictionary}"
+        ).mkString("\n")
+      )
 
       val filterMultiAllelic = args.filterMultiAllelic
       val minAlignmentQuality = args.minAlignmentQuality

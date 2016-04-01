@@ -1,15 +1,17 @@
 package org.hammerlab.guacamole.commands.jointcaller
 
-import org.hammerlab.guacamole.Bases
 import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.hammerlab.guacamole.reference.ReferenceBroadcast.ArrayBackedReferenceSequence
-import org.hammerlab.guacamole.util.{ TestUtil, GuacFunSuite }
+import org.hammerlab.guacamole.util.{GuacFunSuite, TestUtil}
 import org.scalatest.Matchers
 
 class ReadSubsequenceSuite extends GuacFunSuite with Matchers {
-  val cancerWGS1Bams = Vector("normal.bam", "primary.bam", "recurrence.bam").map(
-    name => TestUtil.testDataPath("cancer-wgs1/" + name))
+  val cancerWGS1Bams =
+    Vector("normal.bam", "primary.bam", "recurrence.bam")
+      .map(
+        name => TestUtil.testDataPath(s"cancer-wgs1/$name")
+      )
 
   def simpleReference = TestUtil.makeReference(sc, Seq(("chr1", 0, "NTCGATCGACG")))
 
@@ -19,12 +21,11 @@ class ReadSubsequenceSuite extends GuacFunSuite with Matchers {
   }
 
   sparkTest("ofFixedReferenceLength") {
-    val ref = ArrayBackedReferenceSequence(sc, "NTCGATCGA")
     val reads = Seq(
-      TestUtil.makeRead("TCGATCGA", "8M", 1), // no variant
-      TestUtil.makeRead("TCGACCCTCGA", "4M3I4M", 1), // insertion
-      TestUtil.makeRead("TCGAGCGA", "8M", 1), // snv
-      TestUtil.makeRead("TNGAGCGA", "8M", 1) // contains N base
+      TestUtil.makeRead("TCGATCGA", "8M", 1),         // no variant
+      TestUtil.makeRead("TCGACCCTCGA", "4M3I4M", 1),  // insertion
+      TestUtil.makeRead("TCGAGCGA", "8M", 1),         // snv
+      TestUtil.makeRead("TNGAGCGA", "8M", 1)          // contains N base
     )
     val pileups = reads.map(read => Pileup(Seq(read), "chr1", 1, simpleReference.getContig("chr1")))
 
@@ -37,12 +38,12 @@ class ReadSubsequenceSuite extends GuacFunSuite with Matchers {
   sparkTest("ofNextAltAllele") {
     val ref = ArrayBackedReferenceSequence(sc, "NTCGATCGA")
     val reads = Seq(
-      TestUtil.makeRead("TCGATCGA", "8M", 1), // no variant
-      TestUtil.makeRead("TCGAGCGA", "8M", 1), // snv
-      TestUtil.makeRead("TCGACCCTCGA", "4M3I4M", 1), // insertion
-      TestUtil.makeRead("TCGGCCCTCGA", "4M3I4M", 1), // insertion
-      TestUtil.makeRead("TCAGCCCTCGA", "4M3I4M", 1), // insertion
-      TestUtil.makeRead("TNGAGCGA", "8M", 1) // contains N
+      TestUtil.makeRead("TCGATCGA", "8M", 1),         // no variant
+      TestUtil.makeRead("TCGAGCGA", "8M", 1),         // snv
+      TestUtil.makeRead("TCGACCCTCGA", "4M3I4M", 1),  // insertion
+      TestUtil.makeRead("TCGGCCCTCGA", "4M3I4M", 1),  // insertion
+      TestUtil.makeRead("TCAGCCCTCGA", "4M3I4M", 1),  // insertion
+      TestUtil.makeRead("TNGAGCGA", "8M", 1)          // contains N
     )
     val pileups = reads.map(read => Pileup(Seq(read), "chr1", 1, simpleReference.getContig("chr1")))
 
@@ -68,16 +69,24 @@ class ReadSubsequenceSuite extends GuacFunSuite with Matchers {
     val parameters = Parameters.defaults
     val contigLocus = ("chr12", 65857039)
     val pileups = cancerWGS1Bams.map(
-      path => TestUtil.loadPileup(sc, path, contig = Some(contigLocus._1), locus = contigLocus._2, reference = partialReference))
+      path =>
+        TestUtil.loadPileup(
+          sc,
+          path,
+          contig = Some(contigLocus._1),
+          locus = contigLocus._2,
+          reference = partialReference
+        )
+    )
 
-    val reference = partialReference
     val subsequences = ReadSubsequence.nextAlts(pileups(1).elements)
     assert(subsequences.nonEmpty)
 
     val alleles = AlleleAtLocus.variantAlleles(
       (inputs.normalDNA ++ inputs.tumorDNA).map(input => pileups(input.index)),
       anyAlleleMinSupportingReads = parameters.anyAlleleMinSupportingReads,
-      anyAlleleMinSupportingPercent = parameters.anyAlleleMinSupportingPercent)
+      anyAlleleMinSupportingPercent = parameters.anyAlleleMinSupportingPercent
+    )
 
     assert(alleles.nonEmpty)
 

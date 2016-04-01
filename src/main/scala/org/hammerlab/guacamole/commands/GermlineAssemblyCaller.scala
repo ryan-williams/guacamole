@@ -13,7 +13,7 @@ import org.hammerlab.guacamole.reads.{ MappedRead, Read }
 import org.hammerlab.guacamole.reference.{ ReferenceBroadcast, ReferenceGenome }
 import org.hammerlab.guacamole.variants.{ Allele, AlleleConversions, AlleleEvidence, CalledAllele }
 import org.hammerlab.guacamole.windowing.SlidingWindow
-import org.kohsuke.args4j.{ Option => Args4jOption }
+import org.kohsuke.args4j.{ Option ⇒ Args4jOption }
 
 import scala.collection.JavaConversions._
 
@@ -79,7 +79,6 @@ object GermlineAssemblyCaller {
      * @param reads  Set of reads to extract sequence from
      * @param startLocus Start (inclusive) locus on the reference
      * @param endLocus End (exclusive) locus on the reference
-     * @param kmerSize Length of the subsequence
      * @param minOccurrence Mininum number of times a subsequence needs to appear to be included
      * @return List of subsequences overlapping [startLocus, endLocus) that appear at least `minOccurrence` time
      */
@@ -137,11 +136,12 @@ object GermlineAssemblyCaller {
       val referenceStart = (locus - currentWindow.halfWindowSize).toInt
       val referenceEnd = (locus + currentWindow.halfWindowSize).toInt
 
-      val currentReference: Array[Byte] = reference.getReferenceSequence(
-        currentWindow.referenceName,
-        referenceStart,
-        referenceEnd
-      )
+      val currentReference: Array[Byte] =
+        reference.getReferenceSequence(
+          currentWindow.referenceName,
+          referenceStart,
+          referenceEnd
+        )
 
       val paths = discoverPathsFromReads(
         reads,
@@ -151,7 +151,8 @@ object GermlineAssemblyCaller {
         kmerSize = kmerSize,
         minOccurrence = minOccurrence,
         maxPaths = maxPathsToScore + 1,
-        debugPrint)
+        debugPrint
+      )
 
       // Score up to the maximum number of paths, by aligning them against the reference
       // Take the best aligning `expectedPloidy` paths
@@ -248,7 +249,11 @@ object GermlineAssemblyCaller {
       val readSet = Common.loadReadsFromArguments(
         args,
         sc,
-        Read.InputFilters(overlapsLoci = Some(loci), mapped = true, nonDuplicate = true)
+        Read.InputFilters(
+          overlapsLoci = Some(loci),
+          mapped = true,
+          nonDuplicate = true
+        )
       )
 
       val minAlignmentQuality = args.minAlignmentQuality
@@ -256,11 +261,12 @@ object GermlineAssemblyCaller {
         .mappedReads
         .filter(_.alignmentQuality > minAlignmentQuality)
 
-      val lociPartitions = DistributedUtil.partitionLociAccordingToArgs(
-        args,
-        loci.result(readSet.contigLengths),
-        readSet.mappedReads
-      )
+      val lociPartitions =
+        DistributedUtil.partitionLociAccordingToArgs(
+          args,
+          loci.result(readSet.contigLengths),
+          readSet.mappedReads
+        )
 
       val genotypes: RDD[CalledAllele] = discoverGenotypes(
         qualityReads,
@@ -269,7 +275,8 @@ object GermlineAssemblyCaller {
         minOccurrence = args.minOccurrence,
         minAreaVaf = args.minAreaVaf / 100.0f,
         reference,
-        lociPartitions)
+        lociPartitions
+      )
 
       genotypes.persist()
 
@@ -307,7 +314,9 @@ object GermlineAssemblyCaller {
             val variableReads =
               currentLocusReads
                 .count(read =>
-                  read.cigar.numCigarElements() > 1 || read.countOfMismatches(reference.getContig(window.referenceName)) > 0)
+                  read.cigar.numCigarElements() > 1 ||
+                    read.countOfMismatches(reference.getContig(window.referenceName)) > 0
+                )
 
             // Compute the number reads with variant bases from the reads overlapping the currentLocus
             val currentLocusVAF = variableReads.toFloat / currentLocusReads.length
@@ -333,6 +342,7 @@ object GermlineAssemblyCaller {
 
     /**
      * Find paths through the reads given that represent the sequence covering referenceStart and referenceEnd
+     *
      * @param reads Reads to use to build the graph
      * @param referenceStart Start of the reference region corresponding to the reads
      * @param referenceEnd End of the reference region corresponding to the reads
@@ -354,12 +364,13 @@ object GermlineAssemblyCaller {
       val referenceKmerSource = referenceSequence.take(kmerSize)
       val referenceKmerSink = referenceSequence.takeRight(kmerSize)
 
-      val sources: Set[Array[Byte]] = (getConsensusKmer(
-        reads,
-        referenceStart,
-        referenceStart + kmerSize,
-        minOccurrence = minOccurrence
-      ) ++ Seq(referenceKmerSource)).toSet
+      val sources: Set[Array[Byte]] =
+        (getConsensusKmer(
+          reads,
+          referenceStart,
+          referenceStart + kmerSize,
+          minOccurrence = minOccurrence
+        ) ++ Seq(referenceKmerSource)).toSet
 
       val sinks: Set[Array[Byte]] = (getConsensusKmer(
         reads,

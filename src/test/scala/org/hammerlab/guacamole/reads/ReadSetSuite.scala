@@ -20,11 +20,11 @@ package org.hammerlab.guacamole.reads
 
 import org.apache.parquet.hadoop.metadata.CompressionCodecName
 import org.bdgenomics.adam.rdd.read.AlignmentRecordRDDFunctions
-import org.bdgenomics.adam.rdd.{ ADAMSaveAnyArgs, ADAMContext }
-import org.hammerlab.guacamole.reference.ReferenceBroadcast
-import org.hammerlab.guacamole.{ LociSet }
+import org.bdgenomics.adam.rdd.{ADAMContext, ADAMSaveAnyArgs}
+import org.hammerlab.guacamole.LociSet
 import org.hammerlab.guacamole.reads.Read.InputFilters
-import org.hammerlab.guacamole.util.{ TestUtil, GuacFunSuite }
+import org.hammerlab.guacamole.reference.ReferenceBroadcast
+import org.hammerlab.guacamole.util.{GuacFunSuite, TestUtil}
 import org.scalatest.Matchers
 
 class ReadSetSuite extends GuacFunSuite with Matchers {
@@ -58,14 +58,14 @@ class ReadSetSuite extends GuacFunSuite with Matchers {
       InputFilters(mapped = true, nonDuplicate = true),
       InputFilters(overlapsLoci = Some(LociSet.parse("20:10220390-10220490")))
     ).foreach(filter => {
-        check(Seq("gatk_mini_bundle_extract.bam", "gatk_mini_bundle_extract.sam"), filter)
-      })
+      check(Seq("gatk_mini_bundle_extract.bam", "gatk_mini_bundle_extract.sam"), filter)
+    })
 
     Seq(
       InputFilters(overlapsLoci = Some(LociSet.parse("19:147033-147034")))
     ).foreach(filter => {
-        check(Seq("synth1.normal.100k-200k.withmd.bam", "synth1.normal.100k-200k.withmd.sam"), filter)
-      })
+      check(Seq("synth1.normal.100k-200k.withmd.bam", "synth1.normal.100k-200k.withmd.sam"), filter)
+    })
   }
 
   sparkTest("load and test filters") {
@@ -94,8 +94,6 @@ class ReadSetSuite extends GuacFunSuite with Matchers {
     val adamContext = new ADAMContext(sc)
     val adamRecords = adamContext.loadBam(TestUtil.testDataPath("mdtagissue.sam"))
 
-    val origReadSet = TestUtil.loadReads(sc, "mdtagissue.sam", reference = chr22Fasta)
-
     val adamOut = TestUtil.tmpFileName(".adam")
     val args = new ADAMSaveAnyArgs {
       override var sortFastqOutput: Boolean = false
@@ -106,7 +104,9 @@ class ReadSetSuite extends GuacFunSuite with Matchers {
       override var pageSize: Int = 1024
       override var compressionCodec: CompressionCodecName = CompressionCodecName.UNCOMPRESSED
     }
-    new AlignmentRecordRDDFunctions(adamRecords.rdd).saveAsParquet(args, adamRecords.sequences, adamRecords.recordGroups)
+
+    new AlignmentRecordRDDFunctions(adamRecords.rdd)
+      .saveAsParquet(args, adamRecords.sequences, adamRecords.recordGroups)
 
     val (allReads, _) = Read.loadReadRDDAndSequenceDictionaryFromADAM(adamOut, sc, token = 0)
     allReads.count() should be(8)

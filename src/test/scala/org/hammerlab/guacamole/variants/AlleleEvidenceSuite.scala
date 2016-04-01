@@ -12,7 +12,8 @@ class AlleleEvidenceSuite extends GuacFunSuite with Matchers {
     val reads = Seq(
       TestUtil.makeRead("TCGATCGA", "8M", 1, alignmentQuality = 30),
       TestUtil.makeRead("TCGATCGA", "8M", 1, alignmentQuality = 30),
-      TestUtil.makeRead("TCGACCCTCGA", "4M3I4M", 1, alignmentQuality = 60))
+      TestUtil.makeRead("TCGACCCTCGA", "4M3I4M", 1, alignmentQuality = 60)
+    )
     val variantPileup = Pileup(reads, "chr1", 2, reference.getContig("chr1"))
 
     val variantEvidence = AlleleEvidence(

@@ -18,18 +18,18 @@
 
 package org.hammerlab.guacamole.util
 
-import java.io.{ File, FileNotFoundException }
+import java.io.{File, FileNotFoundException}
 import java.util.UUID
 
 import com.esotericsoftware.kryo.Kryo
-import com.twitter.chill.{ IKryoRegistrar, KryoInstantiator, KryoPool }
+import com.twitter.chill.{IKryoRegistrar, KryoInstantiator, KryoPool}
 import org.apache.commons.io.FileUtils
 import org.apache.spark.SparkContext
 import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.reads._
 import org.hammerlab.guacamole.reference.ReferenceBroadcast.MapBackedReferenceSequence
-import org.hammerlab.guacamole.reference.{ ContigSequence, ReferenceBroadcast }
-import org.hammerlab.guacamole.{ Bases, GuacamoleKryoRegistrator, ReadSet }
+import org.hammerlab.guacamole.reference.{ContigSequence, ReferenceBroadcast}
+import org.hammerlab.guacamole.{Bases, GuacamoleKryoRegistrator, LociSet, ReadSet}
 import org.scalatest._
 
 import scala.collection.mutable
@@ -178,9 +178,18 @@ object TestUtil extends Matchers {
     )
     PairedMappedRead(
       makePairedRead(
-        chr, start, alignmentQuality, isPositiveStrand, true,
-        Some(mate.referenceContig), Some(mate.start), mate.isPositiveStrand,
-        sequence, cigar, mate.inferredInsertSize).read,
+        chr,
+        start,
+        alignmentQuality,
+        isPositiveStrand,
+        isMateMapped = true,
+        Some(mate.referenceContig),
+        Some(mate.start),
+        isMatePositiveStrand = mate.isPositiveStrand,
+        sequence,
+        cigar,
+        mate.inferredInsertSize
+      ).read,
       isFirstInPair = true,
       inferredInsertSize = insertSize,
       mate = mate)
@@ -205,8 +214,10 @@ object TestUtil extends Matchers {
                            normalFile: String,
                            reference: ReferenceBroadcast): (Seq[MappedRead], Seq[MappedRead]) = {
     val filters = Read.InputFilters(mapped = true, nonDuplicate = true, passedVendorQualityChecks = true)
-    (loadReads(sc, tumorFile, filters = filters, reference = reference).mappedReads.collect(),
-      loadReads(sc, normalFile, filters = filters, reference = reference).mappedReads.collect())
+    (
+      loadReads(sc, tumorFile, filters = filters, reference = reference).mappedReads.collect(),
+      loadReads(sc, normalFile, filters = filters, reference = reference).mappedReads.collect()
+    )
   }
 
   def loadReads(sc: SparkContext,
@@ -231,11 +242,20 @@ object TestUtil extends Matchers {
       Pileup(normalReads, contig, locus, reference.getContig(contig)))
   }
 
-  def loadPileup(sc: SparkContext, filename: String, reference: ReferenceBroadcast, locus: Long = 0, contig: Option[String] = None): Pileup = {
+  def loadPileup(sc: SparkContext,
+                 filename: String,
+                 reference: ReferenceBroadcast,
+                 locus: Long = 0,
+                 contig: Option[String] = None): Pileup = {
     val records = TestUtil.loadReads(sc, filename, reference = reference).mappedReads
     val localReads = records.collect
     val actualContig = contig.getOrElse(localReads(0).referenceContig)
-    Pileup(localReads, actualContig, locus, referenceContigSequence = reference.getContig(actualContig))
+    Pileup(
+      localReads,
+      actualContig,
+      locus,
+      referenceContigSequence = reference.getContig(actualContig)
+    )
   }
 
   def assertAlmostEqual(a: Double, b: Double, epsilon: Double = 1e-12) {

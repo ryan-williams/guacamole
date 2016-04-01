@@ -48,7 +48,9 @@ object GeneratePartialFasta extends Logging {
         fileAndIndex._1,
         InputFilters.empty,
         token = fileAndIndex._2,
-        config = Common.Arguments.ReadLoadingConfigArgs.fromArguments(args)))
+        config = Common.Arguments.ReadLoadingConfigArgs.fromArguments(args)
+      )
+    )
 
     val reads = sc.union(readSets.map(_.mappedReads))
     val contigLengths = readSets.head.contigLengths
@@ -76,14 +78,5 @@ object GeneratePartialFasta extends Logging {
     })
     writer.close()
     Common.progress("Wrote: %s".format(args.output))
-  }
-
-  private def printUsage() = {
-    println("Usage: java ... bam1.bam ... bamN.bam --output result.partial.fasta \n")
-    println(
-      """
-        |Given a full fasta and some loci (either specified directly or from reads), write out a fasta containing only
-        |the subset of the reference overlapped by the loci in a guacamole -specific fasta format
-      """.trim.stripMargin)
   }
 }

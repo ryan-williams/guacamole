@@ -132,7 +132,7 @@ class LociSetSuite extends GuacFunSuite with Matchers {
       "chr21:100-200,chr20:0-10,chr20:8-15,chr20:100-120").map(LociSet.parse(_).result)
     val rdd = sc.parallelize(sets)
     val result = rdd.map(_.toString).collect.toSeq
-    result should equal(sets.map(_.toString).toSeq)
+    result should equal(sets.map(_.toString))
   }
 
   sparkTest("serialization: make an RDD[LociSet], and an RDD[LociSet.SingleContig]") {
@@ -145,11 +145,11 @@ class LociSetSuite extends GuacFunSuite with Matchers {
       "chr21:100-200,chr20:0-10,chr20:8-15,chr20:100-120").map(LociSet.parse(_).result)
     val rdd = sc.parallelize(sets)
     val result = rdd.map(set => {
-      set.onContig("21").contains(5) // no op
-      val ranges = set.onContig("21").ranges // no op
+      set.onContig("21").contains(5)  // no op
+      val ranges = set.onContig("21").ranges  // no op
       set.onContig("20").toString
     }).collect.toSeq
-    result should equal(sets.map(_.onContig("20").toString).toSeq)
+    result should equal(sets.map(_.onContig("20").toString))
   }
 
   sparkTest("loci set union") {
@@ -200,7 +200,7 @@ class LociSetSuite extends GuacFunSuite with Matchers {
     iter1.next() should be(2)
     iter1.next() should be(10)
     iter1.next() should be(11)
-    iter1.skipTo(6000000000L) // will hang if it steps through each locus.
+    iter1.skipTo(6000000000L)  // will hang if it steps through each locus.
     iter1.next() should be(6000000000L)
     iter1.next() should be(6000000001L)
     iter1.hasNext() should be(true)

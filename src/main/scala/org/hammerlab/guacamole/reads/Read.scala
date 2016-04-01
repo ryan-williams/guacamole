@@ -24,13 +24,13 @@ import htsjdk.samtools._
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.LongWritable
 import org.apache.spark.rdd.RDD
-import org.apache.spark.{ Logging, SparkContext }
+import org.apache.spark.{Logging, SparkContext}
 import org.bdgenomics.adam.models.SequenceDictionary
-import org.bdgenomics.adam.rdd.{ ADAMContext, ADAMSpecificRecordSequenceDictionaryRDDAggregator }
+import org.bdgenomics.adam.rdd.{ADAMContext, ADAMSpecificRecordSequenceDictionaryRDDAggregator}
 import org.bdgenomics.formats.avro.AlignmentRecord
-import org.hammerlab.guacamole.{ Bases, Common, LociSet }
+import org.hammerlab.guacamole.{Bases, Common, LociSet}
 import org.seqdoop.hadoop_bam.util.SAMHeaderReader
-import org.seqdoop.hadoop_bam.{ AnySAMInputFormat, SAMRecordWritable }
+import org.seqdoop.hadoop_bam.{AnySAMInputFormat, SAMRecordWritable}
 
 import scala.collection.JavaConversions
 
@@ -90,10 +90,10 @@ object Read extends Logging {
    * @param isPaired include only reads are paired-end reads
    */
   case class InputFilters(
-    val overlapsLoci: Option[LociSet.Builder],
-    val nonDuplicate: Boolean,
-    val passedVendorQualityChecks: Boolean,
-    val isPaired: Boolean) {}
+    overlapsLoci: Option[LociSet.Builder],
+    nonDuplicate: Boolean,
+    passedVendorQualityChecks: Boolean,
+    isPaired: Boolean)
   object InputFilters {
     val empty = InputFilters()
 
@@ -108,7 +108,11 @@ object Read extends Logging {
               passedVendorQualityChecks: Boolean = false,
               isPaired: Boolean = false): InputFilters = {
       new InputFilters(
-        overlapsLoci = if (overlapsLoci.isEmpty && mapped) Some(LociSet.newBuilder.putAllContigs) else overlapsLoci,
+        overlapsLoci =
+          if (overlapsLoci.isEmpty && mapped)
+            Some(LociSet.newBuilder.putAllContigs)
+          else
+            overlapsLoci,
         nonDuplicate = nonDuplicate,
         passedVendorQualityChecks = passedVendorQualityChecks,
         isPaired = isPaired)
@@ -271,7 +275,7 @@ object Read extends Logging {
    * @param bamReaderAPI which library to use to load SAM and BAM files
    */
   case class ReadLoadingConfig(
-    bamReaderAPI: ReadLoadingConfig.BamReaderAPI.BamReaderAPI = ReadLoadingConfig.BamReaderAPI.Best) {}
+    bamReaderAPI: ReadLoadingConfig.BamReaderAPI.BamReaderAPI = ReadLoadingConfig.BamReaderAPI.Best)
   object ReadLoadingConfig {
     val default = ReadLoadingConfig()
 
@@ -403,11 +407,9 @@ object Read extends Logging {
       val samRecords: RDD[(LongWritable, SAMRecordWritable)] =
         sc.newAPIHadoopFile[LongWritable, SAMRecordWritable, AnySAMInputFormat](filename)
       val allReads: RDD[Read] =
-        samRecords.map({
-          case (k, v) => fromSAMRecord(
-            v.get,
-            token)
-        })
+        samRecords.map {
+          case (k, v) => fromSAMRecord(v.get, token)
+        }
       val reads = InputFilters.filterRDD(filters, allReads, sequenceDictionary)
       (reads, sequenceDictionary)
     }
@@ -455,7 +457,7 @@ object Read extends Logging {
         sequence = sequence,
         baseQualities = baseQualities,
         isDuplicate = alignmentRecord.getDuplicateRead,
-        sampleName = alignmentRecord.getRecordGroupSample.toString.intern(),
+        sampleName = alignmentRecord.getRecordGroupSample.intern(),
         referenceContig = referenceContig,
         alignmentQuality = alignmentRecord.getMapq,
         start = alignmentRecord.getStart,
@@ -471,7 +473,7 @@ object Read extends Logging {
         sequence = sequence,
         baseQualities = baseQualities,
         isDuplicate = alignmentRecord.getDuplicateRead,
-        sampleName = alignmentRecord.getRecordGroupSample.toString.intern(),
+        sampleName = alignmentRecord.getRecordGroupSample.intern(),
         failedVendorQualityChecks = alignmentRecord.getFailedVendorQualityChecks,
         alignmentRecord.getReadPaired
       )

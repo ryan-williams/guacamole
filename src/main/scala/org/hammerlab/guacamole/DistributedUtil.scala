@@ -19,19 +19,19 @@
 package org.hammerlab.guacamole
 
 import org.apache.commons.math3
-import org.apache.spark.rdd.RDD
-import org.apache.spark.{ Partitioner, AccumulatorParam, SparkConf, Logging }
 import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.rdd.RDD
 import org.apache.spark.serializer.JavaSerializer
-import org.hammerlab.guacamole.Common.Arguments.{ Base, Loci }
+import org.apache.spark.{AccumulatorParam, Logging, Partitioner, SparkConf}
+import org.hammerlab.guacamole.Common.Arguments.{Base, Loci}
 import org.hammerlab.guacamole.Common._
 import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.reads.MappedRead
-import org.hammerlab.guacamole.reference.{ ContigSequence, ReferenceGenome }
-import org.hammerlab.guacamole.windowing.{ SplitIterator, SlidingWindow }
-import org.kohsuke.args4j.{ Option => Args4jOption }
+import org.hammerlab.guacamole.reference.{ContigSequence, ReferenceGenome}
+import org.hammerlab.guacamole.windowing.{SlidingWindow, SplitIterator}
+import org.kohsuke.args4j.{Option ⇒ Args4jOption}
 
-import scala.collection.mutable.{ HashMap => MutableHashMap }
+import scala.collection.mutable.{HashMap ⇒ MutableHashMap}
 import scala.reflect.ClassTag
 
 /**
@@ -56,7 +56,12 @@ object DistributedUtil extends Logging {
                                                                       loci: LociSet,
                                                                       regionRDDs: RDD[M]*): LociMap[Long] = {
     val sc = regionRDDs.head.sparkContext
-    val tasks = if (args.parallelism > 0) args.parallelism else sc.defaultParallelism
+    val tasks =
+      if (args.parallelism > 0)
+        args.parallelism
+      else
+        sc.defaultParallelism
+
     if (args.partitioningAccuracy == 0) {
       partitionLociUniformly(tasks, loci)
     } else {
@@ -64,7 +69,8 @@ object DistributedUtil extends Logging {
         tasks,
         loci,
         args.partitioningAccuracy,
-        regionRDDs: _*)
+        regionRDDs: _*
+      )
     }
   }
 
@@ -165,37 +171,48 @@ object DistributedUtil extends Logging {
                                                                          regionRDDs: RDD[M]*): LociMap[Long] = {
     val sc = regionRDDs(0).sparkContext
 
-    // Step (1). Split loci uniformly into micro partitions.
+    // Step (1): split loci uniformly into micro partitions.
     assume(tasks >= 1)
     assume(lociUsed.count > 0)
-    assume(regionRDDs.length > 0)
-    val numMicroPartitions: Int = if (accuracy * tasks < lociUsed.count) accuracy * tasks else lociUsed.count.toInt
+    assume(regionRDDs.nonEmpty)
+
+    val numMicroPartitions: Long = math.min(accuracy * tasks, lociUsed.count)
+
     progress("Splitting loci by region depth among %,d tasks using %,d micro partitions.".format(tasks, numMicroPartitions))
     val microPartitions = partitionLociUniformly(numMicroPartitions, lociUsed)
     progress("Done calculating micro partitions.")
+
     val broadcastMicroPartitions = sc.broadcast(microPartitions)
 
-    // Step (2)
-    // Total up regions overlapping each micro partition. We keep the totals as an array of Longs.
+    // Step (2): total up regions overlapping each micro partition. We keep the totals as an array of Longs.
     var num = 1
-    val regionCounts = regionRDDs.map(regions => {
-      progress("Collecting region counts for RDD %d of %d.".format(num, regionRDDs.length))
-      val result = regions.flatMap(region =>
-        broadcastMicroPartitions.value.onContig(region.referenceContig).getAll(region.start, region.end)
-      ).countByValue()
-      progress("RDD %d: %,d regions".format(num, result.values.sum))
-      num += 1
-      result
-    })
+    val regionCounts =
+      regionRDDs.map(regions => {
+        progress(s"Collecting region counts for RDD $num of ${regionRDDs.length}.")
 
-    val counts: Seq[Long] = (0 until numMicroPartitions).map(i => regionCounts.map(_.getOrElse(i, 0L)).sum)
+        val result =
+          regions.flatMap(region =>
+            broadcastMicroPartitions.value.onContig(region.referenceContig).getAll(region.start, region.end)
+          ).countByValue()
 
-    // Step (3)
-    // Assign loci to tasks, taking into account region depth in each micro partition.
+        progress("RDD %d: %,d regions".format(num, result.values.sum))
+
+        num += 1
+        result
+      })
+
+    val counts: Seq[Long] = (0L until numMicroPartitions).map(i => regionCounts.map(_.getOrElse(i, 0L)).sum)
+
+    // Step (3): assign loci to tasks, taking into account region depth in each micro partition.
     val totalRegions = counts.sum
     val regionsPerTask = math.max(1, totalRegions.toDouble / tasks.toDouble)
-    progress("Done collecting region counts. Total regions with micro partition overlaps: %,d = ~%,.0f regions per task."
-      .format(totalRegions, regionsPerTask))
+    progress(
+      "Done collecting region counts. Total regions with micro partition overlaps: %,d = ~%,.0f regions per task."
+        .format(
+          totalRegions,
+          regionsPerTask
+        )
+    )
 
     val maxIndex = counts.view.zipWithIndex.maxBy(_._1)._2
     progress("Regions per micro partition: min=%,d mean=%,.0f max=%,d at %s.".format(
@@ -204,7 +221,7 @@ object DistributedUtil extends Logging {
     val builder = LociMap.newBuilder[Long]
     var regionsAssigned = 0.0
     var task = 0L
-    def regionsRemainingForThisTask = math.round(((task + 1) * regionsPerTask) - regionsAssigned).toLong
+    def regionsRemainingForThisTask = math.round(((task + 1) * regionsPerTask) - regionsAssigned)
     var microTask = 0
     while (microTask < numMicroPartitions) {
       var set = microPartitions.asInverseMap(microTask)
@@ -261,9 +278,18 @@ object DistributedUtil extends Logging {
                                referenceContigSequence: ContigSequence): Pileup = {
     assume(window.halfWindowSize == 0)
     existing match {
-      case None => Pileup(
-        window.currentRegions(), window.referenceName, window.currentLocus, referenceContigSequence)
-      case Some(pileup) => pileup.atGreaterLocus(window.currentLocus, window.newRegions.iterator)
+      case None =>
+        Pileup(
+          window.currentRegions(),
+          window.referenceName,
+          window.currentLocus,
+          referenceContigSequence
+        )
+      case Some(pileup) =>
+        pileup.atGreaterLocus(
+          window.currentLocus,
+          window.newRegions.iterator
+        )
     }
   }
 
@@ -288,15 +314,22 @@ object DistributedUtil extends Logging {
       Vector(reads),
       lociPartitions,
       skipEmpty,
-      0,
-      None,
-      (maybePileup: Option[Pileup], windows: PerSample[SlidingWindow[MappedRead]]) => {
-        assert(windows.length == 1)
-        val pileup = initOrMovePileup(maybePileup, windows(0), reference.getContig(windows(0).referenceName))
-        (Some(pileup), function(pileup))
-      }
+      halfWindowSize = 0,
+      initialState = None,
+      function =
+        (maybePileup: Option[Pileup], windows: PerSample[SlidingWindow[MappedRead]]) => {
+          assert(windows.length == 1)
+          val contigSequence = reference.getContig(windows(0).referenceName)
+          val pileup = initOrMovePileup(
+            maybePileup,
+            windows(0),
+            contigSequence
+          )
+          (Some(pileup), function(pileup))
+        }
     )
   }
+
   /**
    * Flatmap across loci on two RDDs of MappedReads. At each locus the provided function is passed two Pileup instances,
    * giving the pileup for the reads in each RDD at that locus.
@@ -318,13 +351,15 @@ object DistributedUtil extends Logging {
       skipEmpty,
       halfWindowSize = 0L,
       initialState = None,
-      function = (maybePileups: Option[(Pileup, Pileup)], windows: PerSample[SlidingWindow[MappedRead]]) => {
-        assert(windows.length == 2)
-        val contigSequence = reference.getContig(windows(0).referenceName)
-        val pileup1 = initOrMovePileup(maybePileups.map(_._1), windows(0), contigSequence)
-        val pileup2 = initOrMovePileup(maybePileups.map(_._2), windows(1), contigSequence)
-        (Some((pileup1, pileup2)), function(pileup1, pileup2))
-      })
+      function =
+        (maybePileups: Option[(Pileup, Pileup)], windows: PerSample[SlidingWindow[MappedRead]]) => {
+          assert(windows.length == 2)
+          val contigSequence = reference.getContig(windows(0).referenceName)
+          val pileup1 = initOrMovePileup(maybePileups.map(_._1), windows(0), contigSequence)
+          val pileup2 = initOrMovePileup(maybePileups.map(_._2), windows(1), contigSequence)
+          (Some((pileup1, pileup2)), function(pileup1, pileup2))
+        }
+    )
   }
 
   /**
@@ -346,14 +381,17 @@ object DistributedUtil extends Logging {
       initialState = None,
       function = (maybePileups: Option[PerSample[Pileup]], windows: PerSample[SlidingWindow[MappedRead]]) => {
         val advancedPileups = maybePileups match {
-          case Some(existingPileups) => {
+          case Some(existingPileups) =>
             existingPileups.zip(windows).map(
               pileupAndWindow => initOrMovePileup(
                 Some(pileupAndWindow._1),
                 pileupAndWindow._2,
                 reference.getContig(windows(0).referenceName)))
-          }
-          case None => windows.map(initOrMovePileup(None, _, reference.getContig(windows(0).referenceName)))
+              )
+            )
+          case None => windows.map(
+            initOrMovePileup(None, _, reference.getContig(windows(0).referenceName))
+          )
         }
         (Some(advancedPileups), function(advancedPileups))
       })
@@ -555,14 +593,13 @@ object DistributedUtil extends Logging {
     regionRDDs: PerSample[RDD[M]],
     lociPartitions: LociMap[Long],
     halfWindowSize: Long,
-    // TODO(ryan): factor this function type out (as a PartialFunction?)
     function: (Long, LociSet, PerSample[Iterator[M]]) => Iterator[T]): RDD[T] = {
 
     val numRDDs = regionRDDs.length
     assume(numRDDs > 0)
     val sc = regionRDDs(0).sparkContext
     progress("Loci partitioning: %s".format(lociPartitions.truncatedString()))
-    val lociPartitionsBoxed: Broadcast[LociMap[Long]] = sc.broadcast(lociPartitions)
+    val lociPartitionsBC: Broadcast[LociMap[Long]] = sc.broadcast(lociPartitions)
     val numTasks = lociPartitions.asInverseMap.map(_._1).max + 1
 
     // Counters
@@ -570,27 +607,35 @@ object DistributedUtil extends Logging {
     val relevantRegions = sc.accumulator(0L)
     val expandedRegions = sc.accumulator(0L)
     DelayedMessages.default.say { () =>
-      "Region counts: filtered %,d total regions to %,d relevant regions, expanded for overlaps by %,.2f%% to %,d".format(
-        totalRegions.value,
-        relevantRegions.value,
-        (expandedRegions.value - relevantRegions.value) * 100.0 / relevantRegions.value,
-        expandedRegions.value)
+      "Region counts: filtered %,d total regions to %,d relevant regions, expanded for overlaps by %,.2f%% to %,d"
+        .format(
+          totalRegions.value,
+          relevantRegions.value,
+          (expandedRegions.value - relevantRegions.value) * 100.0 / relevantRegions.value,
+          expandedRegions.value
+        )
     }
 
     // Expand regions into (task, region) pairs for each region RDD.
     val taskNumberRegionPairsRDDs: PerSample[RDD[(TaskPosition, M)]] =
-      regionRDDs.map(_.flatMap(region => {
-        val singleContig = lociPartitionsBoxed.value.onContig(region.referenceContig)
-        val thisRegionsTasks = singleContig.getAll(region.start - halfWindowSize, region.end + halfWindowSize)
+      regionRDDs.map(
+        _.flatMap(region => {
+          val singleContig = lociPartitionsBC.value.onContig(region.referenceContig)
+          val thisRegionsTasks =
+            singleContig.getAll(
+              region.start - halfWindowSize,
+              region.end + halfWindowSize
+            )
 
-        // Update counters
-        totalRegions += 1
-        if (thisRegionsTasks.nonEmpty) relevantRegions += 1
-        expandedRegions += thisRegionsTasks.size
+          // Update counters
+          totalRegions += 1
+          if (thisRegionsTasks.nonEmpty) relevantRegions += 1
+          expandedRegions += thisRegionsTasks.size
 
-        // Return this region, duplicated for each task it is assigned to.
-        thisRegionsTasks.map(task => (TaskPosition(task.toInt, region.referenceContig, region.start), region))
-      }))
+          // Return this region, duplicated for each task it is assigned to.
+          thisRegionsTasks.map(task => (TaskPosition(task.toInt, region.referenceContig, region.start), region))
+        })
+      )
 
     // Run the task on each partition. Keep track of the number of regions assigned to each task in an accumulator, so
     // we can print out a summary of the skew.
@@ -614,16 +659,25 @@ object DistributedUtil extends Logging {
     val lociAccumulator = sc.accumulator[Long](0, "NumLoci")
 
     // Build an RDD of (read set num, read), take union of this over all RDDs, and partition by task.
-    val partitioned = sc.union(
-      taskNumberRegionPairsRDDs.zipWithIndex.map({
-        case (taskNumberRegionPairs, rddIndex: Int) => {
-          taskNumberRegionPairs.map(pair => (pair._1, (rddIndex, pair._2)))
-        }
-      })).repartitionAndSortWithinPartitions(new PartitionByKey(numTasks.toInt)).map(_._2)
+    val partitioned =
+      sc
+        .union(
+          for {
+            (taskNumberRegionPairs, rddIndex) <- taskNumberRegionPairsRDDs.zipWithIndex
+          } yield {
+            for {
+              (task, region) ← taskNumberRegionPairs
+            } yield {
+              task → (rddIndex, region)
+            }
+          }
+        )
+        .repartitionAndSortWithinPartitions(new PartitionByKey(numTasks.toInt))
+        .values
 
     partitioned.mapPartitionsWithIndex((taskNum, values) => {
       val iterators = SplitIterator.split(numRDDs, values)
-      val taskLoci = lociPartitionsBoxed.value.asInverseMap(taskNum)
+      val taskLoci = lociPartitionsBC.value.asInverseMap(taskNum)
       lociAccumulator += taskLoci.count
       function(taskNum, taskLoci, iterators)
     })

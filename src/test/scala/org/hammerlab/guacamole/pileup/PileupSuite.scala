@@ -36,7 +36,8 @@ class PileupSuite extends GuacFunSuite with Matchers with TableDrivenPropertyChe
       ("chr2", 0, "AATTG"),
       ("chr3", 0, "AAATTT"),
       ("chr4", 0, "AATTGCAATTG")
-    ))
+    )
+  )
 
   def testAdamRecords = TestUtil.loadReads(sc, "different_start_reads.sam", reference = reference).mappedReads.collect()
 
@@ -247,7 +248,8 @@ class PileupSuite extends GuacFunSuite with Matchers with TableDrivenPropertyChe
     val reference = TestUtil.makeReference(sc,
       Seq(
         ("artificial", 0, "A" * 500)
-      ))
+      )
+    )
 
     val decadentRead1 = testAdamRecords(0)
 

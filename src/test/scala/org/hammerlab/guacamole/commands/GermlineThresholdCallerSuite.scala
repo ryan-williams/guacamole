@@ -85,8 +85,8 @@ class GermlineThresholdCallerSuite extends GuacFunSuite with Matchers {
 
     genotypes.length should be(1)
     genotypes.head.getVariant.getStart should be(1)
-    genotypes.head.getVariant.getReferenceAllele.toString should be("T")
-    genotypes.head.getVariant.getAlternateAllele.toString should be("G")
+    genotypes.head.getVariant.getReferenceAllele should be("T")
+    genotypes.head.getVariant.getAlternateAllele should be("G")
   }
 
   sparkTest("homozygous alt variant, threshold 50; no reference bases observed") {
@@ -99,8 +99,8 @@ class GermlineThresholdCallerSuite extends GuacFunSuite with Matchers {
 
     genotypes.length should be(1)
     genotypes.head.getVariant.getStart should be(2)
-    genotypes.head.getVariant.getReferenceAllele.toString should be("C")
-    genotypes.head.getVariant.getAlternateAllele.toString should be("G")
+    genotypes.head.getVariant.getReferenceAllele should be("C")
+    genotypes.head.getVariant.getAlternateAllele should be("G")
 
     genotypes.foreach(gt => assert(gt.getAlleles.toList === List(GenotypeAllele.Alt, GenotypeAllele.Alt)))
   }
@@ -108,10 +108,14 @@ class GermlineThresholdCallerSuite extends GuacFunSuite with Matchers {
   // Regression test for https://github.com/hammerlab/guacamole/issues/302
   sparkTest("heterozygous deletion") {
     val filters = Read.InputFilters(mapped = true, nonDuplicate = true, passedVendorQualityChecks = true)
-    val reads = TestUtil.loadReads(sc,
-      "synthetic.challenge.set1.normal.v2.withMDTags.chr2.syn1fp.sam",
-      filters = filters,
-      reference = reference).mappedReads.collect()
+    val reads =
+      TestUtil.loadReads(
+        sc,
+        "synthetic.challenge.set1.normal.v2.withMDTags.chr2.syn1fp.sam",
+        filters = filters,
+        reference = reference
+      ).mappedReads.collect()
+
     val pileup = Pileup(reads, "2", 16050070, referenceContigSequence = reference.getContig("2"))
 
     val genotypes = GermlineThreshold.Caller.callVariantsAtLocus(pileup, 8 /* 8% variant allele fraction */ , emitRef = false)

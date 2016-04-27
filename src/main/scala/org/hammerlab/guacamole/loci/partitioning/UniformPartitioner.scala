@@ -1,13 +1,14 @@
 package org.hammerlab.guacamole.loci.partitioning
 
 import org.apache.spark.rdd.RDD
+import org.hammerlab.guacamole.HasReferenceRegion
 import org.hammerlab.guacamole.loci.map.LociMap
 import org.hammerlab.guacamole.loci.partitioning.ApproximatePartitioner.MicroPartitionIdx
 import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.{LociPartitioning, NumPartitions, PartitionIdx}
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.logging.DebugLogArgs
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
-import org.hammerlab.guacamole.{HasReferenceRegion, PerSample}
+import org.hammerlab.guacamole.readsets.PerSample
 import org.kohsuke.args4j.{Option => Args4jOption}
 import spire.implicits._
 import spire.math.Integral

@@ -6,7 +6,8 @@ import org.hammerlab.guacamole.loci.partitioning.ApproximatePartitioner.NumMicro
 import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.{LociPartitioning, NumPartitions, PartitionIdx}
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
-import org.hammerlab.guacamole.{HasReferenceRegion, PerSample}
+import org.hammerlab.guacamole.readsets.PerSample
+import org.hammerlab.guacamole.HasReferenceRegion
 import org.kohsuke.args4j.{Option => Args4jOption}
 
 import scala.collection.Map

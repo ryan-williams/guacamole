@@ -1,7 +1,5 @@
-package org.hammerlab.guacamole.reads
+package org.hammerlab.guacamole.readsets
 
-import org.apache.spark.rdd.RDD
-import org.bdgenomics.adam.models.SequenceDictionary
 import org.hammerlab.guacamole.loci.set.LociParser
 
 /**
@@ -44,35 +42,6 @@ object InputFilters {
       passedVendorQualityChecks,
       isPaired
     )
-  }
-
-  /**
-   * Apply filters to an RDD of reads.
-   *
-   * @param filters
-   * @param reads
-   * @param sequenceDictionary
-   * @return filtered RDD
-   */
-  def filterRDD(filters: InputFilters, reads: RDD[Read], sequenceDictionary: SequenceDictionary): RDD[Read] = {
-    /* Note that the InputFilter properties are public, and some loaders directly apply
-     * the filters as the reads are loaded, instead of filtering an existing RDD as we do here. If more filters
-     * are added, be sure to update those implementations.
-     *
-     * This is implemented as a static function instead of a method in InputFilters because the overlapsLoci
-     * attribute cannot be serialized.
-     */
-    var result = reads
-    if (filters.overlapsLoci.nonEmpty) {
-      val loci = filters.overlapsLoci.get.result(Read.contigLengths(sequenceDictionary))
-      val broadcastLoci = reads.sparkContext.broadcast(loci)
-      result = result.filter(
-        read => read.isMapped && read.asMappedRead.get.overlapsLociSet(broadcastLoci.value))
-    }
-    if (filters.nonDuplicate) result = result.filter(!_.isDuplicate)
-    if (filters.passedVendorQualityChecks) result = result.filter(!_.failedVendorQualityChecks)
-    if (filters.isPaired) result = result.filter(_.isPaired)
-    result
   }
 }
 

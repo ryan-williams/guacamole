@@ -7,8 +7,9 @@ import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.LociPartitionin
 import org.hammerlab.guacamole.loci.set.{Contig, LociSet}
 import org.hammerlab.guacamole.logging.DelayedMessages
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
+import org.hammerlab.guacamole.readsets.PerSample
 import org.hammerlab.guacamole.windowing.{SlidingWindow, SplitIterator}
-import org.hammerlab.guacamole.{HasReferenceRegion, PerSample}
+import org.hammerlab.guacamole.HasReferenceRegion
 
 import scala.collection.mutable.{HashMap => MutableHashMap}
 import scala.reflect.ClassTag

@@ -9,9 +9,10 @@ import org.hammerlab.guacamole.Common
 import org.hammerlab.guacamole.Common.GermlineCallerArgs
 import org.hammerlab.guacamole.alignment.AffineGapPenaltyAlignment
 import org.hammerlab.guacamole.assembly.DeBruijnGraph
-import org.hammerlab.guacamole.distributed.LociPartitionUtils.{LociPartitioning, partitionLociAccordingToArgs}
 import org.hammerlab.guacamole.distributed.WindowFlatMapUtils.windowFlatMapWithState
 import org.hammerlab.guacamole.likelihood.Likelihood
+import org.hammerlab.guacamole.loci.partitioning.ArgsPartitioner
+import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.LociPartitioning
 import org.hammerlab.guacamole.logging.DelayedMessages
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.pileup.Pileup
@@ -209,7 +210,7 @@ object GermlineAssemblyCaller {
         .mappedReads
         .filter(_.alignmentQuality > minAlignmentQuality)
 
-      val lociPartitions = partitionLociAccordingToArgs(
+      val lociPartitions = ArgsPartitioner(
         args,
         loci.result(readSet.contigLengths),
         readSet.mappedReads

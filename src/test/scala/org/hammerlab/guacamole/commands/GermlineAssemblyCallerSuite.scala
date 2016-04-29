@@ -2,7 +2,7 @@ package org.hammerlab.guacamole.commands
 
 import org.hammerlab.guacamole._
 import org.hammerlab.guacamole.commands.GermlineAssemblyCaller.Arguments
-import org.hammerlab.guacamole.distributed.LociPartitionUtils
+import org.hammerlab.guacamole.loci.partitioning.UniformPartitioner
 import org.hammerlab.guacamole.loci.set.LociParser
 import org.hammerlab.guacamole.reads.InputFilters
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
@@ -54,11 +54,7 @@ class GermlineAssemblyCallerSuite extends GuacFunSuite with BeforeAndAfterAll {
         )
       )
 
-    val lociPartitions =
-      LociPartitionUtils.partitionLociUniformly(
-        numPartitions = args.parallelism,
-        loci = lociParser.result(readSet.contigLengths)
-      )
+    val lociPartitions = UniformPartitioner(args.parallelism, lociParser.result(readSet.contigLengths))
 
     val variants =
       GermlineAssemblyCaller.Caller.discoverGermlineVariants(

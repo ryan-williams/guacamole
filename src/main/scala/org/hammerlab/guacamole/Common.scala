@@ -22,7 +22,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.hadoop.mapred.FileAlreadyExistsException
 import org.apache.spark.{Logging, SparkContext}
-import org.hammerlab.guacamole.distributed.LociPartitionUtils
+import org.hammerlab.guacamole.loci.partitioning.ApproximatePartitionerArgs
 import org.hammerlab.guacamole.logging.DebugLogArgs
 import org.hammerlab.guacamole.reads.{InputFilters, ReadLoadingConfigArgs}
 import org.hammerlab.guacamole.variants.Concordance.ConcordanceArgs
@@ -58,9 +58,9 @@ object Common extends Logging {
     var tumorReads: String = ""
   }
 
-  trait GermlineCallerArgs extends GenotypeOutputArgs with ReadsArgs with ConcordanceArgs with LociPartitionUtils.Arguments
+  trait GermlineCallerArgs extends GenotypeOutputArgs with ReadsArgs with ConcordanceArgs with ApproximatePartitionerArgs
 
-  trait SomaticCallerArgs extends GenotypeOutputArgs with TumorNormalReadsArgs with LociPartitionUtils.Arguments
+  trait SomaticCallerArgs extends GenotypeOutputArgs with TumorNormalReadsArgs with ApproximatePartitionerArgs
 
   /**
    * Given arguments for a single set of reads, and a spark context, return a ReadSet.

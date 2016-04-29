@@ -3,8 +3,8 @@ package org.hammerlab.guacamole.commands
 import org.apache.spark.SparkContext
 import org.hammerlab.guacamole._
 import org.hammerlab.guacamole.commands.GermlineAssemblyCaller.Arguments
-import org.hammerlab.guacamole.distributed.LociPartitionUtils
-import org.hammerlab.guacamole.loci.set.{LociParser, Builder => LociSetBuilder}
+import org.hammerlab.guacamole.loci.partitioning.UniformPartitioner
+import org.hammerlab.guacamole.loci.set.LociParser
 import org.hammerlab.guacamole.reads.InputFilters
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.hammerlab.guacamole.util.TestUtil
@@ -60,11 +60,7 @@ class GermlineAssemblyCallerSuite extends FunSuite with Matchers with BeforeAndA
         )
       )
 
-    val lociPartitions =
-      LociPartitionUtils.partitionLociUniformly(
-        numPartitions = args.parallelism,
-        loci = lociBuilder.result(readSet.contigLengths)
-      )
+    val lociPartitions = UniformPartitioner(args.parallelism, lociBuilder.result(readSet.contigLengths))
 
     val variants =
       GermlineAssemblyCaller.Caller.discoverGermlineVariants(

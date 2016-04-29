@@ -29,10 +29,10 @@ import org.hammerlab.guacamole.commands.jointcaller.Parameters.SomaticGenotypePo
 import org.hammerlab.guacamole.commands.jointcaller.annotation.{InsufficientNormal, MultiSampleAnnotations, SingleSampleAnnotations, StrandBias}
 import org.hammerlab.guacamole.commands.jointcaller.evidence.{MultiSampleMultiAlleleEvidence, MultiSampleSingleAlleleEvidence, NormalDNASingleSampleSingleAlleleEvidence, TumorDNASingleSampleSingleAlleleEvidence, TumorRNASingleSampleSingleAlleleEvidence}
 import org.hammerlab.guacamole.commands.jointcaller.{AlleleAtLocus, Input, InputCollection, Parameters}
-import org.hammerlab.guacamole.distributed.LociPartitionUtils.{LociPartitioning, PartitionIdx}
 import org.hammerlab.guacamole.distributed.TaskPosition
 import org.hammerlab.guacamole.loci.SimpleRange
 import org.hammerlab.guacamole.loci.map.{Contig => LociMapContig, ContigSerializer => LociMapContigSerializer, Serializer => LociMapSerializer}
+import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.{LociPartitioning, PartitionIdx}
 import org.hammerlab.guacamole.loci.set.{LociSet, Contig => LociSetContig, ContigSerializer => LociSetContigSerializer, Serializer => LociSetSerializer}
 import org.hammerlab.guacamole.pileup.{Pileup, PileupElement}
 import org.hammerlab.guacamole.reads.{MappedRead, MappedReadSerializer, MateAlignmentProperties, PairedRead, Read, UnmappedRead, UnmappedReadSerializer}

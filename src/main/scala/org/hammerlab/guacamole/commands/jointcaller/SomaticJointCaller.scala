@@ -6,9 +6,8 @@ import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole._
 import org.hammerlab.guacamole.commands.SparkCommand
 import org.hammerlab.guacamole.commands.jointcaller.evidence.{MultiSampleMultiAlleleEvidence, MultiSampleSingleAlleleEvidence}
-import org.hammerlab.guacamole.distributed.LociPartitionUtils
-import org.hammerlab.guacamole.distributed.LociPartitionUtils.partitionLociAccordingToArgs
 import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMapMultipleRDDs
+import org.hammerlab.guacamole.loci.partitioning.{ApproximatePartitionerArgs, ArgsPartitioner}
 import org.hammerlab.guacamole.loci.set.{LociParser, LociSet}
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.readsets.{InputFilters, NoSequenceDictionaryArgs, PerSample, ReadSets}
@@ -18,8 +17,8 @@ import org.kohsuke.args4j.{Option => Args4jOption}
 
 object SomaticJoint {
   class Arguments
-    extends Parameters.CommandlineArguments
-      with LociPartitionUtils.Arguments
+    extends ApproximatePartitionerArgs
+      with Parameters.CommandlineArguments
       with NoSequenceDictionaryArgs
       with InputCollection.Arguments {
 
@@ -180,7 +179,7 @@ object SomaticJoint {
                 forceCallLoci: LociSet = LociSet(),
                 onlySomatic: Boolean = false,
                 includeFiltered: Boolean = false,
-                distributedUtilArguments: LociPartitionUtils.Arguments = new LociPartitionUtils.Arguments {}): RDD[MultiSampleMultiAlleleEvidence] = {
+                distributedUtilArguments: ApproximatePartitionerArgs = new ApproximatePartitionerArgs {}): RDD[MultiSampleMultiAlleleEvidence] = {
 
     assume(loci.nonEmpty)
 
@@ -191,7 +190,7 @@ object SomaticJoint {
     val mappedReadRDDs = readsRDDs.mappedReads
 
     val lociPartitions =
-      partitionLociAccordingToArgs(
+      ArgsPartitioner(
         distributedUtilArguments,
         // When mapping over pileups, at locus x we call variants at locus x + 1. Therefore we subtract 1 from the user-
         // specified loci.

@@ -3,7 +3,7 @@ package org.hammerlab.guacamole.distributed
 import org.apache.commons.math3
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
-import org.hammerlab.guacamole.distributed.LociPartitionUtils.LociPartitioning
+import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.LociPartitioning
 import org.hammerlab.guacamole.loci.set.{Contig, LociSet}
 import org.hammerlab.guacamole.logging.DelayedMessages
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
@@ -232,10 +232,10 @@ object WindowFlatMapUtils {
     halfWindowSize: Long,
     generateFromWindows: (Contig, PerSample[SlidingWindow[R]]) => Iterator[T]): Iterator[T] = {
 
-    val regionSplitByContigPerSample: PerSample[RegionsByContig[R]] = taskRegionsPerSample.map(new RegionsByContig(_))
+    val regionsSplitByContigPerSample: PerSample[RegionsByContig[R]] = taskRegionsPerSample.map(new RegionsByContig(_))
 
     taskLoci.contigs.flatMap(contig => {
-      val regionIterator: PerSample[Iterator[R]] = regionSplitByContigPerSample.map(_.next(contig.name))
+      val regionIterator: PerSample[Iterator[R]] = regionsSplitByContigPerSample.map(_.next(contig.name))
       val windows: PerSample[SlidingWindow[R]] = regionIterator.map(SlidingWindow[R](contig.name, halfWindowSize, _))
       generateFromWindows(contig, windows)
     }).iterator

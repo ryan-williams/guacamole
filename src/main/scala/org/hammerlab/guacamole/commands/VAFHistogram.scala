@@ -9,9 +9,9 @@ import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.hammerlab.guacamole._
-import org.hammerlab.guacamole.distributed.LociPartitionUtils
-import org.hammerlab.guacamole.distributed.LociPartitionUtils.{LociPartitioning, partitionLociAccordingToArgs}
 import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMap
+import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.LociPartitioning
+import org.hammerlab.guacamole.loci.partitioning.{ApproximatePartitionerArgs, ArgsPartitioner}
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.reads.MappedRead
@@ -48,7 +48,7 @@ object VariantLocus {
 
 object VAFHistogram {
 
-  protected class Arguments extends LociPartitionUtils.Arguments with ReadLoadingConfigArgs {
+  protected class Arguments extends ApproximatePartitionerArgs with ReadLoadingConfigArgs {
 
     @Args4jOption(name = "--out", required = false, forbids = Array("--local-out"),
       usage = "HDFS file path to save the variant allele frequency histogram")
@@ -118,7 +118,7 @@ object VAFHistogram {
           config = ReadLoadingConfig(args)
         )
 
-      val lociPartitions = partitionLociAccordingToArgs(
+      val lociPartitions = ArgsPartitioner(
         args,
         loci.result(contigLengths),
         readsRDDs(0).mappedReads  // Use the first set of reads as a proxy for read depth

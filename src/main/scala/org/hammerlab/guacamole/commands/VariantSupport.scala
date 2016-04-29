@@ -22,9 +22,8 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.bdgenomics.adam.rdd.ADAMContext
 import org.bdgenomics.formats.avro.Variant
-import org.hammerlab.guacamole.distributed.LociPartitionUtils
-import org.hammerlab.guacamole.distributed.LociPartitionUtils.partitionLociUniformly
 import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMap
+import org.hammerlab.guacamole.loci.partitioning.{UniformPartitioner, UniformPartitionerArgs}
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.reads.MappedRead
@@ -35,7 +34,7 @@ import org.kohsuke.args4j.{Argument, Option => Args4jOption}
 
 object VariantSupport {
 
-  protected class Arguments extends LociPartitionUtils.Arguments with ReadLoadingConfigArgs {
+  protected class Arguments extends UniformPartitionerArgs with ReadLoadingConfigArgs {
     @Args4jOption(name = "--input-variant", required = true, aliases = Array("-v"),
       usage = "")
     var variants: String = ""
@@ -50,7 +49,6 @@ object VariantSupport {
 
     @Args4jOption(name = "--reference-fasta", required = true, usage = "Local path to a reference FASTA file")
     var referenceFastaPath: String = ""
-
   }
 
   object Caller extends SparkCommand[Arguments] {
@@ -94,7 +92,7 @@ object VariantSupport {
             .collect()
         )
 
-      val lociPartitions = partitionLociUniformly(args.parallelism, lociSet)
+      val lociPartitions = UniformPartitioner(args.parallelism, lociSet)
 
       val alleleCounts =
         reads.map(sampleReads =>

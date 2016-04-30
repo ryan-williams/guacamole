@@ -1,8 +1,8 @@
 package org.hammerlab.guacamole.commands
 
-import org.hammerlab.guacamole._
 import org.hammerlab.guacamole.commands.GermlineAssemblyCaller.Arguments
 import org.hammerlab.guacamole.loci.partitioning.UniformPartitioner
+import org.hammerlab.guacamole.data.NA12878TestUtil
 import org.hammerlab.guacamole.loci.set.LociParser
 import org.hammerlab.guacamole.readsets.{InputFilters, ReadSets}
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
@@ -14,7 +14,7 @@ class GermlineAssemblyCallerSuite extends GuacFunSuite with BeforeAndAfterAll {
 
   val args = new Arguments
 
-  val input = NA12878TestUtils.na12878SubsetBam
+  val input = NA12878TestUtil.subsetBam
   args.reads = TestUtil.testDataPath(input)
   args.parallelism = 1
 
@@ -25,7 +25,7 @@ class GermlineAssemblyCallerSuite extends GuacFunSuite with BeforeAndAfterAll {
     reference = ReferenceBroadcast(referenceFastaPath, sc)
   }
 
-  val referenceFastaPath = TestUtil.testDataPath(NA12878TestUtils.chr1PrefixFasta)
+  val referenceFastaPath = TestUtil.testDataPath(NA12878TestUtil.chr1PrefixFasta)
 
   def verifyVariantsAtLocus(locus: Int,
                             contig: String = "chr1",

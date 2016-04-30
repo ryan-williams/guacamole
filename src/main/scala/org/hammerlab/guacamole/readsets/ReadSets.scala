@@ -311,8 +311,7 @@ object ReadSets {
     if (filters.overlapsLoci.nonEmpty) {
       val loci = filters.overlapsLoci.get.result(contigLengths(sequenceDictionary))
       val broadcastLoci = reads.sparkContext.broadcast(loci)
-      result = result.filter(
-        read => read.isMapped && read.asMappedRead.get.overlapsLociSet(broadcastLoci.value))
+      result = result.filter(_.asMappedRead.exists(broadcastLoci.value.intersects))
     }
     if (filters.nonDuplicate) result = result.filter(!_.isDuplicate)
     if (filters.passedVendorQualityChecks) result = result.filter(!_.failedVendorQualityChecks)

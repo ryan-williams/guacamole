@@ -7,7 +7,7 @@ import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.{LociPartitioni
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.readsets.PerSample
-import org.hammerlab.guacamole.HasReferenceRegion
+import org.hammerlab.guacamole.reference.Region
 import org.kohsuke.args4j.{Option => Args4jOption}
 
 import scala.collection.Map
@@ -35,9 +35,9 @@ object ApproximatePartitioner extends LociPartitioner[ApproximatePartitionerArgs
   type MicroPartitionIdx = Long
   type NumMicroPartitions = Long
 
-  override def apply[M <: HasReferenceRegion](args: ApproximatePartitionerArgs,
-                                              loci: LociSet,
-                                              regionRDDs: PerSample[RDD[M]]): LociPartitioning = {
+  override def apply[R <: Region](args: ApproximatePartitionerArgs,
+                                  loci: LociSet,
+                                  regionRDDs: PerSample[RDD[R]]): LociPartitioning = {
     val sc = regionRDDs(0).sparkContext
     val numPartitions =
       if (args.parallelism == 0)
@@ -80,13 +80,13 @@ object ApproximatePartitioner extends LociPartitioner[ApproximatePartitionerArgs
    *                                    In the extreme, setting this to greater than the number of loci (per partition)
    *                                    will result in an exact calculation.
    * @param regionRDDs: region RDD 1, region RDD 2, ...
-   *                    Any number RDD[ReferenceRegion] arguments giving the regions to base the partitioning on.
+   *                    Any number RDD[Region] arguments giving the regions to base the partitioning on.
    * @return LociMap of locus -> partition assignments.
    */
-  def apply[M <: HasReferenceRegion](numPartitions: NumPartitions,
-                                     loci: LociSet,
-                                     microPartitionsPerPartition: NumMicroPartitions,
-                                     regionRDDs: PerSample[RDD[M]]): LociPartitioning = {
+  def apply[R <: Region](numPartitions: NumPartitions,
+                         loci: LociSet,
+                         microPartitionsPerPartition: NumMicroPartitions,
+                         regionRDDs: PerSample[RDD[R]]): LociPartitioning = {
 
     val sc = regionRDDs(0).sparkContext
 

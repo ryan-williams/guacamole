@@ -1,7 +1,6 @@
 package org.hammerlab.guacamole.loci.partitioning
 
 import org.apache.spark.rdd.RDD
-import org.hammerlab.guacamole.HasReferenceRegion
 import org.hammerlab.guacamole.loci.map.LociMap
 import org.hammerlab.guacamole.loci.partitioning.ApproximatePartitioner.MicroPartitionIdx
 import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.{LociPartitioning, NumPartitions, PartitionIdx}
@@ -9,6 +8,7 @@ import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.logging.DebugLogArgs
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.readsets.PerSample
+import org.hammerlab.guacamole.reference.Region
 import org.kohsuke.args4j.{Option => Args4jOption}
 import spire.implicits._
 import spire.math.Integral
@@ -26,15 +26,15 @@ trait UniformPartitionerArgs
 
 object UniformPartitioner extends LociPartitioner[UniformPartitionerArgs] {
 
-  override def apply[M <: HasReferenceRegion](args: UniformPartitionerArgs,
-                                              loci: LociSet,
-                                              unused: PerSample[RDD[M]]): LociPartitioning =
+  override def apply[R <: Region](args: UniformPartitionerArgs,
+                                  loci: LociSet,
+                                  unused: PerSample[RDD[R]]): LociPartitioning =
     partition(args.parallelism, loci)
 
-  def apply[M <: HasReferenceRegion](numPartitions: PartitionIdx, loci: LociSet): LociMap[PartitionIdx] =
+  def apply[R <: Region](numPartitions: PartitionIdx, loci: LociSet): LociMap[PartitionIdx] =
     partition(numPartitions, loci)
 
-  def apply[M <: HasReferenceRegion](numMicroPartitions: MicroPartitionIdx, loci: LociSet): LociMap[MicroPartitionIdx] =
+  def apply[R <: Region](numMicroPartitions: MicroPartitionIdx, loci: LociSet): LociMap[MicroPartitionIdx] =
     partition(numMicroPartitions, loci)
 
   /**

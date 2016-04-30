@@ -26,7 +26,7 @@ import htsjdk.variant.vcf.VCFFileReader
 import org.apache.commons.io.IOUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
-import org.hammerlab.guacamole.HasReferenceRegion
+import org.hammerlab.guacamole.reference.Region
 import org.hammerlab.guacamole.strings.TruncatedToString
 
 import scala.collection.JavaConversions._
@@ -61,7 +61,7 @@ case class LociSet(private val map: SortedMap[String, Contig]) extends Truncated
   /** Build a truncate-able toString() out of underlying contig pieces. */
   def stringPieces: Iterator[String] = contigs.iterator.flatMap(_.stringPieces)
 
-  def intersects(region: HasReferenceRegion): Boolean =
+  def intersects(region: Region): Boolean =
     onContig(region.referenceContig).intersects(region.start, region.end)
 
   /**

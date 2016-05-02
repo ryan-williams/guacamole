@@ -13,6 +13,8 @@ import org.kohsuke.args4j.{Option => Args4jOption}
 import spire.implicits._
 import spire.math.Integral
 
+import scala.reflect.ClassTag
+
 trait UniformPartitionerArgs
   extends DebugLogArgs
     with LociPartitionerArgs {
@@ -26,9 +28,9 @@ trait UniformPartitionerArgs
 
 object UniformPartitioner extends LociPartitioner[UniformPartitionerArgs] {
 
-  override def apply[M <: ReferenceRegion](args: UniformPartitionerArgs,
-                                              loci: LociSet,
-                                              unused: PerSample[RDD[M]]): LociPartitioning =
+  override def apply[R <: ReferenceRegion: ClassTag](args: UniformPartitionerArgs,
+                                                     loci: LociSet,
+                                                     unused: PerSample[RDD[R]]): LociPartitioning =
     partition(args.parallelism, loci)
 
   def apply[M <: ReferenceRegion](numPartitions: PartitionIndex, loci: LociSet): LociMap[PartitionIndex] =

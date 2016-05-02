@@ -8,15 +8,17 @@ import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.readsets.PerSample
 import org.hammerlab.guacamole.reference.ReferenceRegion
 
+import scala.reflect.ClassTag
+
 trait LociPartitionerArgs extends LociArgs
 
 trait LociPartitioner[Args <: LociPartitionerArgs] {
-  def apply[M <: ReferenceRegion](args: Args,
-                                         loci: LociSet,
-                                         regionsRDD: RDD[M]): LociPartitioning =
+  def apply[R <: ReferenceRegion: ClassTag](args: Args,
+                                            loci: LociSet,
+                                            regionsRDD: RDD[R]): LociPartitioning =
     apply(args, loci, Vector(regionsRDD))
 
-  def apply[M <: ReferenceRegion](args: Args, loci: LociSet, regionsRDDs: PerSample[RDD[M]]): LociPartitioning
+  def apply[R <: ReferenceRegion: ClassTag](args: Args, loci: LociSet, regionsRDDs: PerSample[RDD[R]]): LociPartitioning
 }
 
 object LociPartitioner {

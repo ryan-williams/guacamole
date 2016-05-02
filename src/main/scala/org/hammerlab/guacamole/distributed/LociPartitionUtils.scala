@@ -9,8 +9,8 @@ import org.hammerlab.guacamole.logging.DebugLogArgs
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.reference.ReferenceRegion
 import org.kohsuke.args4j.{Option => Args4jOption}
-import spire.implicits._
 import spire.math.Integral
+import spire.syntax.{AdditiveSemigroupOps, ConvertableFromOps, PartialOrderOps}
 
 import scala.collection.Map
 import scala.reflect.ClassTag
@@ -90,20 +90,20 @@ object LociPartitionUtils {
    * @return LociMap of locus -> partition assignments
    */
   def partitionLociUniformly[N: Integral](numPartitions: N, loci: LociSet): LociMap[N] = {
-    assume(numPartitions >= 1, "`numPartitions` (--parallelism) should be >= 1")
+    assume(new PartialOrderOps(numPartitions) >= Integral[N].one, "`numPartitions` (--parallelism) should be >= 1")
 
-    val lociPerPartition = math.max(1, loci.count.toDouble / numPartitions.toDouble())
+    val lociPerPartition = math.max(1, loci.count.toDouble / new ConvertableFromOps(numPartitions).toDouble())
 
     progress(
       "Splitting loci evenly among %,d numPartitions = ~%,.0f loci per partition"
-        .format(numPartitions.toLong(), lociPerPartition)
+        .format(new ConvertableFromOps(numPartitions).toLong(), lociPerPartition)
     )
 
     var lociAssigned = 0L
 
     var partition = Integral[N].zero
 
-    def remainingForThisPartition = math.round(((partition + 1).toDouble * lociPerPartition) - lociAssigned)
+    def remainingForThisPartition = math.round((new ConvertableFromOps((new AdditiveSemigroupOps(partition) + 1)).toDouble * lociPerPartition) - lociAssigned)
 
     val builder = LociMap.newBuilder[N]
 
@@ -118,7 +118,7 @@ object LociPartitionUtils {
         builder.put(contig.name, start, start + length, partition)
         start += length
         lociAssigned += length
-        if (remainingForThisPartition == 0) partition += 1
+        if (remainingForThisPartition == 0) partition = new AdditiveSemigroupOps(partition) + Integral[N].one
       }
     }
 

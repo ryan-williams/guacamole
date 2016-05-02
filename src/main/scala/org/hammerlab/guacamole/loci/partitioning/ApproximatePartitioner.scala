@@ -11,6 +11,7 @@ import org.hammerlab.guacamole.reference.ReferenceRegion
 import org.kohsuke.args4j.{Option => Args4jOption}
 
 import scala.collection.Map
+import scala.reflect.ClassTag
 
 trait ApproximatePartitionerArgs extends UniformPartitionerArgs {
 
@@ -35,9 +36,9 @@ object ApproximatePartitioner extends LociPartitioner[ApproximatePartitionerArgs
   type MicroPartitionIndex = Long
   type NumMicroPartitions = Long
 
-  override def apply[M <: ReferenceRegion](args: ApproximatePartitionerArgs,
-                                           loci: LociSet,
-                                           regionRDDs: PerSample[RDD[M]]): LociPartitioning = {
+  override def apply[R <: ReferenceRegion: ClassTag](args: ApproximatePartitionerArgs,
+                                                     loci: LociSet,
+                                                     regionRDDs: PerSample[RDD[R]]): LociPartitioning = {
     val sc = regionRDDs(0).sparkContext
     val numPartitions =
       if (args.parallelism == 0)
@@ -83,10 +84,10 @@ object ApproximatePartitioner extends LociPartitioner[ApproximatePartitionerArgs
    *                    Any number RDD[ReferenceRegion] arguments giving the regions to base the partitioning on.
    * @return LociMap of locus -> partition assignments.
    */
-  def apply[M <: ReferenceRegion](numPartitions: NumPartitions,
-                                     loci: LociSet,
-                                     microPartitionsPerPartition: NumMicroPartitions,
-                                     regionRDDs: PerSample[RDD[M]]): LociPartitioning = {
+  def apply[R <: ReferenceRegion: ClassTag](numPartitions: NumPartitions,
+                                            loci: LociSet,
+                                            microPartitionsPerPartition: NumMicroPartitions,
+                                            regionRDDs: PerSample[RDD[R]]): LociPartitioning = {
 
     assume(numPartitions >= 1)
     assume(loci.count > 0)
@@ -114,30 +115,21 @@ object ApproximatePartitioner extends LociPartitioner[ApproximatePartitionerArgs
     val broadcastMicroPartitions = sc.broadcast(lociToMicroPartitionMap)
 
     // Step 2: total up regions overlapping each micro partition. We keep the totals as an array of Longs.
-    var sampleNum = 1
-    val regionCounts: PerSample[Map[MicroPartitionIndex, Long]] =
-      regionRDDs.map(regions => {
-        progress(s"Collecting region counts for RDD $sampleNum of ${regionRDDs.length}")
+    val regionsPerMicroPartition: Map[MicroPartitionIndex, Long] = {
+      var sampleNum = 1
 
-        val result =
-          regions
-          .flatMap(region =>
-            broadcastMicroPartitions.value
-            .onContig(region.referenceContig)
-            .getAll(region.start, region.end)
-          )
-          .countByValue()
+      sc.union(regionRDDs).flatMap(region =>
+        broadcastMicroPartitions
+          .value
+          .onContig(region.referenceContig)
+          .getAll(region.start, region.end)
+      ).countByValue()
+    }
 
-        progress("RDD %d: %,d regions".format(sampleNum, result.values.sum))
-
-        sampleNum += 1
-        result
-      })
-
-    val counts: Seq[Long] = (0L until numMicroPartitions).map(i => regionCounts.map(_.getOrElse(i, 0L)).sum)
+//    val counts: Array[Long] = regionsPerMicroPartition.toArray.sortBy(_._1).map(_._2)
 
     // Step 3: assign loci to partitions, taking into account region depth in each micro partition.
-    val totalRegions = counts.sum
+    val totalRegions = regionsPerMicroPartition.values.sum
     val regionsPerPartition = math.max(1, totalRegions / numPartitions.toDouble)
 
     progress(
@@ -145,7 +137,9 @@ object ApproximatePartitioner extends LociPartitioner[ApproximatePartitionerArgs
       .format(totalRegions, regionsPerPartition)
     )
 
-    val maxIndex = counts.view.zipWithIndex.maxBy(_._1)._2
+    val maxIndex = regionsPerMicroPartition.maxBy(_._2)._1.toInt
+
+    val counts: Seq[Long] = (0L until numMicroPartitions).map(i => regionsPerMicroPartition.getOrElse(i, 0L))
 
     progress(
       "Regions per micro partition: min=%,d mean=%,.0f max=%,d at %s.".format(

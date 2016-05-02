@@ -11,7 +11,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.hammerlab.guacamole</groupId>
   <artifactId>guacamole</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>0.0.1-shaded</version>
   <packaging>jar</packaging>
   <name>guacamole: variant caller</name>
 
@@ -259,6 +259,12 @@
       <groupId>org.bdgenomics.adam</groupId>
       <artifactId>adam-core_${scala.version.prefix}</artifactId>
       <version>${adam.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.bdgenomics.bdg-formats</groupId>
@@ -284,6 +290,12 @@
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-core_${scala.version.prefix}</artifactId>
       <version>${spark.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.spark</groupId>
@@ -314,11 +326,18 @@
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-client</artifactId>
       <version>${hadoop.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>18.0</version>
+      <version>14.0.1</version>
+      <!--<scope>provided</scope>-->
     </dependency>
     <dependency>
       <groupId>org.spire-math</groupId>
@@ -342,6 +361,12 @@
       <artifactId>spark-testing-base_2.10</artifactId>
       <version>${spark.version}_0.3.3</version>
       <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.scalatest</groupId>

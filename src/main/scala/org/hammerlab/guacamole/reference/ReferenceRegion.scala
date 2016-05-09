@@ -25,13 +25,15 @@ package org.hammerlab.guacamole.reference
 trait ReferenceRegion {
 
   /** Name of the reference contig */
-  val referenceContig: String
+  def referenceContig: Contig
 
   /** Start position on the genome, inclusive. Must be non-negative. */
-  val start: Long
+  def start: Long
+  def startPos = ReferencePosition(referenceContig, start)
 
   /** The end position on the genome, *exclusive*. Must be non-negative. */
-  val end: Long
+  def end: Long
+  def endPos = ReferencePosition(referenceContig, end)
 
   /**
    * Does the region overlap the given locus, with halfWindowSize padding?
@@ -51,3 +53,64 @@ trait ReferenceRegion {
   }
 }
 
+object ReferenceRegion {
+  // Order regions by end locus, increasing.
+  def orderByEnd[R <: ReferenceRegion] =
+    new Ordering[R] {
+      def compare(first: R, second: R) = second.end.compare(first.end)
+    }
+
+  implicit def intraContigPartialOrdering[R <: ReferenceRegion] =
+    new PartialOrdering[R] {
+      override def tryCompare(x: R, y: R): Option[Int] = {
+        if (x.referenceContig == y.referenceContig)
+          Some(x.start.compare(y.start))
+        else
+          None
+      }
+
+      override def lteq(x: R, y: R): Boolean = {
+        x.referenceContig == y.referenceContig && x.start <= y.start
+      }
+    }
+
+  val contigMap: Map[Contig, Int] =
+    Map(
+      "1" -> 1,
+      "2" -> 2,
+      "3" -> 3,
+      "4" -> 4,
+      "5" -> 5,
+      "6" -> 6,
+      "7" -> 7,
+      "8" -> 8,
+      "9" -> 9,
+      "10" -> 10,
+      "11" -> 11,
+      "12" -> 12,
+      "13" -> 13,
+      "14" -> 14,
+      "15" -> 15,
+      "16" -> 16,
+      "17" -> 17,
+      "18" -> 18,
+      "19" -> 19,
+      "20" -> 20,
+      "21" -> 21,
+      "22" -> 22,
+      "X" -> 23,
+      "Y" -> 24
+    )
+
+  val notFound = contigMap.size + 1
+
+  def getContigRank(contig: Contig): Int = contigMap.getOrElse(normalizeContig(contig), notFound)
+  def normalizeContig(contig: Contig): Contig = if (contig.startsWith("chr")) contig.drop(3) else contig
+
+  val contigOrdering =
+    new Ordering[Contig] {
+      override def compare(x: Contig, y: Contig): Int = {
+        getContigRank(x) - getContigRank(y)
+      }
+    }
+}

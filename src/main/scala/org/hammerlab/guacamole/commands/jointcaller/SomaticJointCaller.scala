@@ -187,7 +187,7 @@ object SomaticJoint {
     // specified loci.
     val broadcastForceCallLoci = sc.broadcast(forceCallLoci)
 
-    val mappedReadRDDs = readsRDDs.mappedReads
+    val mappedReadRDDs = readsRDDs.mappedReadsRDDs
 
     val lociPartitions =
       ArgsPartitioner(

@@ -21,10 +21,10 @@ object PartitionLoci extends SparkCommand[PartitionLociArgs] {
   override def run(args: PartitionLociArgs, sc: SparkContext): Unit = {
 
     val readsets = ReadSets(sc, args.paths)
-    val mappedReads = readsets.mappedReads
+    val mappedReads = readsets.mappedReadsRDDs
     val ReadSets(_, sequenceDictionary, contigLengths) = readsets
 
-    val loci = args.parseLoci().result(contigLengths)
+    val loci = args.parseLoci(sc.hadoopConfiguration).result(contigLengths)
 
     val partitioning = ApproximatePartitioner(args, loci, mappedReads)
 

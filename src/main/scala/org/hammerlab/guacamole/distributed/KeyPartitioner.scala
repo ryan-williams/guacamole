@@ -10,13 +10,14 @@ import org.apache.spark.Partitioner
  */
 case class KeyPartitioner(override val numPartitions: Int) extends Partitioner {
   def getPartition(key: Any): Int = key match {
-    case value: Long         => value.toInt
-    case value: TaskPosition => value.task
-    case _                   => throw new AssertionError("Unexpected key in PartitionByTask")
+    case i: Int            => i
+    case pos: TaskPosition => pos.task
+    case other             => throw new AssertionError("Unexpected key: $other")
   }
+
   override def equals(other: Any): Boolean = other match {
-    case h: KeyPartitioner => h.numPartitions == numPartitions
-    case _                 => false
+    case kp: KeyPartitioner => kp.numPartitions == numPartitions
+    case _                  => false
   }
 }
 

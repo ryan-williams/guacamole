@@ -44,13 +44,13 @@ import scala.collection.immutable.TreeMap
  *
  * @param map A map from contig-name to Contig, which is a set or genomic intervals as described above.
  */
-case class LociSet(private val map: SortedMap[String, Contig]) extends TruncatedToString {
+case class LociSet(@transient private val map: SortedMap[String, Contig]) extends TruncatedToString {
 
   /** The contigs included in this LociSet with a nonempty set of loci. */
-  lazy val contigs = map.values.toArray
+  @transient lazy val contigs = map.values.toArray
 
   /** The number of loci in this LociSet. */
-  lazy val count: Long = contigs.map(_.count).sum
+  @transient lazy val count: Long = contigs.map(_.count).sum
 
   def isEmpty = map.isEmpty
   def nonEmpty = map.nonEmpty

@@ -81,7 +81,7 @@ object VariantSupport {
           args.bams,
           InputFilters.empty,
           config = ReadLoadingConfig(args)
-        ).mappedReads
+        ).mappedReadsRDDs
 
 
       // Build a loci set from the variant positions

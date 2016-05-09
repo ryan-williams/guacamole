@@ -8,7 +8,6 @@ import org.apache.spark.mllib.clustering.{GaussianMixture, GaussianMixtureModel}
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
-import org.hammerlab.guacamole._
 import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMap
 import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.LociPartitioning
 import org.hammerlab.guacamole.loci.partitioning.{ApproximatePartitionerArgs, ArgsPartitioner}

@@ -54,8 +54,8 @@ object WindowFlatMapUtils {
           taskRegionsPerSample,
           taskLoci,
           halfWindowSize,
-          (loci, windows) => {
-            val lociIterator = loci.iterator
+          (contig, windows) => {
+            val lociIterator = contig.iterator
             var lastState: S = initialState
             val builder = Vector.newBuilder[T]
             while (SlidingWindow.advanceMultipleWindows(windows, lociIterator, skipEmpty).isDefined) {
@@ -234,6 +234,8 @@ object WindowFlatMapUtils {
 
     val regionsSplitByContigPerSample: PerSample[RegionsByContig[R]] = taskRegionsPerSample.map(new RegionsByContig(_))
 
+    // NOTE: we rely here on the reads having been sorted lexicographically by contig-name in the
+    // repartitionAndSortWithinPartitions above, and also in LociSet.contigs.
     taskLoci.contigs.flatMap(contig => {
       val regionIterator: PerSample[Iterator[R]] = regionsSplitByContigPerSample.map(_.next(contig.name))
       val windows: PerSample[SlidingWindow[R]] = regionIterator.map(SlidingWindow[R](contig.name, halfWindowSize, _))

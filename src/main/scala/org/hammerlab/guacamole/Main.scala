@@ -97,7 +97,7 @@ trait Scratch {
   import org.hammerlab.guacamole.loci.set.LociSet
 
   val readsets = ReadSets(sc, bams, InputFilters.empty)
-  val mappedReads = readsets.mappedReads
+  val mappedReads = readsets.mappedReadsRDDs
   val ReadSets(_, sd, cl) = readsets
   val loci = LociSet.all(cl)
 

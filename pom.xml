@@ -11,7 +11,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.hammerlab.guacamole</groupId>
   <artifactId>guacamole</artifactId>
-  <version>0.0.1-shaded</version>
+  <version>0.0.1-shaded-SNAPSHOT</version>
   <packaging>jar</packaging>
   <name>guacamole: variant caller</name>
 
@@ -74,11 +74,10 @@
             </filter>
           </filters>
           <artifactSet>
-            <excludes>
-              <exclude>org.eclipse.jdt:*</exclude>
-              <exclude>org.scalatest:*</exclude>
-              <exclude>org.apache.maven:lib:tests</exclude>
-            </excludes>
+            <includes>
+              <include>org.hammerlab.guacamole:*</include>
+              <include>com.google.guava:*</include>
+            </includes>
           </artifactSet>
           <relocations>
             <relocation>
@@ -287,6 +286,11 @@
       <version>0.11.0</version>
     </dependency>
     <dependency>
+      <groupId>com.github.samtools</groupId>
+      <artifactId>htsjdk</artifactId>
+      <version>1.139</version>
+    </dependency>
+    <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-core_${scala.version.prefix}</artifactId>
       <version>${spark.version}</version>
@@ -309,13 +313,14 @@
     </dependency>
     <dependency>
       <groupId>org.seqdoop</groupId>
-      <artifactId>htsjdk</artifactId>
-      <version>1.118</version>
-    </dependency>
-    <dependency>
-      <groupId>org.seqdoop</groupId>
       <artifactId>hadoop-bam</artifactId>
       <version>7.0.0</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.seqdoop</groupId>
+          <artifactId>htsjdk</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
@@ -337,7 +342,6 @@
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <version>14.0.1</version>
-      <!--<scope>provided</scope>-->
     </dependency>
     <dependency>
       <groupId>org.spire-math</groupId>

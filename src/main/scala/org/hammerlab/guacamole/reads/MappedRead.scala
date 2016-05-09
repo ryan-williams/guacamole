@@ -159,7 +159,7 @@ case class MappedRead(
     }
   }
 
-  override def toString(): String =
+  override def toString: String =
     "MappedRead(%s:%d, %s, %s)".format(
       referenceContig, start,
       cigar.toString,

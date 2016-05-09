@@ -1,29 +1,33 @@
 package org.hammerlab.guacamole.readsets
 
+import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.reference.{ReferencePosition, ReferenceRegion}
 
 import scala.collection.mutable
 
-class WindowIterator[R <: ReferenceRegion] private(halfWindowSize: Int, regions: BufferedIterator[R])
+class WindowIterator[R <: ReferenceRegion] private(halfWindowSize: Int,
+                                                   loci: Iterator[ReferencePosition],
+                                                   regions: BufferedIterator[R])
   extends Iterator[(ReferencePosition, (Iterable[R], Int, Int))] {
-
-  var pos: ReferencePosition = _
 
   val queue = mutable.PriorityQueue[R]()(ReferenceRegion.orderByEnd)
 
-  override def hasNext: Boolean = regions.hasNext
+  override def hasNext: Boolean = loci.hasNext
 
   override def next(): (ReferencePosition, (Iterable[R], Int, Int)) = {
-    pos = regions.head.startPos
+    val pos = loci.next()
+
+    val lowerLimit = pos - halfWindowSize
+    val upperLimit = pos + halfWindowSize
 
     var numDropped = 0
-    while (queue.headOption.exists(r => !(r.endPos > pos - halfWindowSize))) {
+    while (queue.headOption.exists(r => !(r.endPos > lowerLimit))) {
       queue.dequeue()
       numDropped += 1
     }
 
     var numAdded = 0
-    while (regions.head.startPos <= pos + halfWindowSize) {
+    while (regions.hasNext && regions.head.startPos <= upperLimit) {
       queue.enqueue(regions.next())
       numAdded += 1
     }
@@ -33,6 +37,13 @@ class WindowIterator[R <: ReferenceRegion] private(halfWindowSize: Int, regions:
 }
 
 object WindowIterator {
-  def apply[R <: ReferenceRegion](halfWindowSize: Int, regions: Iterator[R]): WindowIterator[R] =
-    new WindowIterator(halfWindowSize, regions.buffered)
+  def apply[R <: ReferenceRegion](halfWindowSize: Int,
+                                  loci: LociSet,
+                                  regions: Iterator[R]): WindowIterator[R] =
+    WindowIterator(halfWindowSize, loci.iterator, regions)
+
+  def apply[R <: ReferenceRegion](halfWindowSize: Int,
+                                  loci: Iterator[ReferencePosition],
+                                  regions: Iterator[R]): WindowIterator[R] =
+    new WindowIterator(halfWindowSize, loci, regions.buffered)
 }

@@ -3,6 +3,7 @@ package org.hammerlab.guacamole.readsets
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
+import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.rdd.RDDStats._
 import org.hammerlab.guacamole.reference.{ReferencePosition, ReferenceRegion}
 import org.hammerlab.guacamole.util.Stats
@@ -56,7 +57,7 @@ class RegionRDD[R <: ReferenceRegion: ClassTag] private(rdd: RDD[R]) {
       .reduceByKey(_ + _)
       .sortByKey()
 
-  def slidingLociWindow(halfWindowSize: Int): RDD[(ReferencePosition, (Iterable[R], Int, Int))] = {
+  def slidingLociWindow(halfWindowSize: Int, loci: LociSet): RDD[(ReferencePosition, (Iterable[R], Int, Int))] = {
     val firstRegionsRDD = rdd.mapPartitions(BoundedContigIterator(2 * halfWindowSize + 1, _))
 
     val partitionStartPositions =
@@ -89,7 +90,7 @@ class RegionRDD[R <: ReferenceRegion: ClassTag] private(rdd: RDD[R]) {
           BoundedIterator(
             fromOpt,
             untilOpt,
-            WindowIterator(halfWindowSize, bufferedReads)
+            WindowIterator(halfWindowSize, loci, bufferedReads)
           )
         }
       )

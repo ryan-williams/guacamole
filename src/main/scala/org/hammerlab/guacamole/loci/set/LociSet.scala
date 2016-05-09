@@ -26,7 +26,7 @@ import htsjdk.variant.vcf.VCFFileReader
 import org.apache.commons.io.IOUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
-import org.hammerlab.guacamole.reference.ReferenceRegion
+import org.hammerlab.guacamole.reference.{ReferencePosition, ReferenceRegion}
 import org.hammerlab.guacamole.strings.TruncatedToString
 
 import scala.collection.JavaConversions._
@@ -63,6 +63,9 @@ case class LociSet(@transient private val map: SortedMap[String, Contig]) extend
 
   def intersects(region: ReferenceRegion): Boolean =
     onContig(region.referenceContig).intersects(region.start, region.end)
+
+  def iterator: Iterator[ReferencePosition] =
+    contigs.iterator.flatMap(contig => contig.iterator.map(pos => ReferencePosition(contig.name, pos)))
 
   /**
    * Split the LociSet into two sets, where the first one has `numToTake` loci, and the second one has the

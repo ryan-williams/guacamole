@@ -51,6 +51,8 @@ trait ReferenceRegion {
   def overlaps(other: ReferenceRegion): Boolean = {
     other.referenceContig == referenceContig && (overlapsLocus(other.start) || other.overlapsLocus(start))
   }
+
+  def regionStr: String = s"${referenceContig}:[$start-$end)"
 }
 
 object ReferenceRegion {

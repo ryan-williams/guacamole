@@ -3,6 +3,7 @@ package org.hammerlab.guacamole.readsets
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.reference.{ReferencePosition, ReferenceRegion}
 
+import scala.collection.immutable.Queue
 import scala.collection.mutable
 
 class WindowIterator[R <: ReferenceRegion] private(halfWindowSize: Int,
@@ -10,7 +11,8 @@ class WindowIterator[R <: ReferenceRegion] private(halfWindowSize: Int,
                                                    regions: BufferedIterator[R])
   extends Iterator[(ReferencePosition, (Iterable[R], Int, Int))] {
 
-  val queue = mutable.PriorityQueue[R]()(ReferenceRegion.orderByEnd)
+  val queue = mutable.Queue[R]()
+  val ends = mutable.PriorityQueue[ReferencePosition]()(ReferenceRegion.orderByEnd)
 
   override def hasNext: Boolean = loci.hasNext
 
@@ -21,18 +23,23 @@ class WindowIterator[R <: ReferenceRegion] private(halfWindowSize: Int,
     val upperLimit = pos + halfWindowSize
 
     var numDropped = 0
-    while (queue.headOption.exists(r => !(r.endPos > lowerLimit))) {
-      queue.dequeue()
+    while (ends.headOption.exists(e => !(e > lowerLimit))) {
+      ends.dequeue
       numDropped += 1
+    }
+
+    while (queue.headOption.exists(r => !(r.endPos > lowerLimit))) {
+      queue.dequeue
     }
 
     var numAdded = 0
     while (regions.hasNext && regions.head.startPos <= upperLimit) {
+      ends.enqueue(regions.head.endPos)
       queue.enqueue(regions.next())
       numAdded += 1
     }
 
-    (pos, (queue, numDropped, numAdded))
+    (pos, (queue.view.filter(_.endPos > lowerLimit), numDropped, numAdded))
   }
 }
 

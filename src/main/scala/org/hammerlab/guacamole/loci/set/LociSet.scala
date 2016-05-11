@@ -18,7 +18,7 @@
 
 package org.hammerlab.guacamole.loci.set
 
-import java.io.{File, InputStreamReader}
+import java.io.{File, InputStreamReader, ObjectInputStream, ObjectOutputStream}
 import java.lang.{Long => JLong}
 
 import com.google.common.collect.{Range => JRange}
@@ -45,6 +45,27 @@ import scala.collection.immutable.TreeMap
  * @param map A map from contig-name to Contig, which is a set or genomic intervals as described above.
  */
 case class LociSet(@transient private val map: SortedMap[String, Contig]) extends TruncatedToString {
+
+  def readObject(in: ObjectInputStream): Unit = {
+    val n = in.readInt()
+    for {
+      i <- 0 until n
+    } {
+      val name = in.readUTF()
+      val contig = in.readObject().asInstanceOf[Contig]
+      map.add((name, contig))
+    }
+  }
+
+  def writeObject(out: ObjectOutputStream): Unit = {
+    out.writeInt(map.size)
+    for {
+      (name, contig) <- map
+    } {
+      out.writeUTF(name)
+      out.writeObject(contig)
+    }
+  }
 
   /** The contigs included in this LociSet with a nonempty set of loci. */
   @transient lazy val contigs = map.values.toArray

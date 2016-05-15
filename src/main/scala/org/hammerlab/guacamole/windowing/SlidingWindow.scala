@@ -149,10 +149,10 @@ object SlidingWindow {
         if (nextNonEmptyLocus.isEmpty) {
           // Our windows are out of regions. We're done.
           return None
-        } else if (nextNonEmptyLocus.get <= loci.head) {
+        } else if (nextNonEmptyLocus.get <= loci.head.pos) {
           // The next locus with regions is at or before the next locus in the iterator.
           // We advance to the next locus in the iterator, and check if the resulting windows are all empty.
-          val nextLocus = loci.next()
+          val nextLocus = loci.next().pos
           windows.foreach(_.setCurrentLocus(nextLocus))
 
           // Windows may still be empty here, because the next locus with regions may have been before the next locus,
@@ -171,7 +171,7 @@ object SlidingWindow {
       None
     } else if (loci.hasNext) {
       // Not skipping empty, and we have another locus in the iterator to go to.
-      val nextLocus = loci.next()
+      val nextLocus = loci.next().pos
       windows.foreach(_.setCurrentLocus(nextLocus))
       Some(nextLocus)
     } else {

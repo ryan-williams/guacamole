@@ -12,7 +12,6 @@ private case class PartitionStats[T: ClassTag](boundsOpt: Option[(T, T)], count:
 case class RDDStats[T: ClassTag] private(partitionBounds: ArrayBuffer[Option[(T, T)]],
                                          partitionCounts: ArrayBuffer[Long],
                                          isSorted: Boolean) extends Serializable {
-
   lazy val countStats = Stats(partitionCounts)
   lazy val nonEmptyCountStats = Stats(partitionCounts.filter(_ > 0))
 }

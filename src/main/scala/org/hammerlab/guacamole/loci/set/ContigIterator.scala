@@ -1,47 +1,47 @@
 package org.hammerlab.guacamole.loci.set
 
 import org.hammerlab.guacamole.loci.SimpleRange
+import org.hammerlab.guacamole.reference.ReferencePosition
 
 /**
  * An iterator over loci on a single contig. Loci from this iterator are sorted (monotonically increasing).
  *
  * This can be used as a plain scala Iterator[Long], but also supports extra functionality for quickly skipping
  * ahead past a given locus.
- *
- * @param loci loci to iterate over
  */
-class ContigIterator(loci: Contig) extends scala.BufferedIterator[Long] {
-  private val ranges = loci.ranges.iterator
+class ContigIterator private(contigName: String, ranges: BufferedIterator[SimpleRange])
+  extends BufferedIterator[ReferencePosition] {
 
-  /** The range for the next locus to be returned. */
-  private var headRangeOption: Option[SimpleRange] = if (ranges.isEmpty) None else Some(ranges.next())
+  override def head: ReferencePosition = {
+    if (pos == null) {
+      pos = ReferencePosition(contigName, ranges.head.start)
+    }
 
-  /** The index in the range for the next locus. */
-  private var headIndex = 0L
+    pos
+  }
 
   /** true if calling next() will succeed. */
-  def hasNext() = headRangeOption.nonEmpty
+  override def hasNext: Boolean = ranges.hasNext
 
-  /** The next element to be returned by next(). If the iterator is empty, throws NoSuchElementException. */
-  def head: Long = headRangeOption match {
-    case Some(range) => range.start + headIndex
-    case None        => throw new NoSuchElementException("empty iterator")
-  }
+  private var pos: ReferencePosition = _
 
   /**
    * Advance the iterator and return the current head.
    *
    * Throws NoSuchElementException if the iterator is already at the end.
    */
-  def next(): Long = {
-    val nextLocus: Long = head // may throw
+  def next(): ReferencePosition = {
 
-    // Advance
-    headIndex += 1
-    if (headIndex == headRangeOption.get.length) {
-      nextRange()
+    val ret = head
+
+    pos += 1
+
+    if (pos.end > ranges.head.end) {
+      ranges.next()
+      pos = null
     }
-    nextLocus
+
+    ret
   }
 
   /**
@@ -53,25 +53,24 @@ class ContigIterator(loci: Contig) extends scala.BufferedIterator[Long] {
    */
   def skipTo(locus: Long): Unit = {
     // Skip entire ranges until we hit one whose end is past the target locus.
-    while (headRangeOption.exists(_.end <= locus)) {
-      nextRange()
+    while (ranges.hasNext && ranges.head.end <= locus) {
+      ranges.next()
     }
+
     // If we're not at the end of the iterator and the current head range includes the target locus, set our index
     // so that our next locus is the target.
-    headRangeOption match {
-      case Some(range) if (locus >= range.start && locus < range.end) => {
-        headIndex = locus - range.start
-      }
-      case _ => {}
+    if (ranges.hasNext && ranges.head.start < locus && locus < ranges.head.end) {
+      pos += (locus - ranges.head.start)
     }
   }
 
-  /**
-   * Advance past all loci in the current head range. Return the next range if one exists.
-   */
-  private def nextRange(): Option[SimpleRange] = {
-    headIndex = 0
-    headRangeOption = if (ranges.hasNext) Some(ranges.next()) else None
-    headRangeOption
+  def skipTo(pos: ReferencePosition): Unit = {
+    if (pos.contig == contigName) {
+      skipTo(pos.pos)
+    }
   }
+}
+
+object ContigIterator {
+  def apply(contig: Contig): ContigIterator = new ContigIterator(contig.name, contig.ranges.iterator.buffered).buffered
 }

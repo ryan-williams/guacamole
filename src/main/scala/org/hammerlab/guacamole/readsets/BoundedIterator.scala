@@ -4,19 +4,23 @@ import org.hammerlab.guacamole.reference.ReferencePosition
 
 class BoundedIterator[T] private(startAtOpt: Option[ReferencePosition],
                                  stopAtOpt: Option[ReferencePosition],
-                                 lociObjects: BufferedIterator[(ReferencePosition, T)])
-  extends Iterator[(ReferencePosition, T)] {
+                                 lociObjects: BufferedIterator[T])(implicit toPos: T => ReferencePosition)
+  extends Iterator[T] {
 
   startAtOpt.foreach(startAt =>
-    while (lociObjects.hasNext && lociObjects.head._1.startPos < startAt)
+    while (lociObjects.hasNext && lociObjects.head < startAt)
       lociObjects.next()
   )
 
   override def hasNext: Boolean = {
-    lociObjects.hasNext && !stopAtOpt.exists(stopAt => lociObjects.head._1.startPos >= stopAt)
+    lociObjects.hasNext &&
+      (
+        stopAtOpt.isEmpty ||
+        stopAtOpt.exists(stopAt => lociObjects.head >= stopAt)
+      )
   }
 
-  override def next(): (ReferencePosition, T) =
+  override def next(): T =
     if (hasNext)
       lociObjects.next()
     else
@@ -27,6 +31,6 @@ class BoundedIterator[T] private(startAtOpt: Option[ReferencePosition],
 object BoundedIterator {
   def apply[T](startAtOpt: Option[ReferencePosition],
                stopAtOpt: Option[ReferencePosition],
-               lociObjects: Iterator[(ReferencePosition, T)]): BoundedIterator[T] =
+               lociObjects: Iterator[T])(implicit toPos: T => ReferencePosition): BoundedIterator[T] =
     new BoundedIterator(startAtOpt, stopAtOpt, lociObjects.buffered)
 }

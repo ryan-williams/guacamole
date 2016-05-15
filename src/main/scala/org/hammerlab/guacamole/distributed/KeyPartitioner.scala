@@ -1,6 +1,7 @@
 package org.hammerlab.guacamole.distributed
 
 import org.apache.spark.Partitioner
+import org.apache.spark.rdd.RDD
 
 /**
  * Spark partitioner for keyed RDDs that assigns each unique key its own partition.
@@ -11,13 +12,12 @@ import org.apache.spark.Partitioner
 case class KeyPartitioner(override val numPartitions: Int) extends Partitioner {
   def getPartition(key: Any): Int = key match {
     case i: Int            => i
+    case (idx: Int, _)     => idx
     case pos: TaskPosition => pos.task
     case other             => throw new AssertionError("Unexpected key: $other")
   }
-
-  override def equals(other: Any): Boolean = other match {
-    case kp: KeyPartitioner => kp.numPartitions == numPartitions
-    case _                  => false
-  }
 }
 
+object KeyPartitioner {
+  def apply(rdd: RDD[_]): KeyPartitioner = KeyPartitioner(rdd.getNumPartitions)
+}

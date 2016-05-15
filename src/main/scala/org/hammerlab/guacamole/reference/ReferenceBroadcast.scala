@@ -95,7 +95,7 @@ object ReferenceBroadcast {
     val result = mutable.HashMap[String, mutable.HashMap[Int, Byte]]()
     val contigLengths = mutable.HashMap[String, Int]()
 
-    raw.broadcastedContigs.foreach({
+    raw.broadcastedContigs.foreach {
       case (regionDescription, broadcastSequence) => {
         val sequence = broadcastSequence.slice(0, broadcastSequence.length)
 
@@ -105,32 +105,37 @@ object ReferenceBroadcast {
             "Invalid sequence name for partial fasta: %s. Are you sure this is a partial fasta, not a regular fasta?"
               .format(regionDescription))
         }
+
         val contigLength = pieces(1).toInt
         val region = LociSet(pieces(0))
-        if (region.contigs.size != 1) {
+        if (region.contigs.length != 1) {
           throw new IllegalArgumentException("Region must have 1 contig for partial fasta: %s".format(pieces(0)))
         }
+
         val contig = region.contigs.head
         val regionLength = contig.count
         if (regionLength != sequence.length) {
           throw new IllegalArgumentException("In partial fasta, region %s is length %,d but its sequence is length %,d".format(
             pieces(0), regionLength, sequence.length))
         }
+
         val maxRegion = contig.ranges.map(_.end).max
         if (maxRegion > contigLength) {
           throw new IllegalArgumentException("In partial fasta, region %s (max=%,d) exceeds contig length %,d".format(
             pieces(0), maxRegion, contigLength))
         }
+
         if (contigLengths.getOrElseUpdate(contig.name, contigLength) != contigLength) {
           throw new IllegalArgumentException("In partial fasta, contig lengths for %s are inconsistent (%d vs %d)".format(
             contig, contigLength, contigLengths(contig.name)))
         }
+
         val sequenceMap = result.getOrElseUpdate(contig.name, mutable.HashMap[Int, Byte]())
         contig.iterator.zip(sequence.iterator).foreach(pair => {
-          sequenceMap.update(pair._1.toInt, pair._2)
+          sequenceMap.update(pair._1.pos.toInt, pair._2)
         })
       }
-    })
+    }
     new ReferenceBroadcast(
       result.map(
         pair => pair._1 -> MapBackedReferenceSequence(contigLengths(pair._1), sc.broadcast(pair._2.toMap))).toMap,

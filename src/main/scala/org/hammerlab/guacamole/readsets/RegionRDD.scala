@@ -2,11 +2,13 @@ package org.hammerlab.guacamole.readsets
 
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
+import org.hammerlab.guacamole.distributed.KeyPartitioner
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.rdd.RDDStats._
 import org.hammerlab.guacamole.reference.{ReferencePosition, ReferenceRegion}
 import org.hammerlab.guacamole.util.Stats
+import org.hammerlab.guacamole.rdd.PartitionFirstElemsRDD._
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -58,28 +60,11 @@ class RegionRDD[R <: ReferenceRegion: ClassTag] private(rdd: RDD[R]) {
       .sortByKey()
 
   def slidingLociWindow(halfWindowSize: Int, loci: LociSet): RDD[(ReferencePosition, (Iterable[R], Int, Int))] = {
-    val firstRegionsRDD = rdd.mapPartitions(BoundedContigIterator(2 * halfWindowSize + 1, _))
+    val firstRegionsRDD: RDD[R] = rdd.borrowFirstElems(BoundedContigIterator(2 * halfWindowSize + 1, _))
 
-    val partitionStartPositions =
-      firstRegionsRDD
-        .mapPartitionsWithIndex((idx, it) =>
-          if (idx > 0 && it.hasNext)
-            Iterator((idx, it.next().startPos + halfWindowSize + 1))
-          else
-            Iterator()
-        )
-        .collectAsMap()
+    val boundsRDD = rdd.firstElemBoundsRDD(_.startPos + halfWindowSize + 1)
 
-    val bounds =
-      (0 until rdd.getNumPartitions)
-        .map(i =>
-          (
-            partitionStartPositions.get(i),
-            partitionStartPositions.get(i + 1)
-          )
-        )
-
-    val boundsRDD = sc.parallelize(bounds, rdd.getNumPartitions)
+    implicit def toPos[T](t: (ReferencePosition, T)): ReferencePosition = t._1
 
     rdd
       .zipPartitions(firstRegionsRDD, boundsRDD)(
@@ -87,11 +72,7 @@ class RegionRDD[R <: ReferenceRegion: ClassTag] private(rdd: RDD[R]) {
           val (fromOpt, untilOpt) = boundsIter.next()
           val bufferedReads = (readsIter ++ lastReadsIter).buffered
 
-          BoundedIterator(
-            fromOpt,
-            untilOpt,
-            WindowIterator(halfWindowSize, loci, bufferedReads)
-          )
+          new WindowIterator(halfWindowSize, fromOpt, untilOpt, loci, bufferedReads)
         }
       )
   }

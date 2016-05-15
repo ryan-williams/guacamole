@@ -5,7 +5,6 @@ import org.hammerlab.guacamole.reference.{Contig, ReferencePosition, ReferenceRe
 class BoundedContigIterator[R <: ReferenceRegion] private(stopAt: Long, contigRegionsRaw: ContigIterator[R])
   extends Iterator[R] {
 
-  val contig = contigRegionsRaw.contig
   val contigRegions = contigRegionsRaw.buffered
 
   override def hasNext: Boolean = {
@@ -14,7 +13,7 @@ class BoundedContigIterator[R <: ReferenceRegion] private(stopAt: Long, contigRe
 
   override def next(): R = {
     if (hasNext)
-      contigRegions.head
+      contigRegions.next()
     else
       throw new NoSuchElementException
   }

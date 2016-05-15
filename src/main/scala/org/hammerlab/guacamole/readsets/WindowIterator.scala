@@ -3,54 +3,46 @@ package org.hammerlab.guacamole.readsets
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.reference.{ReferencePosition, ReferenceRegion}
 
-import scala.collection.immutable.Queue
-import scala.collection.mutable
 
-class WindowIterator[R <: ReferenceRegion] private(halfWindowSize: Int,
-                                                   loci: Iterator[ReferencePosition],
-                                                   regions: BufferedIterator[R])
+class WindowIterator[R <: ReferenceRegion](halfWindowSize: Int,
+                                           fromOpt: Option[ReferencePosition],
+                                           untilOpt: Option[ReferencePosition],
+                                           loci: LociSet,
+                                           regions: BufferedIterator[R])
   extends Iterator[(ReferencePosition, (Iterable[R], Int, Int))] {
 
-  val queue = mutable.Queue[R]()
-  val ends = mutable.PriorityQueue[ReferencePosition]()(ReferenceRegion.orderByEnd)
+  var curContig: BufferedIterator[(ReferencePosition, (Iterable[R], Int, Int))] = _
+  var curContigName: String = _
 
-  override def hasNext: Boolean = loci.hasNext
+  def advance(): Unit = {
+    while ((curContig == null || !curContig.hasNext) && regions.hasNext) {
+      if (curContig != null) {
+        while (regions.hasNext && regions.head.referenceContig == curContigName) {
+          regions.next()
+        }
+      }
+      curContigName = regions.head.referenceContig
+      val lociContig = loci.onContig(curContigName).iterator
+      fromOpt.foreach(lociContig.skipTo)
+      val boundedLoci = BoundedIterator(None, untilOpt, lociContig)
+      if (boundedLoci.isEmpty) {
+        while (regions.hasNext && regions.head.referenceContig == curContigName) {
+          regions.next()
+        }
+      } else {
+        curContig = ContigWindowIterator(halfWindowSize, boundedLoci, ContigIterator(regions)).buffered
+      }
+    }
+  }
+
+  override def hasNext: Boolean = {
+    advance()
+    curContig != null && curContig.hasNext
+  }
 
   override def next(): (ReferencePosition, (Iterable[R], Int, Int)) = {
-    val pos = loci.next()
-
-    val lowerLimit = pos - halfWindowSize
-    val upperLimit = pos + halfWindowSize
-
-    var numDropped = 0
-    while (ends.headOption.exists(e => !(e > lowerLimit))) {
-      ends.dequeue
-      numDropped += 1
-    }
-
-    while (queue.headOption.exists(r => !(r.endPos > lowerLimit))) {
-      queue.dequeue
-    }
-
-    var numAdded = 0
-    while (regions.hasNext && regions.head.startPos <= upperLimit) {
-      ends.enqueue(regions.head.endPos)
-      queue.enqueue(regions.next())
-      numAdded += 1
-    }
-
-    (pos, (queue.view.filter(_.endPos > lowerLimit), numDropped, numAdded))
+    advance()
+    if (curContig == null) throw new NoSuchElementException
+    curContig.next()
   }
-}
-
-object WindowIterator {
-  def apply[R <: ReferenceRegion](halfWindowSize: Int,
-                                  loci: LociSet,
-                                  regions: Iterator[R]): WindowIterator[R] =
-    WindowIterator(halfWindowSize, loci.iterator, regions)
-
-  def apply[R <: ReferenceRegion](halfWindowSize: Int,
-                                  loci: Iterator[ReferencePosition],
-                                  regions: Iterator[R]): WindowIterator[R] =
-    new WindowIterator(halfWindowSize, loci, regions.buffered)
 }

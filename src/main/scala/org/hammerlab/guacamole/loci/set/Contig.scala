@@ -5,6 +5,7 @@ import java.lang.{Long => JLong}
 
 import com.google.common.collect.{RangeSet, TreeRangeSet, Range => JRange}
 import org.hammerlab.guacamole.loci.SimpleRange
+import org.hammerlab.guacamole.reference.ReferencePosition
 import org.hammerlab.guacamole.strings.TruncatedToString
 
 import scala.collection.JavaConversions._
@@ -13,14 +14,31 @@ import scala.collection.mutable.ArrayBuffer
 /**
  * A set of loci on a contig, stored/manipulated as loci ranges.
  */
-case class Contig(name: String, private val rangeSet: RangeSet[JLong]) extends TruncatedToString {
+case class Contig(var name: String, private var rangeSet: RangeSet[JLong]) extends TruncatedToString {
 
-  def readObject(in: ObjectInputStream): Unit = {
-
+  private def readObject(in: ObjectInputStream): Unit = {
+    name = in.readUTF()
+    val num = in.readInt()
+    rangeSet = TreeRangeSet.create[JLong]()
+    for {
+      i <- 0 until num
+    } {
+      val start = in.readLong()
+      val end = in.readLong()
+      val range = JRange.closedOpen[JLong](start, end)
+      rangeSet.add(range)
+    }
   }
 
-  def writeObject(out: ObjectOutputStream): Unit = {
-
+  private def writeObject(out: ObjectOutputStream): Unit = {
+    out.writeUTF(name)
+    out.writeInt(ranges.length)
+    for {
+      SimpleRange(start, end) <- ranges
+    } {
+      out.writeLong(start)
+      out.writeLong(end)
+    }
   }
 
   /** Is the given locus contained in this set? */
@@ -39,7 +57,7 @@ case class Contig(name: String, private val rangeSet: RangeSet[JLong]) extends T
   def isEmpty: Boolean = rangeSet.isEmpty
 
   /** Iterator through loci on this contig, sorted. */
-  def iterator = new ContigIterator(this)
+  def iterator = ContigIterator(this)
 
   /** Number of loci on this contig. */
   def count = ranges.map(_.length).sum

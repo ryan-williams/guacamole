@@ -20,8 +20,8 @@ case class ReferencePosition(contig: Contig, pos: Long)
   def start = pos
   def end = pos + 1
 
-  def +(length: Int): ReferencePosition = ReferencePosition(contig, pos + length)
-  def -(length: Int): ReferencePosition = ReferencePosition(contig, math.max(0L, pos - length))
+  def +(length: Long): ReferencePosition = ReferencePosition(contig, pos + length)
+  def -(length: Long): ReferencePosition = ReferencePosition(contig, math.max(0L, pos - length))
 
   override def toString: String = s"$contig:$pos"
 }

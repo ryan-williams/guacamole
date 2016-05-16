@@ -33,7 +33,7 @@ class RegionRDD[R <: ReferenceRegion: ClassTag] private(rdd: RDD[R]) {
       case None =>
         numEmpty += 1
         spans += 0L
-      case Some((first, last)) if first.referenceContig == last.referenceContig =>
+      case Some((first, last)) if first.contig == last.contig =>
         val span = last.start - first.start
         nonEmptySpans += span
         spans += span

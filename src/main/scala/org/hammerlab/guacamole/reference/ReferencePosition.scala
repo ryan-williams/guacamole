@@ -16,7 +16,6 @@ case class ReferencePosition(contig: Contig, pos: Long)
     }
   }
 
-  def referenceContig = contig
   def start = pos
   def end = pos + 1
 

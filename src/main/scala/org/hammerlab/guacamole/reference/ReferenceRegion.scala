@@ -25,15 +25,15 @@ package org.hammerlab.guacamole.reference
 trait ReferenceRegion {
 
   /** Name of the reference contig */
-  def referenceContig: Contig
+  def contig: Contig
 
   /** Start position on the genome, inclusive. Must be non-negative. */
   def start: Long
-  def startPos = ReferencePosition(referenceContig, start)
+  def startPos = ReferencePosition(contig, start)
 
   /** The end position on the genome, *exclusive*. Must be non-negative. */
   def end: Long
-  def endPos = ReferencePosition(referenceContig, end)
+  def endPos = ReferencePosition(contig, end)
 
   /**
    * Does the region overlap the given locus, with halfWindowSize padding?
@@ -49,10 +49,10 @@ trait ReferenceRegion {
    * @return True if the the regions overlap
    */
   def overlaps(other: ReferenceRegion): Boolean = {
-    other.referenceContig == referenceContig && (overlapsLocus(other.start) || other.overlapsLocus(start))
+    other.contig == contig && (overlapsLocus(other.start) || other.overlapsLocus(start))
   }
 
-  def regionStr: String = s"${referenceContig}:[$start-$end)"
+  def regionStr: String = s"${contig}:[$start-$end)"
 }
 
 object ReferenceRegion {
@@ -65,14 +65,14 @@ object ReferenceRegion {
   implicit def intraContigPartialOrdering[R <: ReferenceRegion] =
     new PartialOrdering[R] {
       override def tryCompare(x: R, y: R): Option[Int] = {
-        if (x.referenceContig == y.referenceContig)
+        if (x.contig == y.contig)
           Some(x.start.compare(y.start))
         else
           None
       }
 
       override def lteq(x: R, y: R): Boolean = {
-        x.referenceContig == y.referenceContig && x.start <= y.start
+        x.contig == y.contig && x.start <= y.start
       }
     }
 
@@ -116,3 +116,5 @@ object ReferenceRegion {
       }
     }
 }
+
+case class Region(contig: String, start: Long, end: Long) extends ReferenceRegion

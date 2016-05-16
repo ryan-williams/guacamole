@@ -119,7 +119,7 @@ case class ReadSets(readsRDDs: PerSample[ReadsRDD],
 
     allMappedReads
       .flatMap(read => {
-        val contig = read.referenceContig
+        val contig = read.contig
         val length = contigLengthsBroadcast.value(contig)
 
         val outs = ArrayBuffer[(ReferencePosition, WindowCoverage)]()
@@ -231,7 +231,7 @@ object ReadSets {
       } else {
         sc.union(readRDDs)
           .flatMap(_.asMappedRead)
-          .map(read => read.referenceContig -> read.end)
+          .map(read => read.contig -> read.end)
           .reduceByKey(math.max)
           .collectAsMap()
           .toMap

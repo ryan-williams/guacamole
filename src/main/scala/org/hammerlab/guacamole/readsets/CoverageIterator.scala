@@ -6,7 +6,9 @@ import org.hammerlab.guacamole.reference.{Contig, ReferencePosition, ReferenceRe
 
 import scala.collection.mutable
 
-class LociCoverageIterator private(contig: Contig, regions: BufferedIterator[ReferenceRegion])
+class CoverageIterator private(halfWindowSize: Int,
+                               contig: Contig,
+                               regions: BufferedIterator[ReferenceRegion])
   extends Iterator[PositionCoverage] {
 
   private val ends = mutable.PriorityQueue[Long]()
@@ -24,14 +26,17 @@ class LociCoverageIterator private(contig: Contig, regions: BufferedIterator[Ref
       curPos += 1
     }
 
+    val lowerLimit = curPos - halfWindowSize
+    val upperLimit = curPos + halfWindowSize
+
     var numDropped = 0
-    while (ends.headOption.exists(_ < curPos)) {
+    while (ends.headOption.exists(_ + halfWindowSize < curPos)) {
       ends.dequeue()
       numDropped += 1
     }
 
     var numAdded = 0
-    while (regions.nonEmpty && regions.head.start == curPos) {
+    while (regions.nonEmpty && regions.head.start <= curPos + halfWindowSize) {
       ends.enqueue(regions.next().end)
       numAdded += 1
     }
@@ -58,7 +63,7 @@ class LociCoverageIterator private(contig: Contig, regions: BufferedIterator[Ref
   }
 }
 
-object LociCoverageIterator {
-  def apply(regions: ContigIterator[ReferenceRegion]): LociCoverageIterator =
-    new LociCoverageIterator(regions.contig, regions.buffered)
+object CoverageIterator {
+  def apply(halfWindowSize: Int, regions: ContigIterator[ReferenceRegion]): CoverageIterator =
+    new CoverageIterator(halfWindowSize, regions.contig, regions.buffered)
 }

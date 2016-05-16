@@ -7,9 +7,7 @@ import org.hammerlab.guacamole.util.{GuacFunSuite, RunLengthIterator}
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.{SortedMap, mutable}
 
-case class TestRegion(contig: String, start: Long, end: Long) extends ReferenceRegion {
-  override val referenceContig: Contig = contig
-}
+case class TestRegion(contig: String, start: Long, end: Long) extends ReferenceRegion
 
 class ContigWindowIteratorSuite extends GuacFunSuite {
 

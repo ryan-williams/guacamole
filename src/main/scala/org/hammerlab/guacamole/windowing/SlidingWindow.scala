@@ -52,7 +52,7 @@ case class SlidingWindow[R <: ReferenceRegion](referenceName: String,
 
   private var mostRecentRegionStart: Long = 0
   private val sortedRegions: BufferedIterator[R] = rawSortedRegions.map(region => {
-    require(region.referenceContig == referenceName, "Regions must have the same reference name")
+    require(region.contig == referenceName, "Regions must have the same reference name")
     require(region.start >= mostRecentRegionStart, "Regions must be sorted by start locus")
     mostRecentRegionStart = region.start
 

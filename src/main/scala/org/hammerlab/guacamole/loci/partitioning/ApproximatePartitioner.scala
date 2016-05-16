@@ -121,7 +121,7 @@ object ApproximatePartitioner extends LociPartitioner[ApproximatePartitionerArgs
       sc.union(regionRDDs).flatMap(region =>
         broadcastMicroPartitions
           .value
-          .onContig(region.referenceContig)
+          .onContig(region.contig)
           .getAll(region.start, region.end)
       ).countByValue()
     }

@@ -36,7 +36,7 @@ object PartitionLoci extends SparkCommand[PartitionLociArgs] {
 
     val taskReadCountsMap =
       readsRDD.flatMap(r => {
-        val contig = partitioningBroadcast.value.onContig(r.referenceContig)
+        val contig = partitioningBroadcast.value.onContig(r.contig)
         contig.getAll(r.start - half, r.end + half)
       }).countByValue()
 

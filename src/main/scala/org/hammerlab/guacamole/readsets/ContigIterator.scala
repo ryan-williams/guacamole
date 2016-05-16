@@ -6,7 +6,7 @@ case class ContigIterator[+R <: ReferenceRegion](contig: Contig, regions: Buffer
   extends Iterator[R] {
 
   override def hasNext: Boolean = {
-    regions.hasNext && regions.head.referenceContig == contig
+    regions.hasNext && regions.head.contig == contig
   }
 
   override def next(): R = {
@@ -20,7 +20,7 @@ case class ContigIterator[+R <: ReferenceRegion](contig: Contig, regions: Buffer
 object ContigIterator {
   def apply[R <: ReferenceRegion](regions: Iterator[R]): ContigIterator[R] = {
     val buffered = regions.buffered
-    ContigIterator(buffered.head.referenceContig, buffered)
+    ContigIterator(buffered.head.contig, buffered)
   }
 }
 

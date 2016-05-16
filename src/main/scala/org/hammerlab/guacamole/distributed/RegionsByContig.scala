@@ -34,9 +34,9 @@ class RegionsByContig[R <: ReferenceRegion](regionIterator: Iterator[R]) {
 
     // The next element from the iterator should have a contig we haven't seen so far.
     assert(
-      buffered.isEmpty || !seenContigs.contains(buffered.head.referenceContig),
+      buffered.isEmpty || !seenContigs.contains(buffered.head.contig),
       "Regions are not sorted by contig. Contigs requested so far: %s. Next regions's contig: %s.".format(
-        seenContigs.reverse.toString, buffered.head.referenceContig
+        seenContigs.reverse.toString, buffered.head.contig
       )
     )
 

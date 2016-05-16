@@ -110,7 +110,7 @@ trait Scratch {
 
   val trs =
     mr.map(r => {
-      val contig = lpb.value.onContig(r.referenceContig)
+      val contig = lpb.value.onContig(r.contig)
       contig.getAll(r.start - half, r.end + half)
     }).countByValue()
 }

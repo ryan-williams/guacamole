@@ -17,16 +17,16 @@ class WindowIterator[R <: ReferenceRegion](halfWindowSize: Int,
   def advance(): Unit = {
     while ((curContig == null || !curContig.hasNext) && regions.hasNext) {
       if (curContig != null) {
-        while (regions.hasNext && regions.head.referenceContig == curContigName) {
+        while (regions.hasNext && regions.head.contig == curContigName) {
           regions.next()
         }
       }
-      curContigName = regions.head.referenceContig
+      curContigName = regions.head.contig
       val lociContig = loci.onContig(curContigName).iterator
       fromOpt.foreach(lociContig.skipTo)
       val boundedLoci = BoundedIterator(None, untilOpt, lociContig)
       if (boundedLoci.isEmpty) {
-        while (regions.hasNext && regions.head.referenceContig == curContigName) {
+        while (regions.hasNext && regions.head.contig == curContigName) {
           regions.next()
         }
       } else {

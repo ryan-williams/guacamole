@@ -11,17 +11,18 @@ class CoverageIterator private(halfWindowSize: Int,
                                regions: BufferedIterator[ReferenceRegion])
   extends Iterator[PositionCoverage] {
 
-  private val ends = mutable.PriorityQueue[Long]()
+  private val ends = mutable.PriorityQueue[Long]()(implicitly[Ordering[Long]].reverse)
 
   private var curPos = -1L
   private var _next: Coverage = _
   private var done = false
 
   private def advance(): Boolean = {
-    if (regions.isEmpty && ends.isEmpty) return false
+    if (ends.isEmpty) {
+      if (regions.isEmpty)
+        return false
 
-    if (curPos == -1L) {
-      curPos = regions.head.start
+      curPos = regions.head.start - halfWindowSize
     } else {
       curPos += 1
     }
@@ -30,13 +31,13 @@ class CoverageIterator private(halfWindowSize: Int,
     val upperLimit = curPos + halfWindowSize
 
     var numDropped = 0
-    while (ends.headOption.exists(_ + halfWindowSize < curPos)) {
+    while (ends.headOption.exists(_ <= lowerLimit)) {
       ends.dequeue()
       numDropped += 1
     }
 
     var numAdded = 0
-    while (regions.nonEmpty && regions.head.start <= curPos + halfWindowSize) {
+    while (regions.nonEmpty && regions.head.start <= upperLimit) {
       ends.enqueue(regions.next().end)
       numAdded += 1
     }

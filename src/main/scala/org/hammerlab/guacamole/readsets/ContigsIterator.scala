@@ -7,9 +7,7 @@ class ContigsIterator[R <: ReferenceRegion] private(it: BufferedIterator[R])
 
   override def hasNext: Boolean = it.hasNext
 
-  override def next(): ContigIterator[R] = {
-    ContigIterator(it)
-  }
+  override def next(): ContigIterator[R] = ContigIterator(it)
 }
 
 object ContigsIterator {

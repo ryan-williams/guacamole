@@ -41,10 +41,13 @@ case class ReadSets(readsRDDs: PerSample[ReadsRDD],
 
   lazy val countStats = allMappedReads.countStats
 
-  lazy val coveragePerSample: PerSample[RDD[PositionCoverage]] = mappedReadsRDDs.map(_.coverage)
-  lazy val totaledCoverage: RDD[PositionCoverage] = sc.union(coveragePerSample).reduceByKey(_ + _).sortByKey()
+  def coveragePerSample(halfWindowSize: Int): PerSample[RDD[PositionCoverage]] =
+    mappedReadsRDDs.map(_.coverage(halfWindowSize))
 
-  lazy val coverage: RDD[PositionCoverage] = allMappedReads.coverage
+  def totaledCoverage(halfWindowSize: Int): RDD[PositionCoverage] =
+    sc.union(coveragePerSample((halfWindowSize))).reduceByKey(_ + _).sortByKey()
+
+  def coverage(halfWindowSize: Int): RDD[PositionCoverage] = allMappedReads.coverage(halfWindowSize)
 
 //  def sliding[T: ClassTag](halfWindowSize: Int, fn: Seq[ReferenceRegion] => T): PerSample[RDD[T]] = {
 //    for {

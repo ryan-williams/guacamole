@@ -2,13 +2,12 @@ package org.hammerlab.guacamole.readsets
 
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-import org.hammerlab.guacamole.distributed.KeyPartitioner
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
 import org.hammerlab.guacamole.loci.set.LociSet
+import org.hammerlab.guacamole.rdd.PartitionFirstElemsRDD._
 import org.hammerlab.guacamole.rdd.RDDStats._
 import org.hammerlab.guacamole.reference.{ReferencePosition, ReferenceRegion}
 import org.hammerlab.guacamole.util.Stats
-import org.hammerlab.guacamole.rdd.PartitionFirstElemsRDD._
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -47,17 +46,42 @@ class RegionRDD[R <: ReferenceRegion: ClassTag] private(rdd: RDD[R]) {
 
   def sc: SparkContext = rdd.sparkContext
 
-  lazy val coverage: RDD[PositionCoverage] =
-    rdd
-    .mapPartitions(it => {
-        for {
-          contigIterator <- ContigsIterator(it)
-          coverage <- LociCoverageIterator(contigIterator)
-        } yield
-          coverage
-      })
-      .reduceByKey(_ + _)
-      .sortByKey()
+  val coverages_ = mutable.Map[Int, RDD[PositionCoverage]]()
+  def coverage(halfWindowSize: Int): RDD[PositionCoverage] =
+    coverages_.getOrElseUpdate(
+      halfWindowSize,
+      rdd
+        .mapPartitions(it =>
+          for {
+            contigIterator <- ContigsIterator(it)
+            coverage <- CoverageIterator(halfWindowSize, contigIterator)
+          } yield
+            coverage
+        )
+        .reduceByKey(_ + _)
+        .sortByKey()
+    )
+
+  val depths_ = mutable.Map[Int, RDD[(Int, ReferencePosition)]]()
+  def depths(halfWindowSize: Int): RDD[(Int, ReferencePosition)] =
+    depths_.getOrElseUpdate(
+      halfWindowSize,
+      coverage(halfWindowSize).map(t => t._2.depth -> t._1).sortByKey(ascending = false)
+    )
+
+  val starts_ = mutable.Map[Int, RDD[(Int, ReferencePosition)]]()
+  def starts(halfWindowSize: Int): RDD[(Int, ReferencePosition)] =
+    starts_.getOrElseUpdate(
+      halfWindowSize,
+      coverage(halfWindowSize).map(t => t._2.starts -> t._1).sortByKey(ascending = false)
+    )
+
+  val ends_ = mutable.Map[Int, RDD[(Int, ReferencePosition)]]()
+  def ends(halfWindowSize: Int): RDD[(Int, ReferencePosition)] =
+    ends_.getOrElseUpdate(
+      halfWindowSize,
+      coverage(halfWindowSize).map(t => t._2.ends -> t._1).sortByKey(ascending = false)
+    )
 
   def slidingLociWindow(halfWindowSize: Int, loci: LociSet): RDD[(ReferencePosition, (Iterable[R], Int, Int))] = {
     val firstRegionsRDD: RDD[R] = rdd.borrowFirstElems(BoundedContigIterator(2 * halfWindowSize + 1, _))

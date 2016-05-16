@@ -40,7 +40,7 @@ case class MappedRead(
     baseQualities: IndexedSeq[Byte],
     isDuplicate: Boolean,
     sampleName: String,
-    referenceContig: String,
+    contig: String,
     alignmentQuality: Int,
     start: Long,
     cigar: Cigar,

@@ -2,6 +2,7 @@ package org.hammerlab.guacamole.readsets
 
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
+import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.rdd.PartitionFirstElemsRDD._
@@ -45,6 +46,29 @@ class RegionRDD[R <: ReferenceRegion: ClassTag] private(rdd: RDD[R]) {
   }
 
   def sc: SparkContext = rdd.sparkContext
+
+  def shuffleCoverage(contigLengths: ContigLengths, halfWindowSize: Int): RDD[PositionCoverage] = {
+    val contigLengthsBroadcast = sc.broadcast(contigLengths)
+    rdd.flatMap(r => {
+      val c = r.contig
+      val length = contigLengthsBroadcast.value(c)
+
+      val lowerBound = r.start - halfWindowSize
+      val upperBound = r.end + halfWindowSize
+
+      val outs = ArrayBuffer[(ReferencePosition, Coverage)]()
+      for {
+        l <- math.max(0, lowerBound) until math.min(length, upperBound)
+      } {
+        outs += ReferencePosition(c, l) -> Coverage(depth = 1)
+      }
+
+      outs += ReferencePosition(c, lowerBound) -> Coverage(starts = 1)
+      outs += ReferencePosition(c, upperBound) -> Coverage(ends = 1)
+
+      outs.iterator
+    }).reduceByKey(_ + _).sortByKey()
+  }
 
   val coverages_ = mutable.Map[Int, RDD[PositionCoverage]]()
   def coverage(halfWindowSize: Int): RDD[PositionCoverage] =

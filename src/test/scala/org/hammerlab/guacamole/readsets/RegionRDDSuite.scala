@@ -1,10 +1,14 @@
 package org.hammerlab.guacamole.readsets
 
 import com.esotericsoftware.kryo.Kryo
+import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.Coverage
+import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
+import org.hammerlab.guacamole.rdd.Cmp
 import org.hammerlab.guacamole.readsets.RegionRDD._
 import org.hammerlab.guacamole.util.{GuacFunSuite, KryoTestRegistrar}
 import org.scalatest.Matchers
+import org.hammerlab.guacamole.rdd.EqualsRDD._
 
 import scala.collection.SortedMap
 
@@ -12,6 +16,7 @@ class RegionRDDSuiteRegistrar extends KryoTestRegistrar {
   override def registerTestClasses(kryo: Kryo): Unit = {
     kryo.register(classOf[Array[TestRegion]])
     kryo.register(classOf[TestRegion])
+    kryo.register(classOf[Cmp])
   }
 }
 
@@ -27,6 +32,37 @@ class RegionRDDSuite extends GuacFunSuite with Matchers {
       TestRegion(contig, start, end)
     )
 
+  def testRDD(rdd: RDD[PositionCoverage], expected: List[(String, (Int, Int, Int))]): Unit = {
+    val actual = rdd.collect()
+    val actualStrs =
+      for {
+        (pos, Coverage(depth, starts, ends)) <- actual
+      } yield {
+        pos.toString -> (depth, starts, ends)
+      }
+
+    val actualMap = SortedMap(actualStrs: _*)
+    val expectedMap = SortedMap(expected: _*)
+
+    val extraElems = actualMap.filterKeys(!expectedMap.contains(_))
+    val missingElems = expectedMap.filterKeys(!actualMap.contains(_))
+
+    val diffElems =
+      for {
+        (k, ev) <- expectedMap
+        av <- actualMap.get(k)
+        if ev != av
+      } yield
+        k -> (av, ev)
+
+    withClue("differing loci:") { diffElems should be(Map()) }
+    withClue("found extra loci:") { extraElems should be(Map()) }
+    withClue("missing loci:") { missingElems should be(Map()) }
+
+    withClue("loci out of order:") {
+      actual.map(_._1).sortBy(x => x) should be(actual.map(_._1))
+    }
+  }
 
   test("simple") {
     val reads =
@@ -40,13 +76,8 @@ class RegionRDDSuite extends GuacFunSuite with Matchers {
         ("chr5",  90,  91, 10)
       )
 
-    val actual = sc.parallelize(reads, 1).coverage(0).collect()
-    val actualStrs =
-      for {
-        (pos, Coverage(depth, starts, ends)) <- actual
-      } yield {
-        pos.toString -> (depth, starts, ends)
-      }
+    val readsRDD = sc.parallelize(reads, 1)
+    val rdd = readsRDD.coverage(0)
 
     val expected =
       List(
@@ -70,26 +101,11 @@ class RegionRDDSuite extends GuacFunSuite with Matchers {
          "chr5:91" -> ( 0,  0, 10)
       )
 
-    val actualMap = SortedMap(actualStrs: _*)
-    val expectedMap = SortedMap(expected: _*)
+    val shuffled = readsRDD.shuffleCoverage(Map("chr1" -> 1000, "chr2" -> 1000, "chr5" -> 1000), 0)
 
-    val extraElems = actualMap.filterKeys(!expectedMap.contains(_))
-    val missingElems = expectedMap.filterKeys(!actualMap.contains(_))
+    testRDD(rdd, expected)
+    testRDD(shuffled, expected)
 
-    val diffElems =
-      for {
-        (k, ev) <- expectedMap
-        av <- actualMap.get(k)
-        if ev != av
-      } yield
-        k -> (av, ev)
-
-    withClue("differing loci:") { diffElems should be(Map()) }
-    withClue("found extra loci:") { extraElems should be(Map()) }
-    withClue("missing loci:") { missingElems should be(Map()) }
-
-    withClue("loci out of order:") {
-      actual.map(_._1).sortBy(x => x) should be(actual.map(_._1))
-    }
+    rdd.compare(shuffled) should be(Cmp(18))
   }
 }

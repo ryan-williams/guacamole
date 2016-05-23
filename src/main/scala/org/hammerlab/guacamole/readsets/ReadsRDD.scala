@@ -2,13 +2,17 @@ package org.hammerlab.guacamole.readsets
 
 import java.io.File
 
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.reads.{MappedRead, PairedRead, Read}
 
 /**
  * A thin wrapper around an RDD[Read], with helpers to filter to mapped and paired-mapped reads.
  */
-case class ReadsRDD(reads: RDD[Read], sourceFile: String) {
+case class ReadsRDD(reads: RDD[Read],
+                    sourceFile: String,
+                    contigLengths: ContigLengths) {
+
   val basename = new File(sourceFile).getName
 
   lazy val mappedReads =
@@ -25,12 +29,16 @@ case class ReadsRDD(reads: RDD[Read], sourceFile: String) {
     }
 }
 
-case class MappedReadsRDD(reads: RDD[MappedRead], sourceFile: String)
+case class MappedReadsRDD(reads: RDD[MappedRead],
+                          sourceFile: String,
+                          contigLengthsBroadcast: Broadcast[ContigLengths])
+  extends RegionRDD(reads, contigLengthsBroadcast)
 
 object MappedReadsRDD {
   implicit def mappedReadsRDDToRDD(mappedReadsRDD: MappedReadsRDD): RDD[MappedRead] = mappedReadsRDD.reads
 }
 
 object ReadsRDD {
-  def apply(pair: (RDD[Read], String)): ReadsRDD = ReadsRDD(pair._1, pair._2)
+  def apply(pair: (RDD[Read], String), contigLengths: ContigLengths): ReadsRDD =
+    new ReadsRDD(pair._1, pair._2, contigLengths)
 }

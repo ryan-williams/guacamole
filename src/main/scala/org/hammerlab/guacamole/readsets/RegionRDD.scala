@@ -1,6 +1,6 @@
 package org.hammerlab.guacamole.readsets
 
-import org.apache.spark.SparkContext
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
@@ -14,9 +14,10 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
 
-class RegionRDD[R <: ReferenceRegion: ClassTag] private(rdd: RDD[R]) {
+class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R],
+                                                contigLengthsBroadcast: Broadcast[ContigLengths]) extends Serializable {
 
-  lazy val (
+  @transient lazy val (
     numEmptyPartitions: Int,
     numPartitionsSpanningContigs: Int,
     partitionSpans: ArrayBuffer[Long],
@@ -45,10 +46,7 @@ class RegionRDD[R <: ReferenceRegion: ClassTag] private(rdd: RDD[R]) {
     (numEmpty, numCrossingContigs, spans, Stats(spans), Stats(nonEmptySpans))
   }
 
-  def sc: SparkContext = rdd.sparkContext
-
-  def shuffleCoverage(contigLengths: ContigLengths, halfWindowSize: Int): RDD[PositionCoverage] = {
-    val contigLengthsBroadcast = sc.broadcast(contigLengths)
+  def shuffleCoverage(halfWindowSize: Int): RDD[PositionCoverage] = {
     rdd.flatMap(r => {
       val c = r.contig
       val length = contigLengthsBroadcast.value(c)
@@ -70,37 +68,40 @@ class RegionRDD[R <: ReferenceRegion: ClassTag] private(rdd: RDD[R]) {
     }).reduceByKey(_ + _).sortByKey()
   }
 
-  val coverages_ = mutable.Map[Int, RDD[PositionCoverage]]()
+  @transient val coverages_ = mutable.Map[Int, RDD[PositionCoverage]]()
   def coverage(halfWindowSize: Int): RDD[PositionCoverage] =
     coverages_.getOrElseUpdate(
       halfWindowSize,
-      rdd
-        .mapPartitions(it =>
-          for {
-            contigIterator <- ContigsIterator(it)
-            coverage <- CoverageIterator(halfWindowSize, contigIterator)
-          } yield
-            coverage
-        )
-        .reduceByKey(_ + _)
-        .sortByKey()
+      {
+        rdd
+          .mapPartitions(it =>
+            for {
+              contigIterator <- ContigsIterator(it)
+              length = contigLengthsBroadcast.value(contigIterator.contig)
+              coverage <- CoverageIterator(halfWindowSize, length, contigIterator)
+            } yield
+              coverage
+          )
+          .reduceByKey(_ + _)
+          .sortByKey()
+      }
     )
 
-  val depths_ = mutable.Map[Int, RDD[(Int, ReferencePosition)]]()
+  @transient val depths_ = mutable.Map[Int, RDD[(Int, ReferencePosition)]]()
   def depths(halfWindowSize: Int): RDD[(Int, ReferencePosition)] =
     depths_.getOrElseUpdate(
       halfWindowSize,
       coverage(halfWindowSize).map(t => t._2.depth -> t._1).sortByKey(ascending = false)
     )
 
-  val starts_ = mutable.Map[Int, RDD[(Int, ReferencePosition)]]()
+  @transient val starts_ = mutable.Map[Int, RDD[(Int, ReferencePosition)]]()
   def starts(halfWindowSize: Int): RDD[(Int, ReferencePosition)] =
     starts_.getOrElseUpdate(
       halfWindowSize,
       coverage(halfWindowSize).map(t => t._2.starts -> t._1).sortByKey(ascending = false)
     )
 
-  val ends_ = mutable.Map[Int, RDD[(Int, ReferencePosition)]]()
+  @transient val ends_ = mutable.Map[Int, RDD[(Int, ReferencePosition)]]()
   def ends(halfWindowSize: Int): RDD[(Int, ReferencePosition)] =
     ends_.getOrElseUpdate(
       halfWindowSize,
@@ -131,10 +132,11 @@ object RegionRDD {
   implicit def rddToRegionRDD[R <: ReferenceRegion: ClassTag](
     rdd: RDD[R]
   )(
-    implicit ordering: PartialOrdering[R]
+    implicit ordering: PartialOrdering[R],
+    contigLengthsBroadcast: Broadcast[ContigLengths]
   ): RegionRDD[R] =
     rddMap.getOrElseUpdate(
       rdd.id,
-      new RegionRDD[R](rdd)
+      new RegionRDD[R](rdd, contigLengthsBroadcast)
     ).asInstanceOf[RegionRDD[R]]
 }

@@ -29,7 +29,9 @@ import scala.collection.mutable.ArrayBuffer
  */
 case class ReadSets(readsRDDs: PerSample[ReadsRDD],
                     sequenceDictionary: SequenceDictionary,
-                    contigLengths: ContigLengths) extends PerSample[ReadsRDD] {
+                    contigLengths: ContigLengths)
+  extends PerSample[ReadsRDD] {
+
   override def length: Int = readsRDDs.length
   override def apply(idx: Int): ReadsRDD = readsRDDs(idx)
 
@@ -41,11 +43,16 @@ case class ReadSets(readsRDDs: PerSample[ReadsRDD],
 
   lazy val countStats = allMappedReads.countStats
 
+  implicit val contigLengthsBroadcast = sc.broadcast(contigLengths)
+
   def coveragePerSample(halfWindowSize: Int): PerSample[RDD[PositionCoverage]] =
     mappedReadsRDDs.map(_.coverage(halfWindowSize))
 
   def totaledCoverage(halfWindowSize: Int): RDD[PositionCoverage] =
-    sc.union(coveragePerSample((halfWindowSize))).reduceByKey(_ + _).sortByKey()
+    sc
+      .union(coveragePerSample((halfWindowSize)))
+      .reduceByKey(_ + _)
+      .sortByKey()
 
   def coverage(halfWindowSize: Int): RDD[PositionCoverage] = allMappedReads.coverage(halfWindowSize)
 
@@ -217,7 +224,7 @@ object ReadSets {
             contigLengthsFromDictionary: Boolean,
             config: ReadLoadingConfig): ReadSets = {
 
-    val (filenames, filters) = inputs.unzip
+    val (filenames, _) = inputs.unzip
 
     val (readRDDs, sequenceDictionaries) =
       (for {
@@ -244,7 +251,7 @@ object ReadSets {
     ReadSets(
       readRDDs
         .zip(filenames)
-        .map(ReadsRDD(_))
+        .map(ReadsRDD(_, contigLengths))
         .toVector,
       sequenceDictionary,
       contigLengths

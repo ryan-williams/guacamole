@@ -1,6 +1,7 @@
 package org.hammerlab.guacamole.readsets
 
 import com.esotericsoftware.kryo.Kryo
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
@@ -76,6 +77,9 @@ class RegionRDDSuite extends GuacFunSuite with Matchers {
         ("chr5",  90,  91, 10)
       )
 
+    implicit val contigLengthsBroadcast: Broadcast[ContigLengths] =
+      sc.broadcast(Map("chr1" -> 1000, "chr2" -> 1000, "chr5" -> 1000))
+
     val readsRDD = sc.parallelize(reads, 1)
     val rdd = readsRDD.coverage(0)
 
@@ -101,7 +105,7 @@ class RegionRDDSuite extends GuacFunSuite with Matchers {
          "chr5:91" -> ( 0,  0, 10)
       )
 
-    val shuffled = readsRDD.shuffleCoverage(Map("chr1" -> 1000, "chr2" -> 1000, "chr5" -> 1000), 0)
+    val shuffled = readsRDD.shuffleCoverage(0)
 
     testRDD(rdd, expected)
     testRDD(shuffled, expected)

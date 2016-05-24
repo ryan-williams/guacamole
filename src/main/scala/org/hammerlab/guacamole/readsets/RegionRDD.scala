@@ -47,25 +47,28 @@ class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R],
   }
 
   def shuffleCoverage(halfWindowSize: Int): RDD[PositionCoverage] = {
-    rdd.flatMap(r => {
-      val c = r.contig
-      val length = contigLengthsBroadcast.value(c)
+    rdd
+      .flatMap(r => {
+        val c = r.contig
+        val length = contigLengthsBroadcast.value(c)
 
-      val lowerBound = r.start - halfWindowSize
-      val upperBound = r.end + halfWindowSize
+        val lowerBound = math.max(0, r.start - halfWindowSize)
+        val upperBound = math.min(length, r.end + halfWindowSize)
 
-      val outs = ArrayBuffer[(ReferencePosition, Coverage)]()
-      for {
-        l <- math.max(0, lowerBound) until math.min(length, upperBound)
-      } {
-        outs += ReferencePosition(c, l) -> Coverage(depth = 1)
-      }
+        val outs = ArrayBuffer[(ReferencePosition, Coverage)]()
+        for {
+          l <- lowerBound until upperBound
+        } {
+          outs += ReferencePosition(c, l) -> Coverage(depth = 1)
+        }
 
-      outs += ReferencePosition(c, lowerBound) -> Coverage(starts = 1)
-      outs += ReferencePosition(c, upperBound) -> Coverage(ends = 1)
+        outs += ReferencePosition(c, lowerBound) -> Coverage(starts = 1)
+        outs += ReferencePosition(c, upperBound) -> Coverage(ends = 1)
 
-      outs.iterator
-    }).reduceByKey(_ + _).sortByKey()
+        outs.iterator
+      })
+      .reduceByKey(_ + _)
+      .sortByKey()
   }
 
   @transient val coverages_ = mutable.Map[Int, RDD[PositionCoverage]]()

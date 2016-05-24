@@ -5,11 +5,11 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
-import org.hammerlab.guacamole.rdd.CmpStats
+import org.hammerlab.magic.rdd.CmpStats
 import org.hammerlab.guacamole.readsets.RegionRDD._
 import org.hammerlab.guacamole.util.{GuacFunSuite, KryoTestRegistrar}
 import org.scalatest.Matchers
-import org.hammerlab.guacamole.rdd.EqualsRDD._
+import org.hammerlab.magic.rdd.EqualsRDD._
 
 import scala.collection.SortedMap
 

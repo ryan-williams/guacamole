@@ -14,7 +14,7 @@ case class KeyPartitioner(override val numPartitions: Int) extends Partitioner {
     case i: Int            => i
     case (idx: Int, _)     => idx
     case pos: TaskPosition => pos.task
-    case other             => throw new AssertionError("Unexpected key: $other")
+    case other             => throw new AssertionError(s"Unexpected key: $other")
   }
 }
 

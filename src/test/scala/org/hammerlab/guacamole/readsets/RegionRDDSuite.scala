@@ -5,7 +5,7 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
-import org.hammerlab.guacamole.rdd.Cmp
+import org.hammerlab.guacamole.rdd.CmpStats
 import org.hammerlab.guacamole.readsets.RegionRDD._
 import org.hammerlab.guacamole.util.{GuacFunSuite, KryoTestRegistrar}
 import org.scalatest.Matchers
@@ -17,7 +17,7 @@ class RegionRDDSuiteRegistrar extends KryoTestRegistrar {
   override def registerTestClasses(kryo: Kryo): Unit = {
     kryo.register(classOf[Array[TestRegion]])
     kryo.register(classOf[TestRegion])
-    kryo.register(classOf[Cmp])
+    kryo.register(classOf[CmpStats])
   }
 }
 
@@ -110,6 +110,6 @@ class RegionRDDSuite extends GuacFunSuite with Matchers {
     testRDD(rdd, expected)
     testRDD(shuffled, expected)
 
-    rdd.compare(shuffled) should be(Cmp(18))
+    rdd.compare(shuffled) should be(CmpStats(18))
   }
 }

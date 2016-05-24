@@ -17,7 +17,7 @@ import org.hammerlab.guacamole.reads.{MappedRead, Read}
 import org.hammerlab.guacamole.reference.ReferencePosition
 import org.seqdoop.hadoop_bam.util.SAMHeaderReader
 import org.seqdoop.hadoop_bam.{AnySAMInputFormat, SAMRecordWritable}
-import org.hammerlab.guacamole.rdd.RDDStats._
+import org.hammerlab.magic.rdd.RDDStats._
 import RegionRDD._
 
 import scala.collection.JavaConversions

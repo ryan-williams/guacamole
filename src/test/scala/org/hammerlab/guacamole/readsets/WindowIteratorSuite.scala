@@ -2,7 +2,8 @@ package org.hammerlab.guacamole.readsets
 
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.reference.{ReferencePosition, ReferenceRegion}
-import org.hammerlab.guacamole.util.{GuacFunSuite, RunLengthIterator}
+import org.hammerlab.guacamole.util.GuacFunSuite
+import org.hammerlab.magic.iterator.RunLengthIterator
 import org.scalatest.Matchers
 
 import scala.collection.SortedMap

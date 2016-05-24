@@ -5,17 +5,20 @@ import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
 import org.hammerlab.guacamole.loci.set.LociSet
-import org.hammerlab.guacamole.rdd.PartitionFirstElemsRDD._
-import org.hammerlab.guacamole.rdd.RDDStats._
+import org.hammerlab.magic.rdd.PartitionFirstElemsRDD._
+import org.hammerlab.magic.rdd.RDDStats._
 import org.hammerlab.guacamole.reference.{ReferencePosition, ReferenceRegion}
-import org.hammerlab.guacamole.util.Stats
+import org.hammerlab.magic.util.Stats
+
+import org.hammerlab.magic.rdd.BorrowElemsRDD._
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
 
 class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R],
-                                                contigLengthsBroadcast: Broadcast[ContigLengths]) extends Serializable {
+                                                contigLengthsBroadcast: Broadcast[ContigLengths])
+  extends Serializable {
 
   @transient lazy val (
     numEmptyPartitions: Int,
@@ -112,17 +115,17 @@ class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R],
     )
 
   def slidingLociWindow(halfWindowSize: Int, loci: LociSet): RDD[(ReferencePosition, (Iterable[R], Int, Int))] = {
-    val firstRegionsRDD: RDD[R] = rdd.borrowFirstElems(BoundedContigIterator(2 * halfWindowSize + 1, _))
+    val copiedRegionsRDD: RDD[R] = rdd.copyFirstElems(BoundedContigIterator(2 * halfWindowSize + 1, _))
 
-    val boundsRDD = rdd.firstElemBoundsRDD(_.startPos + halfWindowSize + 1)
+    val boundsRDD = rdd.map(_.startPos + halfWindowSize + 1).elemBoundsRDD
 
     implicit def toPos[T](t: (ReferencePosition, T)): ReferencePosition = t._1
 
-    rdd
-      .zipPartitions(firstRegionsRDD, boundsRDD)(
-        (readsIter, lastReadsIter, boundsIter) => {
+    copiedRegionsRDD
+      .zipPartitions(boundsRDD)(
+        (readsIter, boundsIter) => {
           val (fromOpt, untilOpt) = boundsIter.next()
-          val bufferedReads = (readsIter ++ lastReadsIter).buffered
+          val bufferedReads = readsIter.buffered
 
           new WindowIterator(halfWindowSize, fromOpt, untilOpt, loci, bufferedReads)
         }

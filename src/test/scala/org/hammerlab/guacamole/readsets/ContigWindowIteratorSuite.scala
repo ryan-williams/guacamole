@@ -1,11 +1,11 @@
 package org.hammerlab.guacamole.readsets
 
 import org.hammerlab.guacamole.loci.set.LociSet
-import org.hammerlab.guacamole.reference.{Contig, ReferencePosition, ReferenceRegion}
-import org.hammerlab.guacamole.util.{GuacFunSuite, RunLengthIterator}
+import org.hammerlab.guacamole.reference.{ReferencePosition, ReferenceRegion}
+import org.hammerlab.guacamole.util.GuacFunSuite
+import org.hammerlab.magic.iterator.RunLengthIterator
 
-import scala.collection.mutable.ArrayBuffer
-import scala.collection.{SortedMap, mutable}
+import scala.collection.SortedMap
 
 case class TestRegion(contig: String, start: Long, end: Long) extends ReferenceRegion
 

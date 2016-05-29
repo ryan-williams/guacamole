@@ -1,7 +1,7 @@
 package org.hammerlab.guacamole.reference
 import scala.math.PartiallyOrdered
 
-case class ReferencePosition(contig: Contig, pos: Long)
+case class ReferencePosition(contig: Contig, locus: Long)
   extends ReferenceRegion
     with PartiallyOrdered[ReferencePosition] {
 
@@ -9,20 +9,20 @@ case class ReferencePosition(contig: Contig, pos: Long)
     that match {
       case other: ReferencePosition =>
         if (contig == other.contig)
-          Some(pos.compare(other.pos))
+          Some(locus.compare(other.locus))
         else
           None
       case _ => None
     }
   }
 
-  def start = pos
-  def end = pos + 1
+  def start = locus
+  def end = locus + 1
 
-  def +(length: Long): ReferencePosition = ReferencePosition(contig, pos + length)
-  def -(length: Long): ReferencePosition = ReferencePosition(contig, math.max(0L, pos - length))
+  def +(length: Long): ReferencePosition = ReferencePosition(contig, locus + length)
+  def -(length: Long): ReferencePosition = ReferencePosition(contig, math.max(0L, locus - length))
 
-  override def toString: String = s"$contig:$pos"
+  override def toString: String = s"$contig:$locus"
 }
 
 object ReferencePosition {
@@ -30,7 +30,7 @@ object ReferencePosition {
     override def compare(x: ReferencePosition, y: ReferencePosition): Int = {
       val contigCmp = x.contig.compare(y.contig)
       if (contigCmp == 0)
-        x.pos.compare(y.pos)
+        x.locus.compare(y.locus)
       else
         contigCmp
     }

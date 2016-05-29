@@ -358,7 +358,7 @@ object ReadSets {
       val samHeader = SAMHeaderReader.readSAMHeaderFrom(path, sc.hadoopConfiguration)
       val sequenceDictionary = SequenceDictionary.fromSAMHeader(samHeader)
 
-      val basename = new File(filename).getName
+      val basename = new File(filename).getName.substring(0, 100)
 
       val reads: RDD[Read] =
         sc

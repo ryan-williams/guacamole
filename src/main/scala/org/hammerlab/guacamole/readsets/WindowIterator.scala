@@ -9,9 +9,9 @@ class WindowIterator[R <: ReferenceRegion](halfWindowSize: Int,
                                            untilOpt: Option[ReferencePosition],
                                            loci: LociSet,
                                            regions: BufferedIterator[R])
-  extends Iterator[(ReferencePosition, (Iterable[R], Int, Int))] {
+  extends Iterator[(ReferencePosition, Iterable[R])] {
 
-  var curContig: BufferedIterator[(ReferencePosition, (Iterable[R], Int, Int))] = _
+  var curContig: ContigWindowIterator[R] = _
   var curContigName: String = _
 
   def advance(): Unit = {
@@ -30,7 +30,12 @@ class WindowIterator[R <: ReferenceRegion](halfWindowSize: Int,
           regions.next()
         }
       } else {
-        curContig = ContigWindowIterator(halfWindowSize, boundedLoci, ContigIterator(regions)).buffered
+        curContig =
+          ContigWindowIterator(
+            halfWindowSize,
+            boundedLoci,
+            ContigIterator(curContigName, regions)
+          )
       }
     }
   }
@@ -40,7 +45,7 @@ class WindowIterator[R <: ReferenceRegion](halfWindowSize: Int,
     curContig != null && curContig.hasNext
   }
 
-  override def next(): (ReferencePosition, (Iterable[R], Int, Int)) = {
+  override def next(): (ReferencePosition, Iterable[R]) = {
     advance()
     if (curContig == null) throw new NoSuchElementException
     curContig.next()

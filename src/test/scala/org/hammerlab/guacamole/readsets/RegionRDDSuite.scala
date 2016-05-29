@@ -5,10 +5,11 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
-import org.hammerlab.magic.rdd.CmpStats
+import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.readsets.RegionRDD._
+import org.hammerlab.guacamole.reference.{ReferencePosition, ReferenceRegion}
 import org.hammerlab.guacamole.util.{GuacFunSuite, KryoTestRegistrar}
-import org.scalatest.Matchers
+import org.hammerlab.magic.rdd.CmpStats
 import org.hammerlab.magic.rdd.EqualsRDD._
 
 import scala.collection.SortedMap
@@ -18,29 +19,20 @@ class RegionRDDSuiteRegistrar extends KryoTestRegistrar {
     kryo.register(classOf[Array[TestRegion]])
     kryo.register(classOf[TestRegion])
     kryo.register(classOf[CmpStats])
+    kryo.register(Class.forName("scala.Tuple2$mcIZ$sp"))
+    kryo.register(classOf[scala.collection.mutable.Queue[_]])
+    kryo.register(classOf[scala.collection.mutable.LinkedList[_]])
+    kryo.register(classOf[Array[Int]])
   }
 }
 
-class RegionRDDSuite extends GuacFunSuite with Matchers {
+class RegionRDDSuite extends GuacFunSuite with Util {
 
   override def registrar = "org.hammerlab.guacamole.readsets.RegionRDDSuiteRegistrar"
 
-  def makeReads(reads: (String, Int, Int, Int)*): Seq[TestRegion] =
-    (for {
-      (contig, start, end, num) <- reads
-      i <- 0 until num
-    } yield
-      TestRegion(contig, start, end)
-    )
-
-  def testRDD(rdd: RDD[PositionCoverage], expected: List[(String, (Int, Int, Int))]): Unit = {
-    val actual = rdd.collect()
-    val actualStrs =
-      for {
-        (pos, Coverage(depth, starts, ends)) <- actual
-      } yield {
-        pos.toString -> (depth, starts, ends)
-      }
+  def testLoci[T, U](actual: Array[(ReferencePosition, T)],
+                     actualStrs: Array[(String, U)],
+                     expected: List[(String, U)]): Unit = {
 
     val actualMap = SortedMap(actualStrs: _*)
     val expectedMap = SortedMap(expected: _*)
@@ -65,9 +57,35 @@ class RegionRDDSuite extends GuacFunSuite with Matchers {
     }
   }
 
-  test("simple") {
-    val reads =
-      makeReads(
+  def checkCoverage(rdd: RDD[PositionCoverage], expected: List[(String, (Int, Int, Int))]): Unit = {
+    val actual = rdd.collect()
+    val actualStrs =
+      for {
+        (pos, Coverage(depth, starts, ends)) <- actual
+      } yield {
+        pos.toString -> (depth, starts, ends)
+      }
+
+    testLoci(actual, actualStrs, expected)
+  }
+
+  def testRDDReads[R <: ReferenceRegion](rdd: RDD[(ReferencePosition, Iterable[R])],
+                                         expected: List[(String, Iterable[(String, Int, Int)])]) = {
+    val actual = rdd.map(t => t._1 -> t._2.toList).collect()
+    val actualStrs: Array[(String, Iterable[(String, Int, Int)])] =
+      for {
+        (pos, reads) <- actual
+      } yield
+        pos.toString ->
+          reads.map(r => (r.contig, r.start.toInt, r.end.toInt))
+
+    testLoci(actual, actualStrs, expected)
+  }
+
+  test("coverage") {
+    val readsRDD =
+      makeReadsRDD(
+        1,
         ("chr1", 100, 105,  1),
         ("chr1", 101, 106,  1),
         ("chr2",   8,   9,  1),
@@ -80,7 +98,6 @@ class RegionRDDSuite extends GuacFunSuite with Matchers {
     implicit val contigLengthsBroadcast: Broadcast[ContigLengths] =
       sc.broadcast(Map("chr1" -> 1000, "chr2" -> 1000, "chr5" -> 1000))
 
-    val readsRDD = sc.parallelize(reads, 1)
     val rdd = readsRDD.coverage(0)
 
     val expected =
@@ -107,9 +124,46 @@ class RegionRDDSuite extends GuacFunSuite with Matchers {
 
     val shuffled = readsRDD.shuffleCoverage(0)
 
-    testRDD(rdd, expected)
-    testRDD(shuffled, expected)
+    checkCoverage(rdd, expected)
+    checkCoverage(shuffled, expected)
 
     rdd.compare(shuffled) should be(CmpStats(18))
+  }
+
+  test("slidingWindowLoci") {
+    val readsRDD =
+      makeReadsRDD(
+        2,
+        ("chr1", 100, 105,  1),
+        ("chr1", 101, 106,  1)/*,
+        ("chr2",   8,   9,  1),
+        ("chr2",   9,  11,  1),
+        ("chr2", 102, 105,  1),
+        ("chr2", 103, 106, 10),
+        ("chr5",  90,  91, 10)*/
+      )
+
+    val contigLengths: ContigLengths = Map("chr1" -> 200, "chr2" -> 200, "chr5" -> 200)
+    implicit val contigLengthsBroadcast: Broadcast[ContigLengths] = sc.broadcast(contigLengths)
+
+    val pileups = readsRDD.slidingLociWindow(2, LociSet.all(contigLengths)).mapValues(_.toList).collect().iterator
+
+   val expected =
+     Map(
+       ("chr1",  97) -> "",
+       ("chr1",  98) -> "[100,105)",
+       ("chr1",  99) -> "[100,105), [101,106)",
+       ("chr1", 100) -> "[100,105), [101,106)",
+       ("chr1", 101) -> "[100,105), [101,106)",
+       ("chr1", 102) -> "[100,105), [101,106)",
+       ("chr1", 103) -> "[100,105), [101,106)",
+       ("chr1", 104) -> "[100,105), [101,106)",
+       ("chr1", 105) -> "[100,105), [101,106)",
+       ("chr1", 106) -> "[100,105), [101,106)",
+       ("chr1", 107) -> "[101,106)",
+       ("chr1", 108) -> ""
+     )
+
+    checkReads(pileups, expected)
   }
 }

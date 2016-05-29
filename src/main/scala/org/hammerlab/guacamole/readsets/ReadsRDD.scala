@@ -20,7 +20,7 @@ case class ReadsRDD(reads: RDD[Read],
       case r: MappedRead                   => Some(r)
       case PairedRead(r: MappedRead, _, _) => Some(r)
       case _                               => None
-    }).setName(s"Mapped reads: $basename")
+    }).setName(s"Mapped reads: ${basename.substring(0, 100)}")
 
   lazy val mappedPairedReads: RDD[PairedRead[MappedRead]] =
     reads.flatMap {

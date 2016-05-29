@@ -56,6 +56,12 @@ trait ReferenceRegion {
 }
 
 object ReferenceRegion {
+  // Order regions by start locus, increasing.
+  def orderByStart[R <: ReferenceRegion] =
+    new Ordering[R] {
+      def compare(first: R, second: R) = second.start.compare(first.start)
+    }
+
   // Order regions by end locus, increasing.
   def orderByEnd[R <: ReferenceRegion] =
     new Ordering[R] {

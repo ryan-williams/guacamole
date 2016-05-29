@@ -6,8 +6,8 @@ import org.hammerlab.guacamole.reference.ReferencePosition
 /**
  * An iterator over loci on a single contig. Loci from this iterator are sorted (monotonically increasing).
  *
- * This can be used as a plain scala Iterator[Long], but also supports extra functionality for quickly skipping
- * ahead past a given locus.
+ * This can be used as a plain scala Iterator[ReferencePosition], but also supports extra functionality for quickly
+ * skipping ahead past a given locus.
  */
 class ContigIterator private(contigName: String, ranges: BufferedIterator[SimpleRange])
   extends BufferedIterator[ReferencePosition] {
@@ -60,17 +60,17 @@ class ContigIterator private(contigName: String, ranges: BufferedIterator[Simple
     // If we're not at the end of the iterator and the current head range includes the target locus, set our index
     // so that our next locus is the target.
     if (ranges.hasNext && ranges.head.start < locus && locus < ranges.head.end) {
-      pos += (locus - ranges.head.start)
+      pos = ReferencePosition(contigName, locus)
     }
   }
 
-  def skipTo(pos: ReferencePosition): Unit = {
-    if (pos.contig == contigName) {
-      skipTo(pos.pos)
+  def skipTo(nextPos: ReferencePosition): Unit = {
+    if (nextPos.contig == contigName) {
+      skipTo(nextPos.locus)
     }
   }
 }
 
 object ContigIterator {
-  def apply(contig: Contig): ContigIterator = new ContigIterator(contig.name, contig.ranges.iterator.buffered).buffered
+  def apply(contig: Contig): ContigIterator = new ContigIterator(contig.name, contig.ranges.iterator.buffered)
 }

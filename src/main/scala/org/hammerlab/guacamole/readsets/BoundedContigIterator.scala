@@ -26,8 +26,8 @@ object BoundedContigIterator {
   def apply[R <: ReferenceRegion](lociToTake: Long, regions: Iterator[R]): Iterator[R] = {
     if (regions.hasNext) {
       val buffered = regions.buffered
-      val ReferencePosition(contig, start) = buffered.head.startPos
-      BoundedContigIterator(contig, start + lociToTake, buffered)
+      val ReferencePosition(contig, end) = buffered.head.endPos
+      BoundedContigIterator(contig, end + lociToTake, buffered)
     } else
       Iterator()
   }

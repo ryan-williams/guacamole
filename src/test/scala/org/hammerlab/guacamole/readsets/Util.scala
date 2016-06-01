@@ -2,8 +2,8 @@ package org.hammerlab.guacamole.readsets
 
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-import org.hammerlab.guacamole.loci.set.LociSet
-import org.hammerlab.guacamole.reference.{ReferencePosition, ReferenceRegion}
+import org.hammerlab.guacamole.loci.set.{LociSet, TestInterval}
+import org.hammerlab.guacamole.reference.{Interval, ReferencePosition, ReferenceRegion}
 import org.hammerlab.magic.iterator.RunLengthIterator
 import org.scalatest.Matchers
 
@@ -13,35 +13,75 @@ trait Util extends Matchers {
 
   def sc: SparkContext
 
-  def checkReads[R <: ReferenceRegion](pileups: Iterator[(ReferencePosition, Iterable[R])],
-                                       expectedStrs: Map[(String, Int), String]): Unit = {
+  def checkReads[I <: Interval](pileups: Iterator[(ReferencePosition, Iterable[I])],
+                                expectedStrs: Map[(String, Int), String]): Unit = {
 
     val expected = expectedStrs.map(t => ReferencePosition(t._1._1, t._1._2) -> t._2)
 
     val actual: List[(ReferencePosition, String)] = windowIteratorStrings(pileups)
     val actualMap = SortedMap(actual: _*)
-    for {
-      (pos, str) <- actualMap
-    } {
-      withClue(s"$pos:") {
-        str should be(expected.getOrElse(pos, ""))
-      }
-    }
+
+    val extraLoci =
+      (for {
+        (k, v) <- actualMap
+        if !expected.contains(k)
+      } yield
+        k -> v
+      )
+      .toArray
+      .sortBy(x => x)
 
     val missingLoci =
-      expected
-        .keys
-        .filter(expected.keySet.diff(actualMap.keySet).contains)
-        .toArray
-        .sortBy(x => x)
+      (for {
+        (k, v) <- expected
+        if !actualMap.contains(k)
+      } yield
+        k -> v
+      )
+      .toArray
+      .sortBy(x => x)
 
-    withClue("missing loci:") {
-      missingLoci should be(Array())
+    val msg =
+      (
+        List(
+          s"expected ${expected.size} loci."
+        ) ++
+          (
+            if (extraLoci.nonEmpty)
+              List(
+                s"${extraLoci.length} extra loci found:",
+                s"\t${extraLoci.mkString("\n\t")}"
+              )
+            else
+              Nil
+          ) ++
+          (
+            if (missingLoci.nonEmpty)
+              List(
+                s"${missingLoci.length} missing loci:",
+                s"\t${missingLoci.mkString("\n\t")}"
+              )
+            else
+              Nil
+          )
+      ).mkString("\n")
+
+    withClue(msg) {
+      missingLoci.length should be(0)
+      extraLoci.length should be(0)
     }
   }
 
   def makeReadsRDD(numPartitions: Int, reads: (String, Int, Int, Int)*): RDD[TestRegion] =
     sc.parallelize(makeReads(reads: _*).toSeq, numPartitions)
+
+  def makeIntervals(intervals: (Int, Int, Int)*): Iterator[TestInterval] =
+    (for {
+      (start, end, num) <- intervals
+      i <- 0 until num
+    } yield
+      TestInterval(start, end)
+    ).iterator
 
   def makeReads(contig: String, reads: (Int, Int, Int)*): Iterator[TestRegion] =
     makeReads((for { (start, end, num) <- reads } yield (contig, start, end, num)): _*)
@@ -54,8 +94,8 @@ trait Util extends Matchers {
       TestRegion(contig, start, end)
     ).iterator
 
-  def windowIteratorStrings[R <: ReferenceRegion](
-    windowIterator: Iterator[(ReferencePosition, Iterable[R])]
+  def windowIteratorStrings[I <: Interval](
+    windowIterator: Iterator[(ReferencePosition, Iterable[I])]
   ): List[(ReferencePosition, String)] =
     (for {
       (pos, reads) <- windowIterator

@@ -11,6 +11,7 @@ import org.hammerlab.guacamole.reference.{ReferencePosition, ReferenceRegion}
 import org.hammerlab.guacamole.util.{GuacFunSuite, KryoTestRegistrar}
 import org.hammerlab.magic.rdd.CmpStats
 import org.hammerlab.magic.rdd.EqualsRDD._
+import org.scalatest.Ignore
 
 import scala.collection.SortedMap
 
@@ -127,9 +128,10 @@ class RegionRDDSuite extends GuacFunSuite with Util {
     checkCoverage(rdd, expected)
     checkCoverage(shuffled, expected)
 
-    rdd.compare(shuffled) should be(CmpStats(18))
+    rdd.compare(shuffled).stats should be(CmpStats(18))
   }
 
+  //@Ignore
   test("slidingWindowLoci") {
     val readsRDD =
       makeReadsRDD(

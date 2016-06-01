@@ -1,7 +1,9 @@
 package org.hammerlab.guacamole.reference
+import org.hammerlab.guacamole.reference.ReferencePosition.Locus
+
 import scala.math.PartiallyOrdered
 
-case class ReferencePosition(contig: Contig, locus: Long)
+case class ReferencePosition(contig: Contig, locus: Locus)
   extends ReferenceRegion
     with PartiallyOrdered[ReferencePosition] {
 
@@ -19,8 +21,8 @@ case class ReferencePosition(contig: Contig, locus: Long)
   def start = locus
   def end = locus + 1
 
-  def +(length: Long): ReferencePosition = ReferencePosition(contig, locus + length)
-  def -(length: Long): ReferencePosition = ReferencePosition(contig, math.max(0L, locus - length))
+  def +(length: Locus): ReferencePosition = ReferencePosition(contig, locus + length)
+  def -(length: Locus): ReferencePosition = ReferencePosition(contig, math.max(0L, locus - length))
 
   override def toString: String = s"$contig:$locus"
 }
@@ -35,4 +37,6 @@ object ReferencePosition {
         contigCmp
     }
   }
+
+  type Locus = Long
 }

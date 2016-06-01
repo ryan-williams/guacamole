@@ -5,13 +5,14 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.zip.ZipPartitionsWithIndexRDD._
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
-import org.hammerlab.guacamole.loci.set.LociSet
+import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.LociPartitioning
+import org.hammerlab.guacamole.loci.set.{LociSet, TakeLociIterator}
 import org.hammerlab.guacamole.reference.{ReferencePosition, ReferenceRegion}
 import org.hammerlab.magic.rdd.BorrowElemsRDD._
+import org.hammerlab.magic.rdd.KeyPartitioner
 import org.hammerlab.magic.rdd.PartitionFirstElemsRDD._
 import org.hammerlab.magic.rdd.RDDStats._
 import org.hammerlab.magic.util.Stats
-
 import org.hammerlab.magic.rdd.RunLengthRDD._
 
 import scala.collection.mutable
@@ -21,6 +22,8 @@ import scala.reflect.ClassTag
 class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R],
                                                 contigLengthsBroadcast: Broadcast[ContigLengths])
   extends Serializable {
+
+  @transient val sc = rdd.sparkContext
 
   @transient lazy val (
     numEmptyPartitions: Int,
@@ -76,17 +79,20 @@ class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R],
       .sortByKey()
   }
 
-  @transient val coverages_ = mutable.Map[Int, RDD[PositionCoverage]]()
-  def coverage(halfWindowSize: Int): RDD[PositionCoverage] =
+  @transient lazy val allLoci = LociSet.all(contigLengthsBroadcast.value)
+  @transient lazy val allLociBroadcast = sc.broadcast(allLoci)
+
+  @transient val coverages_ = mutable.Map[(Int, LociSet), RDD[PositionCoverage]]()
+  def coverage(halfWindowSize: Int, lociBroadcast: Broadcast[LociSet] = allLociBroadcast): RDD[PositionCoverage] =
     coverages_.getOrElseUpdate(
-      halfWindowSize,
+      (halfWindowSize, lociBroadcast.value),
       {
         rdd
           .mapPartitions(it =>
             for {
-              contigIterator <- new ContigsIterator(it.buffered)
-              length = contigLengthsBroadcast.value(contigIterator.contig)
-              coverage <- CoverageIterator(halfWindowSize, length, contigIterator)
+              (contigRegionsIterator, contigLociIterator) <- new ContigsIterator(it.buffered, lociBroadcast.value)
+              length = contigLengthsBroadcast.value(contigRegionsIterator.contig)
+              coverage <- ContigCoverageIterator(halfWindowSize, length, contigRegionsIterator, contigLociIterator)
             } yield
               coverage
           )
@@ -124,18 +130,27 @@ class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R],
     copiedRegionsRDD.zipPartitionsWithIndex(boundsRDD)(
         (idx, readsIter, boundsIter) => {
           val (fromOpt, untilOpt) = boundsIter.next()
-          val bufferedReads = readsIter.buffered
+//          val bufferedReads = readsIter.buffered
 
-          new WindowIterator(
-            halfWindowSize,
-            if (idx > 0)
-              fromOpt
-            else
-              None,
-            untilOpt,
-            loci,
-            bufferedReads
-          )
+          if (idx == 0) {
+            val r = readsIter.toArray
+
+            val arr = new WindowIterator(
+              halfWindowSize,
+              if (idx > 0)
+                fromOpt
+              else
+                None,
+              untilOpt,
+              loci,
+              r.iterator.buffered
+            ).toArray
+
+            println(s"partition $idx: ${r.length} reads, ${arr.length} loci")
+
+            arr.iterator
+          } else
+            Iterator()
         }
       )
   }
@@ -144,12 +159,35 @@ class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R],
     coverage(halfWindowSize).map(t => t._1.contig -> (t._2.depth >= depthCutoff)).runLengthEncode
   }
 
-//  def partition(halfWindowSize: Int,
+  def partition(halfWindowSize: Int,
 //                loci: LociSet,
 //                regionsPerPartition: Int,
-//                maxRegionsPerPartition: Int): RDD[(ReferencePosition, Iterable[R])] = {
-//
-//    implicit val orderByStart = ReferenceRegion.orderByStart[R]
+                maxRegionsPerPartition: Int): RDD[((Int, Int), LociSet)] = {
+    coverage(halfWindowSize).mapPartitionsWithIndex((idx, it) => {
+      for {
+        (subIdx, loci) <- new TakeLociIterator(it.buffered, maxRegionsPerPartition)
+      } yield
+        (idx, subIdx) -> loci
+    })
+  }
+
+  def partition(halfWindowSize: Int,
+                partitioning: LociPartitioning): RDD[R] = {
+    val partitioningBroadcast = sc.broadcast(partitioning)
+
+    val numPartitions = partitioning.inverse.size
+
+    (for {
+      r <- rdd
+      partition <- partitioningBroadcast.value.getAll(r, halfWindowSize)
+    } yield
+      (partition, r.start) -> r
+    )
+    .repartitionAndSortWithinPartitions(KeyPartitioner(numPartitions))
+    .values
+  }
+
+  //    implicit val orderByStart = ReferenceRegion.orderByStart[R]
 //    val sorted = rdd.sort()
 
 

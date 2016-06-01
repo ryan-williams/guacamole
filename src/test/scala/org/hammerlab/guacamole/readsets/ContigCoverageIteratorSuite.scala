@@ -1,0 +1,62 @@
+package org.hammerlab.guacamole.readsets
+
+import org.hammerlab.guacamole.loci.Coverage
+import org.hammerlab.guacamole.loci.set.{LociParser, LociSet}
+import org.hammerlab.guacamole.reference.ReferencePosition
+import org.scalatest.{FunSuite, Matchers}
+
+class ContigCoverageIteratorSuite extends FunSuite with Matchers {
+
+  def check(contig: String,
+            halfWindowSize: Int,
+            intervals: (Int, Int)*)(
+    expectedStrs: ((String, Int), (Int, Int, Int))*
+  ): Unit =
+    check("all", contig, halfWindowSize, intervals: _*)(expectedStrs: _*)
+
+  def check(lociStr: String,
+            contig: String,
+            halfWindowSize: Int,
+            intervals: (Int, Int)*)(
+    expectedStrs: ((String, Int), (Int, Int, Int))*
+  ): Unit = {
+
+    val reads =
+      (for {
+        (start, end) <- intervals
+      } yield
+        TestRegion(contig, start, end)
+      ).iterator.buffered
+
+    val contigLengths: ContigLengths = Map("chr1" -> 100, "chr2" -> 200)
+    val loci = LociParser(lociStr).result(contigLengths).onContig(contig).iterator
+
+    val expected =
+      for {
+        ((contig, locus), (depth, starts, ends)) <- expectedStrs
+      } yield
+        ReferencePosition(contig, locus) -> Coverage(depth, starts, ends)
+
+    ContigCoverageIterator(halfWindowSize, contigLengths(contig), ContigIterator(reads), loci).toList should be(expected)
+  }
+
+  test("simple") {
+    check(
+      "chr1",
+      halfWindowSize = 0,
+      (10, 20)
+    )(
+      ("chr1", 10) -> (1, 1, 0),
+      ("chr1", 11) -> (1, 0, 0),
+      ("chr1", 12) -> (1, 0, 0),
+      ("chr1", 13) -> (1, 0, 0),
+      ("chr1", 14) -> (1, 0, 0),
+      ("chr1", 15) -> (1, 0, 0),
+      ("chr1", 16) -> (1, 0, 0),
+      ("chr1", 17) -> (1, 0, 0),
+      ("chr1", 18) -> (1, 0, 0),
+      ("chr1", 19) -> (1, 0, 0),
+      ("chr1", 20) -> (0, 0, 1)
+    )
+  }
+}

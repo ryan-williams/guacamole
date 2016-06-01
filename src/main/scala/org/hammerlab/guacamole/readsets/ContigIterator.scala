@@ -18,9 +18,8 @@ case class ContigIterator[+R <: ReferenceRegion](contig: Contig, regions: Buffer
 }
 
 object ContigIterator {
-  def apply[R <: ReferenceRegion](regions: Iterator[R]): ContigIterator[R] = {
-    val buffered = regions.buffered
-    ContigIterator(buffered.head.contig, buffered)
+  def apply[R <: ReferenceRegion](regions: BufferedIterator[R]): ContigIterator[R] = {
+    ContigIterator(regions.head.contig, regions)
   }
 }
 

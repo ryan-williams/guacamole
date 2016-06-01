@@ -132,7 +132,7 @@ object ReferenceBroadcast {
 
         val sequenceMap = result.getOrElseUpdate(contig.name, mutable.HashMap[Int, Byte]())
         contig.iterator.zip(sequence.iterator).foreach(pair => {
-          sequenceMap.update(pair._1.locus.toInt, pair._2)
+          sequenceMap.update(pair._1.toInt, pair._2)
         })
       }
     }

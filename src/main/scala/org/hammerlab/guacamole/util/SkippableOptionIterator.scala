@@ -1,5 +1,9 @@
 package org.hammerlab.guacamole.util
 
-class SkippableOptionIterator {
-
+trait SkippableOptionIterator[T, U] extends OptionIterator[T] {
+  def _skipTo(u: U): Unit
+  def skipTo(u: U): this.type = {
+    _skipTo(u)
+    this
+  }
 }

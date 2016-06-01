@@ -130,27 +130,17 @@ class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R],
     copiedRegionsRDD.zipPartitionsWithIndex(boundsRDD)(
         (idx, readsIter, boundsIter) => {
           val (fromOpt, untilOpt) = boundsIter.next()
-//          val bufferedReads = readsIter.buffered
 
-          if (idx == 0) {
-            val r = readsIter.toArray
-
-            val arr = new WindowIterator(
-              halfWindowSize,
-              if (idx > 0)
-                fromOpt
-              else
-                None,
-              untilOpt,
-              loci,
-              r.iterator.buffered
-            ).toArray
-
-            println(s"partition $idx: ${r.length} reads, ${arr.length} loci")
-
-            arr.iterator
-          } else
-            Iterator()
+          new WindowIterator(
+            halfWindowSize,
+            if (idx > 0)
+              fromOpt
+            else
+              None,
+            untilOpt,
+            loci,
+            readsIter.buffered
+          )
         }
       )
   }

@@ -9,7 +9,7 @@ import scala.collection.SortedMap
 
 case class TestRegion(contig: String, start: Long, end: Long) extends ReferenceRegion
 
-class ContigWindowIteratorSuite extends GuacFunSuite with Util {
+class LociContigWindowIteratorSuite extends GuacFunSuite with Util {
 
   def checkReads(
     halfWindowSize: Int,
@@ -19,24 +19,12 @@ class ContigWindowIteratorSuite extends GuacFunSuite with Util {
     expected: ((String, Int), String)*
   ): Unit = {
 
-//    val it =
-//      ContigWindowIterator(
-//        "chr1",
-//        halfWindowSize,
-//        LociSet(lociStr).onContig("chr1").iterator,
-//        intervals,
-//        skipEmpty = false
-//      )
-//
-//    checkReads(it, expected.toMap)
     checkReads(
       new LociContigWindowIterator(
-//        "chr1",
-//        halfWindowSize,
         LociSet(lociStr).onContig("chr1").iterator,
         new ContigWindowIterator("chr1", halfWindowSize, intervals.buffered)
       ),
-      expected.filter(_._2.nonEmpty).toMap
+      expected.toMap
     )
   }
 
@@ -52,13 +40,11 @@ class ContigWindowIteratorSuite extends GuacFunSuite with Util {
         (101, 201, 1)
       )
     )(
-      ("chr1",  99) -> "",
       ("chr1", 100) -> "[100,200)",
       ("chr1", 101) -> "[100,200), [101,201)",
       ("chr1", 102) -> "[100,200), [101,201)",
       ("chr1", 199) -> "[100,200), [101,201)",
-      ("chr1", 200) -> "[101,201)",
-      ("chr1", 201) -> ""
+      ("chr1", 200) -> "[101,201)"
     )
   }
 
@@ -79,7 +65,6 @@ class ContigWindowIteratorSuite extends GuacFunSuite with Util {
         (300, 400, 1)
       )
     )(
-      ("chr1",  99) -> "",
       ("chr1", 100) -> "[100,200)",
       ("chr1", 101) -> "[100,200), [101,201)",
       ("chr1", 102) -> "[100,200), [101,201)",
@@ -90,8 +75,7 @@ class ContigWindowIteratorSuite extends GuacFunSuite with Util {
       ("chr1", 299) -> "[200,300)",
       ("chr1", 300) -> "[300,400)",
       ("chr1", 301) -> "[300,400)",
-      ("chr1", 399) -> "[300,400)",
-      ("chr1", 400) -> ""
+      ("chr1", 399) -> "[300,400)"
     )
   }
 
@@ -112,7 +96,6 @@ class ContigWindowIteratorSuite extends GuacFunSuite with Util {
         (300, 400, 1)
       )
     )(
-      ("chr1",  98) -> "",
       ("chr1",  99) -> "[100,200)",
       ("chr1", 100) -> "[100,200), [101,201)",
       ("chr1", 101) -> "[100,200), [101,201)",
@@ -125,8 +108,7 @@ class ContigWindowIteratorSuite extends GuacFunSuite with Util {
       ("chr1", 299) -> "[199,299), [200,300), [300,400)",
       ("chr1", 300) -> "[200,300), [300,400)",
       ("chr1", 301) -> "[300,400)",
-      ("chr1", 400) -> "[300,400)",
-      ("chr1", 401) -> ""
+      ("chr1", 400) -> "[300,400)"
     )
   }
 
@@ -162,8 +144,7 @@ class ContigWindowIteratorSuite extends GuacFunSuite with Util {
       ("chr1", 199) -> "[100,200), [101,199), [155,255)",
       ("chr1", 200) -> "[100,200), [155,255)",
       ("chr1", 201) -> "[155,255)",
-      ("chr1", 255) -> "[155,255)",
-      ("chr1", 256) -> ""
+      ("chr1", 255) -> "[155,255)"
     )
   }
 
@@ -181,7 +162,6 @@ class ContigWindowIteratorSuite extends GuacFunSuite with Util {
         (110, 120, 100000)
       )
     )(
-      ("chr1",  98) -> "",
       ("chr1",  99) -> "[100,200)*100000",
       ("chr1", 108) -> "[100,200)*100000",
       ("chr1", 109) -> "[100,200)*100000, [110,120)*100000",
@@ -190,8 +170,7 @@ class ContigWindowIteratorSuite extends GuacFunSuite with Util {
       ("chr1", 120) -> "[100,200)*100000, [110,120)*100000",
       ("chr1", 121) -> "[100,200)*100000",
       ("chr1", 199) -> "[100,200)*100000",
-      ("chr1", 200) -> "[100,200)*100000",
-      ("chr1", 201) -> ""
+      ("chr1", 200) -> "[100,200)*100000"
     )
   }
 
@@ -209,16 +188,7 @@ class ContigWindowIteratorSuite extends GuacFunSuite with Util {
         (120, 130, 10),
         (153, 160, 10)
       )
-    )(
-      ("chr1",  50) -> "",
-      ("chr1",  51) -> "",
-      ("chr1",  60) -> "",
-      ("chr1",  61) -> "",
-      ("chr1", 150) -> "",
-      ("chr1", 151) -> "",
-      ("chr1", 161) -> "",
-      ("chr1", 162) -> ""
-    )
+    )()
   }
 
   test("skip gaps and some reads") {
@@ -234,15 +204,9 @@ class ContigWindowIteratorSuite extends GuacFunSuite with Util {
         (80, 90, 100)
       )
     )(
-      ("chr1",  50) -> "",
-      ("chr1",  51) -> "",
-      ("chr1",  60) -> "",
       ("chr1",  61) -> "[62,70)*10",
       ("chr1",  62) -> "[62,70)*10",
-      ("chr1",  63) -> "[62,70)*10",
-      ("chr1", 150) -> "",
-      ("chr1", 151) -> "",
-      ("chr1", 152) -> ""
+      ("chr1",  63) -> "[62,70)*10"
     )
   }
 

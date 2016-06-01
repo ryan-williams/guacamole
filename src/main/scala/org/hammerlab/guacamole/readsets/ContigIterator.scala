@@ -3,7 +3,13 @@ package org.hammerlab.guacamole.readsets
 import org.hammerlab.guacamole.reference.{Contig, ReferenceRegion}
 
 case class ContigIterator[+R <: ReferenceRegion](contig: Contig, regions: BufferedIterator[R])
-  extends Iterator[R] {
+  extends BufferedIterator[R] {
+
+  override def head: R =
+    if (hasNext)
+      regions.head
+    else
+      throw new NoSuchElementException
 
   override def hasNext: Boolean = {
     regions.hasNext && regions.head.contig == contig

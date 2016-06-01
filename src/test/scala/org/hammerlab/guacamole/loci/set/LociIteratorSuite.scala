@@ -26,6 +26,7 @@ class LociIteratorSuite extends FunSuite with Matchers {
   test("skipTo") {
     val it = loci(100 -> 110)
     it.skipTo(103)
+    it.head should be(103)
     it.toList should be(103 until 110)
   }
 

@@ -2,48 +2,27 @@ package org.hammerlab.guacamole.readsets
 
 import java.util.NoSuchElementException
 
-import org.hammerlab.guacamole.loci.set.LociIterator
 import org.hammerlab.guacamole.reference.ReferencePosition.Locus
-import org.hammerlab.guacamole.reference.{Contig, Interval, ReferencePosition, ReferenceRegion}
+import org.hammerlab.guacamole.reference.{Contig, Interval, ReferencePosition}
 
 import scala.collection.mutable
 
-class ContigWindowIterator[I <: Interval] private(contig: Contig,
-                                                  halfWindowSize: Int,
-                                                  //loci: LociIterator,
-                                                  regions: BufferedIterator[I])
-  extends Iterator[(ReferencePosition, Iterable[I])] {
+class ContigWindowIterator[I <: Interval](contig: Contig,
+                                          halfWindowSize: Int,
+                                          regions: BufferedIterator[I])
+  extends BufferedIterator[(ReferencePosition, Iterable[I])] {
 
   private val queue = new mutable.PriorityQueue[I]()(Interval.orderByEnd[I])
 
+  var locus: Locus = 0
   private var _next: (ReferencePosition, Iterable[I]) = _
 
-  def advance(): Boolean = {
-    if (_next != null) return true
+  override def head: (ReferencePosition, Iterable[I]) = {
+    if (!hasNext) throw new NoSuchElementException
+    _next
+  }
 
-    if (skipEmpty) {
-      var advancing = true
-      while (advancing) {
-        advancing = false
-
-        if (!loci.hasNext) return false
-
-        if (regions.hasNext && loci.head < regions.head.start - halfWindowSize) {
-          loci.skipTo(regions.head.start - halfWindowSize)
-          if (!loci.hasNext) return false
-          advancing = true
-        }
-
-        while (regions.hasNext && regions.head.end + halfWindowSize <= loci.head) {
-          regions.next()
-        }
-      }
-    } else
-      if (!loci.hasNext)
-        return false
-
-    val locus = loci.next()
-
+  def updateQueue(): Unit = {
     val lowerLimit = locus - halfWindowSize
     val upperLimit = locus + halfWindowSize
 
@@ -57,52 +36,43 @@ class ContigWindowIterator[I <: Interval] private(contig: Contig,
       }
       regions.next()
     }
+  }
 
-    if (skipEmpty && queue.isEmpty) return false
+  override def hasNext: Boolean = {
+    if (_next != null) return true
+
+    updateQueue()
+
+    if (queue.isEmpty) {
+      if (!regions.hasNext)
+        return false
+
+      locus = regions.head.start - halfWindowSize
+      return hasNext
+    }
 
     _next = ReferencePosition(contig, locus) -> queue.view
 
     true
   }
 
-  override def hasNext: Boolean = advance()
-
   override def next(): (ReferencePosition, Iterable[I]) = {
-    if (!advance()) throw new NoSuchElementException
+    if (!hasNext) throw new NoSuchElementException
     val n = _next
     _next = null
+    locus += 1
     n
-//    val pos = loci.next()
-//
-//    val lowerLimit = pos - halfWindowSize
-//    val upperLimit = pos + halfWindowSize
-//
-//    while (ends.headOption.exists(e => !(e > lowerLimit))) {
-//      ends.dequeue
-//    }
-//
-//    while (queue.headOption.exists(r => !(r.end > lowerLimit))) {
-//      queue.dequeue
-//    }
-//
-//    while (regions.hasNext && regions.head.start <= upperLimit) {
-//      if (regions.head.end > lowerLimit) {
-//        ends.enqueue(regions.head.end)
-//        queue.enqueue(regions.head)
-//      }
-//      regions.next()
-//    }
-//
-//    ReferencePosition(contig, pos) ->
-//      queue.view.filter(_.end > lowerLimit)
   }
-}
 
-object ContigWindowIterator {
-  def apply[I <: Interval](contig: Contig,
-                           halfWindowSize: Int,
-                           loci: LociIterator,
-                           regions: Iterator[I],
-                           skipEmpty: Boolean = true): ContigWindowIterator[I] =
-    new ContigWindowIterator(contig, halfWindowSize, loci, regions.buffered, skipEmpty)
+  def skipTo(newLocus: Locus): this.type = {
+    if (newLocus > locus) {
+      locus = newLocus
+      //updateQueue()
+      _next = null
+//      if (queue.isEmpty) {
+//        locus = -1L
+//      }
+    }
+    this
+  }
 }

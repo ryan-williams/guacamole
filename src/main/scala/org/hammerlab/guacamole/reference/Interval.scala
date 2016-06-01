@@ -1,8 +1,12 @@
 package org.hammerlab.guacamole.reference
 
+import org.hammerlab.guacamole.reference.ReferencePosition.Locus
+
 trait Interval {
-  def start: Long
-  def end: Long
+  def start: Locus
+  def end: Locus
+
+  def contains(locus: Locus): Boolean = start <= locus && locus < end
 }
 
 object Interval {

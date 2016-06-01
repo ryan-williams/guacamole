@@ -51,7 +51,7 @@ class ContigWindowIterator[I <: Interval](contig: Contig,
       return hasNext
     }
 
-    _next = ReferencePosition(contig, locus) -> queue.view
+    _next = ReferencePosition(contig, locus) -> queue
 
     true
   }

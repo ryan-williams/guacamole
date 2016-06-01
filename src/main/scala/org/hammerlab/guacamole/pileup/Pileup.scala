@@ -37,7 +37,7 @@ import org.hammerlab.guacamole.variants.{Allele, Genotype}
 case class Pileup(referenceName: String,
                   locus: Long,
                   referenceContigSequence: ContigSequence,
-                  elements: Seq[PileupElement]) {
+                  elements: Iterable[PileupElement]) {
 
   val referenceBase: Byte = referenceContigSequence(locus.toInt)
 
@@ -52,7 +52,7 @@ case class Pileup(referenceName: String,
       referenceName, elements.map(_.read.contig).filter(_ != referenceName).mkString(",")))
   assume(elements.forall(_.locus == locus), "Reads in pileup have mismatching loci")
 
-  lazy val distinctAlleles: Seq[Allele] = elements.map(_.allele).distinct.sorted.toVector
+  lazy val distinctAlleles: Seq[Allele] = elements.map(_.allele).toSet.toVector.sorted
 
   lazy val sampleName = elements.head.read.sampleName
 
@@ -69,7 +69,7 @@ case class Pileup(referenceName: String,
   /**
    * Depth of pileup - number of reads at locus
    */
-  lazy val depth: Int = elements.length
+  lazy val depth: Int = elements.size
 
   /**
    * Number of positively stranded reads
@@ -149,7 +149,7 @@ object Pileup {
    * @param referenceContigSequence The reference for this pileup's contig
    * @return A [[Pileup]] at the given locus.
    */
-  def apply(reads: Seq[MappedRead], referenceName: String, locus: Long, referenceContigSequence: ContigSequence): Pileup = {
+  def apply(reads: Iterable[MappedRead], referenceName: String, locus: Long, referenceContigSequence: ContigSequence): Pileup = {
     //TODO: Is this call to overlaps locus necessary?
     val elements = reads.filter(_.overlapsLocus(locus)).map(PileupElement(_, locus, referenceContigSequence))
     Pileup(referenceName, locus, referenceContigSequence, elements.toIndexedSeq)

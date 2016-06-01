@@ -14,24 +14,25 @@ case class ReadsRDD(reads: RDD[Read],
                     contigLengths: ContigLengths) {
 
   val basename = new File(sourceFile).getName
+  val shortName = basename.substring(0, math.min(100, basename.length))
 
   lazy val mappedReads =
     reads.flatMap({
       case r: MappedRead                   => Some(r)
       case PairedRead(r: MappedRead, _, _) => Some(r)
       case _                               => None
-    }).setName(s"Mapped reads: ${basename.substring(0, 100)}")
+    }).setName(s"Mapped reads: $shortName")
 
   lazy val mappedPairedReads: RDD[PairedRead[MappedRead]] =
-    reads.flatMap {
+    reads.flatMap({
       case rp: PairedRead[_] if rp.isMapped => Some(rp.asInstanceOf[PairedRead[MappedRead]])
       case _                                => None
-    }
+    }).setName(s"Mapped reads: $shortName")
 }
 
 case class MappedReadsRDD(reads: RDD[MappedRead],
                           sourceFile: String,
-                          contigLengthsBroadcast: Broadcast[ContigLengths])
+                          override val contigLengthsBroadcast: Broadcast[ContigLengths])
   extends RegionRDD(reads, contigLengthsBroadcast)
 
 object MappedReadsRDD {

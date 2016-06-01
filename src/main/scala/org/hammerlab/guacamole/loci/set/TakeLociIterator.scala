@@ -12,13 +12,11 @@ import scala.collection.mutable.ArrayBuffer
 class TakeLociIterator(it: BufferedIterator[(PositionCoverage)],
                        maxRegionsPerPartition: Int,
                        throwOnInvalidDepth: Boolean = false)
-  extends Iterator[(Int, LociSet)] {
-
-  var curIdx = 0
+  extends Iterator[LociSet] {
 
   override def hasNext: Boolean = it.hasNext
 
-  override def next(): (Int, LociSet) = {
+  override def next(): LociSet = {
 
     var curNumRegions = 0
 
@@ -67,9 +65,6 @@ class TakeLociIterator(it: BufferedIterator[(PositionCoverage)],
         contigs += Contig(curContig, List(JRange.closedOpen(start: JLong, end: JLong)))
     }
 
-    val idx = curIdx
-    curIdx += 1
-
-    (idx, LociSet.fromContigs(contigs))
+    LociSet.fromContigs(contigs)
   }
 }

@@ -7,18 +7,14 @@ import org.scalatest.{FunSuite, Matchers}
 
 class TakeLociIteratorSuite extends FunSuite with Matchers {
 
-  def check(input: ((String, Int), (Int, Int, Int))*)(expectedStrs: (Int, String)*) = {
+  def check(input: ((String, Int), (Int, Int, Int))*)(expectedStrs: String*) = {
     val depths =
       for {
         ((contig, locus), (depth, starts, ends)) <- input
       } yield
         ReferencePosition(contig, locus) -> Coverage(depth, starts, ends)
 
-    val expected =
-      for {
-        (idx, str) <- expectedStrs
-      } yield
-        idx -> LociSet(str)
+    val expected = expectedStrs.map(LociSet.apply)
 
     new TakeLociIterator(depths.iterator.buffered, 15).toList should be(expected)
   }
@@ -37,11 +33,11 @@ class TakeLociIteratorSuite extends FunSuite with Matchers {
       ("chr2", 23) -> (14,  3,  0),
       ("chr2", 24) -> (15,  1,  0)
     )(
-      0 -> "chr1:10-12",
-      1 -> "chr1:12-13",
-      2 -> "chr1:13-15",
-      3 -> "chr1:15-16,chr2:20-22",
-      4 -> "chr2:22-25"
+      "chr1:10-12",
+      "chr1:12-13",
+      "chr1:13-15",
+      "chr1:15-16,chr2:20-22",
+      "chr2:22-25"
     )
   }
 
@@ -54,9 +50,9 @@ class TakeLociIteratorSuite extends FunSuite with Matchers {
       ("chr1", 14) -> (11,  5, 10),
       ("chr1", 15) -> (12,  1,  0)
     )(
-      0 -> "chr1:10-12",
-      1 -> "chr1:12-13",
-      2 -> "chr1:14-16"
+      "chr1:10-12",
+      "chr1:12-13",
+      "chr1:14-16"
     )
   }
 }

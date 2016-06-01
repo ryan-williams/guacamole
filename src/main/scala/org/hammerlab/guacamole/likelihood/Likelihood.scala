@@ -42,7 +42,7 @@ object Likelihood {
    *
    * This considers only the base quality scores.
    *
-   * @param element the [org.hammerlab.guacamole.pileup.PileupElement]] to consider
+   * @param element the [[org.hammerlab.guacamole.pileup.PileupElement]] to consider
    * @return the unnormalized likelihood the sequenced bases are correct. Plain probability, NOT a log prob.
    */
   def probabilityCorrectIgnoringAlignment(element: PileupElement): Double = {
@@ -69,7 +69,7 @@ object Likelihood {
    * @return The likelihood for the given genotype.
    */
   def likelihoodOfGenotype(
-    elements: Seq[PileupElement],
+    elements: Iterable[PileupElement],
     genotype: Genotype,
     probabilityCorrect: PileupElement => Double = probabilityCorrectIgnoringAlignment,
     prior: Genotype => Double = uniformPrior,
@@ -105,8 +105,8 @@ object Likelihood {
 
     val alleles = pileup.distinctAlleles.filter(allele => allele.altBases.forall((Bases.isStandardBase _)))
     val genotypes = for {
-      i <- 0 until alleles.size
-      j <- i until alleles.size
+      i <- alleles.indices
+      j <- alleles.indices
     } yield Genotype(alleles(i), alleles(j))
     val likelihoods = likelihoodsOfGenotypes(pileup.elements, genotypes, probabilityCorrect, prior, logSpace, normalize)
     genotypes.zip(likelihoods)
@@ -146,7 +146,7 @@ object Likelihood {
    * @param normalize if true, the probabilities returned are normalized to sum to 1.
    * @return A sequence of probabilities corresponding to each genotype in the genotypes argument
    */
-  def likelihoodsOfGenotypes(elements: Seq[PileupElement],
+  def likelihoodsOfGenotypes(elements: Iterable[PileupElement],
                              genotypes: Seq[Genotype],
                              probabilityCorrect: PileupElement => Double = probabilityCorrectIgnoringAlignment,
                              prior: Genotype => Double = uniformPrior,

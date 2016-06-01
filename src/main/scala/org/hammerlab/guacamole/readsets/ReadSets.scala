@@ -14,11 +14,13 @@ import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
 import org.hammerlab.guacamole.loci.WindowCoverage
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.reads.{MappedRead, Read}
-import org.hammerlab.guacamole.reference.ReferencePosition
+import org.hammerlab.guacamole.reference.{ReferenceGenome, ReferencePosition}
 import org.seqdoop.hadoop_bam.util.SAMHeaderReader
 import org.seqdoop.hadoop_bam.{AnySAMInputFormat, SAMRecordWritable}
 import org.hammerlab.magic.rdd.RDDStats._
 import RegionRDD._
+import org.hammerlab.guacamole.loci.set.LociSet
+import org.hammerlab.guacamole.pileup.Pileup
 
 import scala.collection.JavaConversions
 import scala.collection.mutable.ArrayBuffer
@@ -56,99 +58,19 @@ case class ReadSets(readsRDDs: PerSample[ReadsRDD],
 
   def coverage(halfWindowSize: Int): RDD[PositionCoverage] = allMappedReads.coverage(halfWindowSize)
 
-//  def sliding[T: ClassTag](halfWindowSize: Int, fn: Seq[ReferenceRegion] => T): PerSample[RDD[T]] = {
-//    for {
-//      (mappedReadsRDD, sourceFile) <- mappedReadsRDDs.zip(sourceFiles)
-//    } yield {
-
-//      if (!mappedReadsRDD.isSorted) {
-//        throw new ReadsNotSortedException(sourceFile)
-//      }
-//      val partitionBounds = mappedReadsRDD.partitionBounds(_.start)
-//
-//      val crossedBounds = ArrayBuffer[(Int, Option[(Long, Long)])]((0, None))
-//
-//      for {
-//        ((prevFirst, prevLast), (nextFirst, nextLast)) <- partitionBounds.sliding(2).map(a => (a(0), a(1)))
-//      } yield {
-//        crossedBounds += crossedBounds.length -> Some((prevLast, nextFirst))
-//      }
-//
-//      val boundsRDD = sc.parallelize(crossedBounds, mappedReadsRDD.getNumPartitions)
-
-
-//      val firstRegionsPerPartition =
-//        mappedReadsRDD
-//          .mapPartitionsWithIndex((partitionIdx, readsIter) => {
-//            val firstRead = readsIter.buffered.head
-//            val firstStartPos = firstRead.startPos
-//            val ReferencePosition(contig, firstLocus) = firstStartPos
-//
-//            val stopAt = firstRead.start + 2 * halfWindowSize + 1
-//            val lastLocus = firstRead.start + halfWindowSize
-//
-//            var lociToTake = halfWindowSize + 1
-//
-//            val readsToDuplicate =
-//              readsIter
-//                .takeWhile(read =>
-//                  read.referenceContig == contig &&
-//                    read.start < stopAt
-//                )
-//                .toArray
-//
-//            val lastReadStart = readsToDuplicate.last.start
-//            val lastLocusToTransfer = lastReadStart - halfWindowSize
-//
-//            if (partitionIdx > 0) {
-//              Iterator(
-//                (
-//                  partitionIdx - 1,
-//                  ReferencePosition(contig, lastLocusToTransfer) -> readsToDuplicate
-//                )
-//              )
-//            } else {
-//              Iterator()
-//            }
-//          })
-//          .partitionBy(KeyPartitioner(mappedReadsRDD.getNumPartitions))
-//          .values
-//
-//      mappedReadsRDD.zipPartitions(firstRegionsPerPartition)((readsIter, firstReadsIter) => {
-//        if (firstReadsIter.hasNext) {
-//          val (lastTransferredLocus, duplicatedReads) = firstReadsIter.next()
-//        } else {
-//
-//        }
-//      })
-//    }
-//  }
-
-  def getCoverage(half: Int): RDD[(ReferencePosition, WindowCoverage)] = {
-    val contigLengthsBroadcast = sc.broadcast(contigLengths)
-
-    allMappedReads
-      .flatMap(read => {
-        val contig = read.contig
-        val length = contigLengthsBroadcast.value(contig)
-
-        val outs = ArrayBuffer[(ReferencePosition, WindowCoverage)]()
-        val start = math.max(0, read.start - half)
-        val end = math.min(length, read.end + half)
-        for {
-          locus <- start until end
-        } {
-          outs += ReferencePosition(contig, locus) -> WindowCoverage(depth = 1)
-        }
-
-        outs += ReferencePosition(contig, read.start - half) -> WindowCoverage(nextStarts = 1)
-        outs += ReferencePosition(contig, read.start - half + 1) -> WindowCoverage(prevStarts = 1)
-        outs += ReferencePosition(contig, read.end + half - 1) -> WindowCoverage(nextEnds = 1)
-        outs += ReferencePosition(contig, read.end + half) -> WindowCoverage(prevEnds = 1)
-        outs.iterator
-      })
-    .reduceByKey(_ + _)
+  def pileups(halfWindowSize: Int,
+              maxRegionsPerPartition: Int,
+              reference: ReferenceGenome,
+              loci: LociSet = LociSet.all(contigLengths)): RDD[Pileup] = {
+    val r = allMappedReads.partition(halfWindowSize, maxRegionsPerPartition)
+    val lociBroadcast = sc.broadcast(loci)
+    for {
+      (ReferencePosition(contig, locus), reads) <- r.slidingLociWindow(50, lociBroadcast.value)
+    } yield {
+      Pileup(reads, contig, locus, reference.getContig(contig))
+    }
   }
+
 }
 
 object ReadSets {

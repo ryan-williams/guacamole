@@ -59,9 +59,9 @@ class PileupSuite extends GuacFunSuite with TableDrivenPropertyChecks {
     insertPileup.elements.exists(_.isInsertion) should be(true)
     insertPileup.elements.forall(_.qualityScore == 31) should be(true)
 
-    insertPileup.elements(0).alignment should equal(Match('A', 31.toByte))
-    insertPileup.elements(1).alignment should equal(Match('A', 31.toByte))
-    insertPileup.elements(2).alignment should equal(Insertion("ACCC", Seq(31, 31, 31, 31).map(_.toByte)))
+    insertPileup.elements.toSeq(0).alignment should equal(Match('A', 31.toByte))
+    insertPileup.elements.toSeq(1).alignment should equal(Match('A', 31.toByte))
+    insertPileup.elements.toSeq(2).alignment should equal(Insertion("ACCC", Seq(31, 31, 31, 31).map(_.toByte)))
   }
 
   test("create pileup from long insert reads; different qualities in insertion") {
@@ -126,14 +126,14 @@ class PileupSuite extends GuacFunSuite with TableDrivenPropertyChecks {
 
   test("Load pileup from SAM file") {
     val pileup = loadPileup(sc, "same_start_reads.sam", locus = 0, reference = reference)
-    pileup.elements.length should be(10)
+    pileup.elements.size should be(10)
   }
 
   test("First 60 loci should have all 10 reads") {
     val pileup = loadPileup(sc, "same_start_reads.sam", locus = 0, reference = reference)
     for (i <- 1 to 59) {
       val nextPileup = pileup.atGreaterLocus(i, Seq.empty.iterator)
-      nextPileup.elements.length should be(10)
+      nextPileup.elements.size should be(10)
     }
   }
 
@@ -233,7 +233,7 @@ class PileupSuite extends GuacFunSuite with TableDrivenPropertyChecks {
     val pileup = loadPileup(sc, "same_start_reads.sam", locus = 0, reference = reference)
     for (i <- 60 to 69) {
       val nextPileup = pileup.atGreaterLocus(i, Seq.empty.iterator)
-      nextPileup.elements.length should be(5)
+      nextPileup.elements.size should be(5)
     }
   }
 

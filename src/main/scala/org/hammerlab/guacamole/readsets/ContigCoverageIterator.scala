@@ -2,14 +2,16 @@ package org.hammerlab.guacamole.readsets
 
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
-import org.hammerlab.guacamole.reference.{Contig, ReferencePosition, ReferenceRegion}
+import org.hammerlab.guacamole.loci.set.{LociIterator, ContigIterator => LociContigIterator}
+import org.hammerlab.guacamole.reference.{Contig, Interval, ReferencePosition, ReferenceRegion}
 
 import scala.collection.mutable
 
-class CoverageIterator private(halfWindowSize: Int,
-                               contigLength: Long,
-                               contig: Contig,
-                               regions: BufferedIterator[ReferenceRegion])
+class ContigCoverageIterator private(halfWindowSize: Int,
+                                     contigLength: Long,
+                                     contig: Contig,
+                                     regions: BufferedIterator[Interval],
+                                     loci: LociIterator)
   extends Iterator[PositionCoverage] {
 
   private val ends = mutable.PriorityQueue[Long]()(implicitly[Ordering[Long]].reverse)
@@ -18,13 +20,21 @@ class CoverageIterator private(halfWindowSize: Int,
   private var _next: Coverage = _
 
   private def advance(): Boolean = {
-    if (ends.isEmpty) {
-      if (regions.isEmpty)
-        return false
+    if (!loci.hasNext)
+      return false
+    else {
+      val nextLocus = loci.head
+      if (ends.isEmpty) {
+        if (regions.isEmpty)
+          return false
 
-      curPos = math.max(0, regions.head.start - halfWindowSize)
-    } else {
-      curPos += 1
+        val nextReadWindowStart = regions.head.start - halfWindowSize
+        if (nextReadWindowStart > nextLocus) {
+          curPos = nextReadWindowStart
+          loci.skipTo(nextReadWindowStart)
+        }
+      }
+      curPos = loci.next()
     }
 
     val lowerLimit = math.max(0, curPos - halfWindowSize)
@@ -68,7 +78,10 @@ class CoverageIterator private(halfWindowSize: Int,
   }
 }
 
-object CoverageIterator {
-  def apply(halfWindowSize: Int, contigLength: Long, regions: ContigIterator[ReferenceRegion]): CoverageIterator =
-    new CoverageIterator(halfWindowSize, contigLength, regions.contig, regions.buffered)
+object ContigCoverageIterator {
+  def apply(halfWindowSize: Int,
+            contigLength: Long,
+            regions: ContigIterator[ReferenceRegion],
+            loci: LociIterator): ContigCoverageIterator =
+    new ContigCoverageIterator(halfWindowSize, contigLength, regions.contig, regions.buffered, loci)
 }

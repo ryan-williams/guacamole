@@ -19,6 +19,7 @@
 package org.hammerlab.guacamole.loci.map
 
 import org.hammerlab.guacamole.loci.set.{LociSet, Builder => LociSetBuilder}
+import org.hammerlab.guacamole.reference.ReferenceRegion
 import org.hammerlab.guacamole.strings.TruncatedToString
 
 import scala.collection.immutable.TreeMap
@@ -54,6 +55,9 @@ case class LociMap[T](@transient private val map: SortedMap[String, Contig[T]]) 
     }
     mapOfBuilders.mapValues(_.result).toMap
   }
+
+  def getAll(r: ReferenceRegion, halfWindowSize: Int = 0): Set[T] =
+    onContig(r.contig).getAll(r.start - halfWindowSize, r.end + halfWindowSize)
 
   /**
    * Returns the loci map on the specified contig.

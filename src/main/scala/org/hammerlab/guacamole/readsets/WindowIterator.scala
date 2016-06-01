@@ -10,44 +10,72 @@ class WindowIterator[R <: ReferenceRegion](halfWindowSize: Int,
                                            loci: LociSet,
                                            regions: BufferedIterator[R])
   extends Iterator[(ReferencePosition, Iterable[R])] {
+  println(s"window has regions: $regions.hasNext")
 
   var curContig: ContigWindowIterator[R] = _
   var curContigName: String = _
 
-  def advance(): Unit = {
-    while ((curContig == null || !curContig.hasNext) && regions.hasNext) {
-      if (curContig != null) {
+  println(s"initialized contig name: $curContigName")
+
+  def advance(): Boolean = {
+    if (curContig != null && !curContig.hasNext) curContig = null
+
+    while (curContig == null) {
+      if (curContigName != null) {
+        println(s"Burning reads from contig $curContigName")
         while (regions.hasNext && regions.head.contig == curContigName) {
-          regions.next()
+          val r = regions.next()
+          println(s"burnt: ${r.start}")
         }
       }
+      if (!regions.hasNext) {
+        println(s"out of reads on $curContigName")
+        return false
+      }
+
       curContigName = regions.head.contig
-      val lociContig = loci.onContig(curContigName).iterator
-      fromOpt.foreach(lociContig.skipTo)
-      val boundedLoci = BoundedIterator(None, untilOpt, lociContig)
-      if (boundedLoci.isEmpty) {
-        while (regions.hasNext && regions.head.contig == curContigName) {
-          regions.next()
-        }
-      } else {
-        curContig =
-          ContigWindowIterator(
-            halfWindowSize,
-            boundedLoci,
-            ContigIterator(curContigName, regions)
-          )
+      println(s"set contig name: $curContigName")
+      val contigLoci = loci.onContig(curContigName).iterator
+
+      for {
+        ReferencePosition(contig, fromLocus) <- fromOpt
+        if contig == contig
+      } {
+        contigLoci.skipTo(fromLocus)
+      }
+
+      for {
+        ReferencePosition(contig, untilLocus) <- untilOpt
+        if contig == contig
+      } {
+        contigLoci.stopAt(untilLocus)
+      }
+
+      println(s"loci on contig $curContigName ($fromOpt, $untilOpt): ${contigLoci.hasNext}")
+
+      curContig =
+        ContigWindowIterator(
+          curContigName,
+          halfWindowSize,
+          contigLoci,
+          ContigIterator(curContigName, regions)
+        )
+
+      if (!curContig.hasNext) {
+        curContig = null
+        println(s"contig $curContigName found to be empty")
       }
     }
+
+    true
   }
 
-  override def hasNext: Boolean = {
-    advance()
-    curContig != null && curContig.hasNext
-  }
+  override def hasNext: Boolean = advance()
 
   override def next(): (ReferencePosition, Iterable[R]) = {
-    advance()
-    if (curContig == null) throw new NoSuchElementException
-    curContig.next()
+    if (!advance()) throw new NoSuchElementException
+    val r = curContig.next()
+    println(s"from: $fromOpt: ${r._1} ${r._2.size}")
+    r
   }
 }

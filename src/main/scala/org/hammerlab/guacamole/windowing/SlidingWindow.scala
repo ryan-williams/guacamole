@@ -19,7 +19,7 @@
 package org.hammerlab.guacamole.windowing
 
 import org.apache.spark.Logging
-import org.hammerlab.guacamole.loci.set.ContigIterator
+import org.hammerlab.guacamole.loci.set.{ContigIterator, LociIterator}
 import org.hammerlab.guacamole.readsets.PerSample
 import org.hammerlab.guacamole.reference.ReferenceRegion
 
@@ -141,7 +141,7 @@ object SlidingWindow {
    * @return Some(locus) if there was another locus left to process, otherwise None
    */
   def advanceMultipleWindows[R <: ReferenceRegion](windows: PerSample[SlidingWindow[R]],
-                                                   loci: ContigIterator,
+                                                   loci: LociIterator,
                                                    skipEmpty: Boolean = true): Option[Long] = {
     if (skipEmpty) {
       while (loci.hasNext) {
@@ -149,10 +149,10 @@ object SlidingWindow {
         if (nextNonEmptyLocus.isEmpty) {
           // Our windows are out of regions. We're done.
           return None
-        } else if (nextNonEmptyLocus.get <= loci.head.locus) {
+        } else if (nextNonEmptyLocus.get <= loci.head) {
           // The next locus with regions is at or before the next locus in the iterator.
           // We advance to the next locus in the iterator, and check if the resulting windows are all empty.
-          val nextLocus = loci.next().locus
+          val nextLocus = loci.next()
           windows.foreach(_.setCurrentLocus(nextLocus))
 
           // Windows may still be empty here, because the next locus with regions may have been before the next locus,
@@ -171,7 +171,7 @@ object SlidingWindow {
       None
     } else if (loci.hasNext) {
       // Not skipping empty, and we have another locus in the iterator to go to.
-      val nextLocus = loci.next().locus
+      val nextLocus = loci.next()
       windows.foreach(_.setCurrentLocus(nextLocus))
       Some(nextLocus)
     } else {

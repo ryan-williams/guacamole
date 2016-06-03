@@ -67,11 +67,7 @@ class ContigWindowIterator[I <: Interval](contig: Contig,
   def skipTo(newLocus: Locus): this.type = {
     if (newLocus > locus) {
       locus = newLocus
-      //updateQueue()
       _next = null
-//      if (queue.isEmpty) {
-//        locus = -1L
-//      }
     }
     this
   }

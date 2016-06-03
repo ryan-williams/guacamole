@@ -9,14 +9,15 @@ import org.hammerlab.guacamole.reference.ReferencePosition
 
 import scala.collection.mutable.ArrayBuffer
 
-class TakeLociIterator(it: BufferedIterator[(PositionCoverage)],
+class TakeLociIterator(it: BufferedIterator[PositionCoverage],
                        maxRegionsPerPartition: Int,
                        throwOnInvalidDepth: Boolean = false)
-  extends Iterator[LociSet] {
+  extends BufferedIterator[LociSet] {
 
-  override def hasNext: Boolean = it.hasNext
+  var _next: Option[LociSet] = None
 
-  override def next(): LociSet = {
+  override def hasNext: Boolean = {
+    if (_next.isDefined) return true
 
     var curNumRegions = 0
 
@@ -61,10 +62,29 @@ class TakeLociIterator(it: BufferedIterator[(PositionCoverage)],
           continuingContig = false
       }
 
-      if (start >= 0 && end >= 0)
-        contigs += Contig(curContig, List(JRange.closedOpen(start: JLong, end: JLong)))
+      if (start >= 0 && end >= 0) {
+        val contig = Contig(curContig, List(JRange.closedOpen(start: JLong, end: JLong)))
+        if (contig.nonEmpty)
+          contigs += contig
+      }
     }
 
-    LociSet.fromContigs(contigs)
+    val lociSet = LociSet.fromContigs(contigs)
+    if (lociSet.nonEmpty)
+      _next = Some(lociSet)
+
+    _next.isDefined
+  }
+
+
+  override def head: LociSet = {
+    if (!hasNext) throw new NoSuchElementException
+    _next.get
+  }
+
+  override def next(): LociSet = {
+    val n = head
+    _next = None
+    n
   }
 }

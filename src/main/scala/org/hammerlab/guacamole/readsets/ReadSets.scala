@@ -11,19 +11,17 @@ import org.bdgenomics.adam.models.SequenceDictionary
 import org.bdgenomics.adam.rdd.{ADAMContext, ADAMSpecificRecordSequenceDictionaryRDDAggregator}
 import org.bdgenomics.formats.avro.AlignmentRecord
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
-import org.hammerlab.guacamole.loci.WindowCoverage
+import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
+import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.reads.{MappedRead, Read}
+import org.hammerlab.guacamole.readsets.RegionRDD._
 import org.hammerlab.guacamole.reference.{ReferenceGenome, ReferencePosition}
+import org.hammerlab.magic.rdd.RDDStats._
 import org.seqdoop.hadoop_bam.util.SAMHeaderReader
 import org.seqdoop.hadoop_bam.{AnySAMInputFormat, SAMRecordWritable}
-import org.hammerlab.magic.rdd.RDDStats._
-import RegionRDD._
-import org.hammerlab.guacamole.loci.set.LociSet
-import org.hammerlab.guacamole.pileup.Pileup
 
 import scala.collection.JavaConversions
-import scala.collection.mutable.ArrayBuffer
 
 /**
  * A `ReadSets` contains reads from multiple inputs, and SequenceDictionary / contig-length information merged from
@@ -62,13 +60,32 @@ case class ReadSets(readsRDDs: PerSample[ReadsRDD],
               maxRegionsPerPartition: Int,
               reference: ReferenceGenome,
               loci: LociSet = LociSet.all(contigLengths)): RDD[Pileup] = {
-    val r = allMappedReads.partition(halfWindowSize, maxRegionsPerPartition)
     val lociBroadcast = sc.broadcast(loci)
-    for {
-      (ReferencePosition(contig, locus), reads) <- r.slidingLociWindow(50, lociBroadcast.value)
-    } yield {
-      Pileup(reads, contig, locus, reference.getContig(contig))
-    }
+    val partitioning = allMappedReads.getPartitioning(halfWindowSize, maxRegionsPerPartition)
+    val partitionedReads = allMappedReads.partition(halfWindowSize, partitioning)
+
+    val partitionLociSets = partitioning.inverse.toArray.sortBy(_._1).map(_._2)
+    val lociSetsRDD = sc.parallelize(partitionLociSets, partitionLociSets.length)
+
+    partitionedReads.zipPartitions(lociSetsRDD, preservesPartitioning = true)((reads, lociIter) => {
+      val loci = lociIter.next()
+      if (lociIter.hasNext) {
+        throw new Exception(s"Expected 1 LociSet, found ${1 + lociIter.size}.\n$loci")
+      }
+
+      val windowedReads =
+        new WindowIterator(
+          halfWindowSize,
+          loci,
+          reads.buffered
+        )
+
+      for {
+        (ReferencePosition(contig, locus), reads) <- windowedReads
+      } yield {
+        Pileup(reads, contig, locus, reference.getContig(contig))
+      }
+    })
   }
 
 }
@@ -179,6 +196,13 @@ object ReadSets {
       contigLengths
     )
   }
+
+  def apply(readsRDDs: PerSample[ReadsRDD], sequenceDictionary: SequenceDictionary): ReadSets =
+    ReadSets(
+      readsRDDs,
+      sequenceDictionary,
+      contigLengths(sequenceDictionary)
+    )
 
   /**
    * Given a filename and a spark context, return a pair (RDD, SequenceDictionary), where the first element is an RDD

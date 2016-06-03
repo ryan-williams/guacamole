@@ -19,8 +19,8 @@ class WindowIteratorSuite extends GuacFunSuite with Util {
     val it =
       new WindowIterator(
         halfWindowSize,
-        fromOpt,
-        untilOpt,
+//        fromOpt,
+//        untilOpt,
         LociSet(lociStr),
         reads.buffered
       )
@@ -35,8 +35,8 @@ class WindowIteratorSuite extends GuacFunSuite with Util {
       makeReads(
         ("chr1", 100, 105, 1),
         ("chr1", 101, 106, 1)
-      ),
-      untilOpt = Some(ReferencePosition("chr1", 108))
+      )/*,
+      untilOpt = Some(ReferencePosition("chr1", 108))*/
     )(
       ("chr1",  98) -> "[100,105)",
       ("chr1",  99) -> "[100,105), [101,106)",

@@ -5,8 +5,8 @@ import org.hammerlab.guacamole.reference.{ReferencePosition, ReferenceRegion}
 
 
 class WindowIterator[R <: ReferenceRegion](halfWindowSize: Int,
-                                           fromOpt: Option[ReferencePosition],
-                                           untilOpt: Option[ReferencePosition],
+//                                           fromOpt: Option[ReferencePosition],
+//                                           untilOpt: Option[ReferencePosition],
                                            loci: LociSet,
                                            regions: BufferedIterator[R])
   extends Iterator[(ReferencePosition, Iterable[R])] {
@@ -30,19 +30,19 @@ class WindowIterator[R <: ReferenceRegion](halfWindowSize: Int,
       curContigName = regions.head.contig
       val contigLoci = loci.onContig(curContigName).iterator
 
-      for {
-        ReferencePosition(contig, fromLocus) <- fromOpt
-        if contig == curContigName
-      } {
-        contigLoci.skipTo(fromLocus)
-      }
-
-      for {
-        ReferencePosition(contig, untilLocus) <- untilOpt
-        if contig == curContigName
-      } {
-        contigLoci.stopAt(untilLocus)
-      }
+//      for {
+//        ReferencePosition(contig, fromLocus) <- fromOpt
+//        if contig == curContigName
+//      } {
+//        contigLoci.skipTo(fromLocus)
+//      }
+//
+//      for {
+//        ReferencePosition(contig, untilLocus) <- untilOpt
+//        if contig == curContigName
+//      } {
+//        contigLoci.stopAt(untilLocus)
+//      }
 
       curContig =
         new LociContigWindowIterator(

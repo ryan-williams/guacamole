@@ -19,8 +19,9 @@
 package org.hammerlab.guacamole.windowing
 
 import org.apache.spark.Logging
-import org.hammerlab.guacamole.loci.set.{ContigIterator, LociIterator}
+import org.hammerlab.guacamole.loci.set.LociIterator
 import org.hammerlab.guacamole.readsets.PerSample
+import org.hammerlab.guacamole.reference.ContigPosition._
 import org.hammerlab.guacamole.reference.ReferenceRegion
 
 import scala.collection.mutable

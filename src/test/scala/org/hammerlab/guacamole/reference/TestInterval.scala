@@ -1,5 +1,3 @@
 package org.hammerlab.guacamole.reference
 
-class TestInterval {
-
-}
+case class TestInterval(start: Long, end: Long) extends Interval

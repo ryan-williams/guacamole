@@ -16,10 +16,9 @@ case class ContigIterator[+R <: ReferenceRegion](contig: Contig, regions: Buffer
   }
 
   override def next(): R = {
-    if (hasNext)
-      regions.next()
-    else
-      throw new NoSuchElementException
+    val n = regions.head
+    regions.next()
+    n
   }
 }
 

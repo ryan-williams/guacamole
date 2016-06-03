@@ -2,69 +2,59 @@ package org.hammerlab.guacamole.readsets
 
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.reference.{ReferencePosition, ReferenceRegion}
+import org.hammerlab.guacamole.util.OptionIterator
 
 
 class WindowIterator[R <: ReferenceRegion](halfWindowSize: Int,
-//                                           fromOpt: Option[ReferencePosition],
-//                                           untilOpt: Option[ReferencePosition],
                                            loci: LociSet,
                                            regions: BufferedIterator[R])
-  extends Iterator[(ReferencePosition, Iterable[R])] {
+  extends OptionIterator[(ReferencePosition, Iterable[R])] {
 
   var curContig: LociContigWindowIterator[R] = _
   var curContigName: String = _
 
-  def advance(): Boolean = {
-    if (curContig != null && !curContig.hasNext) curContig = null
+  def clearContig(): Unit = {
+    curContig = null
+    while (regions.hasNext && regions.head.contig == curContigName) {
+      regions.next()
+    }
+  }
 
+  override def _advance: Option[(ReferencePosition, Iterable[R])] = {
     while (curContig == null) {
-      if (curContigName != null) {
-        while (regions.hasNext && regions.head.contig == curContigName) {
-          regions.next()
-        }
-      }
 
       if (!regions.hasNext)
-        return false
+        return None
 
       curContigName = regions.head.contig
+
+      // Iterator over the loci on this contig allowed by input LociSet.
       val contigLoci = loci.onContig(curContigName).iterator
 
-//      for {
-//        ReferencePosition(contig, fromLocus) <- fromOpt
-//        if contig == curContigName
-//      } {
-//        contigLoci.skipTo(fromLocus)
-//      }
-//
-//      for {
-//        ReferencePosition(contig, untilLocus) <- untilOpt
-//        if contig == curContigName
-//      } {
-//        contigLoci.stopAt(untilLocus)
-//      }
+      // Iterator over regions on this contig.
+      val contigRegions = ContigIterator(curContigName, regions)
 
-      curContig =
-        new LociContigWindowIterator(
-          contigLoci,
-          new ContigWindowIterator(
-            curContigName,
-            halfWindowSize,
-            ContigIterator(curContigName, regions)
-          )
-        )
+      // Iterator over "piles" of regions (loci and the reads that overlap them, or a window around them) on this contig.
+      val contigRegionWindows = new ContigWindowIterator(halfWindowSize, contigRegions)
+
+      // Iterator that merges the loci allowed by the LociSet with the loci that have reads overlapping them.
+      curContig = new LociContigWindowIterator(contigLoci, contigRegionWindows)
 
       if (!curContig.hasNext)
-        curContig = null
+        clearContig()
     }
 
-    true
+    val (locus, nextRegions) = curContig.next()
+
+    Some(
+      ReferencePosition(curContigName, locus) ->
+        nextRegions
+    )
   }
 
-  override def hasNext: Boolean = advance()
-
-  override def next(): (ReferencePosition, Iterable[R]) = {
-    if (!advance()) throw new NoSuchElementException
-    curContig.next()
+  override def postNext(n: (ReferencePosition, Iterable[R])): Unit = {
+    if (!curContig.hasNext)
+      clearContig()
   }
+
 }

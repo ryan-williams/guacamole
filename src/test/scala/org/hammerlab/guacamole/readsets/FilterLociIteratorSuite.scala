@@ -1,15 +1,10 @@
 package org.hammerlab.guacamole.readsets
 
-import org.hammerlab.guacamole.loci.set.{LociSet, TestInterval}
-import org.hammerlab.guacamole.reference.{Contig, ReferencePosition, ReferenceRegion}
+import org.hammerlab.guacamole.loci.set.LociSet
+import org.hammerlab.guacamole.reference.{ReferencePosition, TestInterval}
 import org.hammerlab.guacamole.util.GuacFunSuite
-import org.hammerlab.magic.iterator.RunLengthIterator
 
-import scala.collection.SortedMap
-
-case class TestRegion(contig: String, start: Long, end: Long) extends ReferenceRegion
-
-class LociContigWindowIteratorSuite extends GuacFunSuite with Util {
+class FilterLociIteratorSuite extends GuacFunSuite with Util {
 
   def checkReads(
     halfWindowSize: Int,
@@ -22,14 +17,14 @@ class LociContigWindowIteratorSuite extends GuacFunSuite with Util {
     val contig = "chr1"
 
     val it =
-      new LociContigWindowIterator(
+      new FilterLociIterator(
         LociSet(lociStr).onContig("chr1").iterator,
         new ContigWindowIterator(halfWindowSize, intervals.buffered)
       )
 
     checkReads(
       for {
-        (locus, reads) <- it
+        LociIntervals(locus, reads) <- it
       } yield
         ReferencePosition(contig, locus) -> reads,
       (for {

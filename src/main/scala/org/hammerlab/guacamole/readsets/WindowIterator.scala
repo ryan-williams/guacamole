@@ -4,13 +4,20 @@ import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.reference.{ReferencePosition, ReferenceRegion}
 import org.hammerlab.guacamole.util.OptionIterator
 
+//class PositionRegions[R <: ReferenceRegion](pos: ReferencePosition,
+//                                            regions: Iterable[R])
+//  extends Tuple2[ReferencePosition, Iterable[R]](pos, regions) {
+//
+//  def contig = pos.contig
+//  def locus = pos.locus
+//}
 
 class WindowIterator[R <: ReferenceRegion](halfWindowSize: Int,
                                            loci: LociSet,
                                            regions: BufferedIterator[R])
   extends OptionIterator[(ReferencePosition, Iterable[R])] {
 
-  var curContig: LociContigWindowIterator[R] = _
+  var curContig: FilterLociIterator[LociIntervals[R]] = _
   var curContigName: String = _
 
   def clearContig(): Unit = {
@@ -38,13 +45,13 @@ class WindowIterator[R <: ReferenceRegion](halfWindowSize: Int,
       val contigRegionWindows = new ContigWindowIterator(halfWindowSize, contigRegions)
 
       // Iterator that merges the loci allowed by the LociSet with the loci that have reads overlapping them.
-      curContig = new LociContigWindowIterator(contigLoci, contigRegionWindows)
+      curContig = new FilterLociIterator(contigLoci, contigRegionWindows)
 
       if (!curContig.hasNext)
         clearContig()
     }
 
-    val (locus, nextRegions) = curContig.next()
+    val LociIntervals(locus, nextRegions) = curContig.next()
 
     Some(
       ReferencePosition(curContigName, locus) ->

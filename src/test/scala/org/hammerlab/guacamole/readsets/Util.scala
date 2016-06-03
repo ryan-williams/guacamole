@@ -2,12 +2,13 @@ package org.hammerlab.guacamole.readsets
 
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-import org.hammerlab.guacamole.loci.set.{LociSet, TestInterval}
-import org.hammerlab.guacamole.reference.{Interval, ReferencePosition, ReferenceRegion}
+import org.hammerlab.guacamole.reference.{Interval, ReferencePosition, ReferenceRegion, TestInterval}
 import org.hammerlab.magic.iterator.RunLengthIterator
 import org.scalatest.Matchers
 
 import scala.collection.SortedMap
+
+case class TestRegion(contig: String, start: Long, end: Long) extends ReferenceRegion
 
 trait Util extends Matchers {
 

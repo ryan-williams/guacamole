@@ -1,6 +1,7 @@
 package org.hammerlab.guacamole.loci.set
 
-import org.hammerlab.guacamole.reference.{Interval, ReferencePosition}
+import org.hammerlab.guacamole.reference.ContigPosition._
+import org.hammerlab.guacamole.reference.ReferencePosition
 
 /**
  * An iterator over loci on a single contig. Loci from this iterator are sorted (monotonically increasing).

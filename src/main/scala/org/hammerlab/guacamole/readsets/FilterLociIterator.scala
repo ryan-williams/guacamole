@@ -1,30 +1,30 @@
 package org.hammerlab.guacamole.readsets
 
 import org.hammerlab.guacamole.loci.set.LociIterator
-import org.hammerlab.guacamole.reference.ReferencePosition.Locus
-import org.hammerlab.guacamole.reference.{Contig, Interval, ReferencePosition}
+import org.hammerlab.guacamole.reference.{ContigPosition, HasLocus}
 import org.hammerlab.guacamole.util.OptionIterator
 
-class LociContigWindowIterator[I <: Interval](loci: LociIterator, regionsIter: ContigWindowIterator[I])
-  extends OptionIterator[(Locus, Iterable[I])] {
+class FilterLociIterator[T <: HasLocus](allowedLoci: LociIterator, lociKeyedIter: SkippableLociIterator[T])
+  extends OptionIterator[T] {
 
-  override def _advance: Option[(Locus, Iterable[I])] = {
-    if (!loci.hasNext) return None
-    if (!regionsIter.hasNext) return None
+  override def _advance: Option[T] = {
+    if (!allowedLoci.hasNext) return None
+    if (!lociKeyedIter.hasNext) return None
 
-    val nextLocus = loci.head
-    val (nextRegionsLocus, regions) = regionsIter.head
+    val ContigPosition(nextAllowedLocus) = allowedLoci.head
+    val obj = lociKeyedIter.head
+    val nextObjectLocus = obj.locus
 
-    if (nextRegionsLocus > nextLocus) {
-      loci.skipTo(nextRegionsLocus)
+    if (nextObjectLocus > nextAllowedLocus) {
+      allowedLoci.skipTo(nextObjectLocus)
       _advance
-    } else if (nextLocus > nextRegionsLocus) {
-      regionsIter.skipTo(nextLocus)
+    } else if (nextAllowedLocus > nextObjectLocus) {
+      lociKeyedIter.skipTo(nextAllowedLocus)
       _advance
     } else {
-      loci.next()
-      regionsIter.next()
-      Some(nextRegionsLocus -> regions)
+      allowedLoci.next()
+      lociKeyedIter.next()
+      Some(obj)
     }
   }
 

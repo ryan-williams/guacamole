@@ -39,6 +39,7 @@ case class MappedRead(
     sequence: IndexedSeq[Byte],
     baseQualities: IndexedSeq[Byte],
     isDuplicate: Boolean,
+    sampleId: Int,
     sampleName: String,
     contig: String,
     alignmentQuality: Int,

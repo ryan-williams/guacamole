@@ -55,4 +55,16 @@ class TakeLociIteratorSuite extends FunSuite with Matchers {
       "chr1:14-16"
     )
   }
+
+  test("skip extreme depth at end") {
+    check(
+      ("chr1", 10) -> ( 1,  1,  0),
+      ("chr1", 11) -> ( 6,  5,  0),
+      ("chr1", 12) -> (15, 10,  1),
+      ("chr1", 13) -> (16, 10,  9)
+    )(
+      "chr1:10-12",
+      "chr1:12-13"
+    )
+  }
 }

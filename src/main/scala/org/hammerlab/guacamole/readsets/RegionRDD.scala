@@ -2,25 +2,20 @@ package org.hammerlab.guacamole.readsets
 
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
-import org.apache.spark.zip.ZipPartitionsWithIndexRDD._
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
 import org.hammerlab.guacamole.loci.map.LociMap
 import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.{LociPartitioning, PartitionIndex}
 import org.hammerlab.guacamole.loci.set.{LociSet, TakeLociIterator}
-import org.hammerlab.guacamole.pileup.Pileup
-import org.hammerlab.guacamole.reference.{ReferenceGenome, ReferencePosition, ReferenceRegion}
-import org.hammerlab.magic.rdd.BorrowElemsRDD._
+import org.hammerlab.guacamole.reference.{ReferencePosition, ReferenceRegion}
 import org.hammerlab.magic.rdd.KeyPartitioner
-import org.hammerlab.magic.rdd.PartitionFirstElemsRDD._
 import org.hammerlab.magic.rdd.RDDStats._
-import org.hammerlab.magic.util.Stats
 import org.hammerlab.magic.rdd.RunLengthRDD._
+import org.hammerlab.magic.util.Stats
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
-import RegionRDD.rddToRegionRDD
 
 class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R],
                                                 implicit val contigLengthsBroadcast: Broadcast[ContigLengths])
@@ -125,28 +120,28 @@ class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R],
       coverage(halfWindowSize).map(t => t._2.ends -> t._1).sortByKey(ascending = false)
     )
 
-  def slidingLociWindow(halfWindowSize: Int, loci: LociSet): RDD[(ReferencePosition, Iterable[R])] = {
-    val copiedRegionsRDD: RDD[R] = rdd.copyFirstElems(BoundedContigIterator(halfWindowSize + 1, _))
-
-    val boundsRDD = rdd.map(_.endPos + halfWindowSize).elemBoundsRDD
-
-    copiedRegionsRDD.zipPartitionsWithIndex(boundsRDD)(
-        (idx, readsIter, boundsIter) => {
-          val (fromOpt, untilOpt) = boundsIter.next()
-
-          new WindowIterator(
-            halfWindowSize,
-            if (idx > 0)
-              fromOpt
-            else
-              None,
-            untilOpt,
-            loci,
-            readsIter.buffered
-          )
-        }
-      )
-  }
+//  def slidingLociWindow(halfWindowSize: Int, loci: LociSet): RDD[(ReferencePosition, Iterable[R])] = {
+//    val copiedRegionsRDD: RDD[R] = rdd.copyFirstElems(BoundedContigIterator(halfWindowSize + 1, _))
+//
+//    val boundsRDD = rdd.map(_.endPos + halfWindowSize).elemBoundsRDD
+//
+//    copiedRegionsRDD.zipPartitionsWithIndex(boundsRDD)(
+//        (idx, readsIter, boundsIter) => {
+//          val (fromOpt, untilOpt) = boundsIter.next()
+//
+//          new WindowIterator(
+//            halfWindowSize,
+//            if (idx > 0)
+//              fromOpt
+//            else
+//              None,
+//            untilOpt,
+//            loci,
+//            readsIter.buffered
+//          )
+//        }
+//      )
+//  }
 
   def partitionDepths(halfWindowSize: Int, depthCutoff: Int): RDD[((String, Boolean), Int)] = {
     coverage(halfWindowSize).map(t => t._1.contig -> (t._2.depth >= depthCutoff)).runLengthEncode
@@ -161,8 +156,10 @@ class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R],
   def getPartitioning(halfWindowSize: Int,
                       maxRegionsPerPartition: Int): LociPartitioning = {
     val lociMapBuilder = LociMap.newBuilder[PartitionIndex]()
+    val lociSetsRDD = makeCappedLociSets(halfWindowSize, maxRegionsPerPartition)
+    val lociSets = lociSetsRDD.collect()
     for {
-      (loci, idx) <- makeCappedLociSets(halfWindowSize, maxRegionsPerPartition).collect().zipWithIndex
+      (loci, idx) <- lociSets.zipWithIndex
     } {
       lociMapBuilder.put(loci, idx)
     }
@@ -183,7 +180,7 @@ class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R],
       r <- rdd
       partition <- partitioningBroadcast.value.getAll(r, halfWindowSize)
     } yield
-      (partition, r.start) -> r
+      (partition, r.contig, r.start) -> r
     )
     .repartitionAndSortWithinPartitions(KeyPartitioner(numPartitions))
     .values

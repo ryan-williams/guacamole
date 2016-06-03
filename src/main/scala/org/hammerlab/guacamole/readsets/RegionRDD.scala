@@ -120,29 +120,6 @@ class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R],
       coverage(halfWindowSize).map(t => t._2.ends -> t._1).sortByKey(ascending = false)
     )
 
-//  def slidingLociWindow(halfWindowSize: Int, loci: LociSet): RDD[(ReferencePosition, Iterable[R])] = {
-//    val copiedRegionsRDD: RDD[R] = rdd.copyFirstElems(BoundedContigIterator(halfWindowSize + 1, _))
-//
-//    val boundsRDD = rdd.map(_.endPos + halfWindowSize).elemBoundsRDD
-//
-//    copiedRegionsRDD.zipPartitionsWithIndex(boundsRDD)(
-//        (idx, readsIter, boundsIter) => {
-//          val (fromOpt, untilOpt) = boundsIter.next()
-//
-//          new WindowIterator(
-//            halfWindowSize,
-//            if (idx > 0)
-//              fromOpt
-//            else
-//              None,
-//            untilOpt,
-//            loci,
-//            readsIter.buffered
-//          )
-//        }
-//      )
-//  }
-
   def partitionDepths(halfWindowSize: Int, depthCutoff: Int): RDD[((String, Boolean), Int)] = {
     coverage(halfWindowSize).map(t => t._1.contig -> (t._2.depth >= depthCutoff)).runLengthEncode
   }

@@ -88,6 +88,12 @@ case class ReadSets(readsRDDs: PerSample[ReadsRDD],
     })
   }
 
+//  def perSamplePileups(halfWindowSize: Int,
+//                       maxRegionsPerPartition: Int,
+//                       reference: ReferenceGenome,
+//                       loci: LociSet = LociSet.all(contigLengths)): RDD[PerSample[Pileup]] = {
+//
+//  }
 }
 
 object ReadSets {
@@ -167,9 +173,9 @@ object ReadSets {
 
     val (readRDDs, sequenceDictionaries) =
       (for {
-        (filename, filters) <- inputs
+        ((filename, filters), sampleId) <- inputs.zipWithIndex
       } yield
-        load(filename, sc, filters, config)
+        load(filename, sc, sampleId, filters, config)
       ).unzip
 
     val sequenceDictionary = mergeSequenceDictionaries(filenames, sequenceDictionaries)
@@ -215,14 +221,15 @@ object ReadSets {
    */
   private[readsets] def load(filename: String,
                              sc: SparkContext,
+                             sampleId: Int,
                              filters: InputFilters = InputFilters.empty,
                              config: ReadLoadingConfig = ReadLoadingConfig.default): (RDD[Read], SequenceDictionary) = {
 
     val (allReads, sequenceDictionary) =
       if (filename.endsWith(".bam") || filename.endsWith(".sam"))
-        loadFromBAM(filename, sc, filters, config)
+        loadFromBAM(filename, sc, sampleId, filters, config)
       else
-        loadFromADAM(filename, sc, filters, config)
+        loadFromADAM(filename, sc, sampleId, filters, config)
 
     val reads = filterRDD(allReads, filters, sequenceDictionary)
 
@@ -232,6 +239,7 @@ object ReadSets {
   /** Returns an RDD of Reads and SequenceDictionary from reads in BAM format **/
   private def loadFromBAM(filename: String,
                           sc: SparkContext,
+                          sampleId: Int,
                           filters: InputFilters,
                           config: ReadLoadingConfig): (RDD[Read], SequenceDictionary) = {
 
@@ -259,44 +267,48 @@ object ReadSets {
       val sequenceDictionary = SequenceDictionary.fromSAMSequenceDictionary(samSequenceDictionary)
       val loci = filters.overlapsLoci.map(_.result(contigLengths(sequenceDictionary)))
 
-      val recordIterator: SAMRecordIterator = if (filters.overlapsLoci.nonEmpty && reader.hasIndex) {
-        progress(s"Using samtools with BAM index to read: $filename")
-        requiresFilteringByLocus = false
-        val queryIntervals = loci.get.contigs.flatMap(contig => {
-          val contigIndex = samSequenceDictionary.getSequenceIndex(contig.name)
-          contig.ranges.map(range =>
-            new QueryInterval(contigIndex,
-              range.start.toInt + 1,  // convert 0-indexed inclusive to 1-indexed inclusive
-              range.end.toInt))       // "convert" 0-indexed exclusive to 1-indexed inclusive, which is a no-op)
-        })
-        val optimizedQueryIntervals = QueryInterval.optimizeIntervals(queryIntervals)
-        reader.query(optimizedQueryIntervals, false) // Note: this can return unmapped reads, which we filter below.
-      } else {
-        val skippedReason =
-          if (reader.hasIndex)
-            "index is available but not needed"
-          else
-            "index unavailable"
-
-        progress(s"Using samtools without BAM index ($skippedReason) to read: $filename")
-
-        reader.iterator
-      }
-      val reads = JavaConversions.asScalaIterator(recordIterator).flatMap(record => {
-        // Optimization: some of the filters are easy to run on the raw SamRecord, so we avoid making a Read.
-        if ((filters.overlapsLoci.nonEmpty && record.getReadUnmappedFlag) ||
-          (requiresFilteringByLocus &&
-            !loci.get.onContig(record.getContig).intersects(record.getStart - 1, record.getEnd)) ||
-          (filters.nonDuplicate && record.getDuplicateReadFlag) ||
-          (filters.passedVendorQualityChecks && record.getReadFailsVendorQualityCheckFlag) ||
-          (filters.isPaired && !record.getReadPairedFlag)) {
-          None
+      val recordIterator: SAMRecordIterator =
+        if (filters.overlapsLoci.nonEmpty && reader.hasIndex) {
+          progress(s"Using samtools with BAM index to read: $filename")
+          requiresFilteringByLocus = false
+          val queryIntervals = loci.get.contigs.flatMap(contig => {
+            val contigIndex = samSequenceDictionary.getSequenceIndex(contig.name)
+            contig.ranges.map(range =>
+              new QueryInterval(contigIndex,
+                range.start.toInt + 1,  // convert 0-indexed inclusive to 1-indexed inclusive
+                range.end.toInt))       // "convert" 0-indexed exclusive to 1-indexed inclusive, which is a no-op)
+          })
+          val optimizedQueryIntervals = QueryInterval.optimizeIntervals(queryIntervals)
+          reader.query(optimizedQueryIntervals, false) // Note: this can return unmapped reads, which we filter below.
         } else {
-          val read = Read(record)
-          assert(filters.overlapsLoci.isEmpty || read.isMapped)
-          Some(read)
+          val skippedReason =
+            if (reader.hasIndex)
+              "index is available but not needed"
+            else
+              "index unavailable"
+
+          progress(s"Using samtools without BAM index ($skippedReason) to read: $filename")
+
+          reader.iterator
         }
-      })
+
+      val reads =
+        JavaConversions.asScalaIterator(recordIterator).flatMap(record => {
+          // Optimization: some of the filters are easy to run on the raw SamRecord, so we avoid making a Read.
+          if ((filters.overlapsLoci.nonEmpty && record.getReadUnmappedFlag) ||
+            (requiresFilteringByLocus &&
+              !loci.get.onContig(record.getContig).intersects(record.getStart - 1, record.getEnd)) ||
+            (filters.nonDuplicate && record.getDuplicateReadFlag) ||
+            (filters.passedVendorQualityChecks && record.getReadFailsVendorQualityCheckFlag) ||
+            (filters.isPaired && !record.getReadPairedFlag)) {
+            None
+          } else {
+            val read = Read(record, sampleId)
+            assert(filters.overlapsLoci.isEmpty || read.isMapped)
+            Some(read)
+          }
+        })
+
       (sc.parallelize(reads.toSeq), sequenceDictionary)
     } else {
       // Load with hadoop bam
@@ -312,7 +324,7 @@ object ReadSets {
           .setName(s"Hadoop file: $basename")
           .values
           .setName(s"Hadoop reads: $basename")
-          .map(r => Read(r.get))
+          .map(r => Read(r.get, sampleId))
           .setName(s"Guac reads: $basename")
 
       (reads, sequenceDictionary)
@@ -322,6 +334,7 @@ object ReadSets {
   /** Returns an RDD of Reads and SequenceDictionary from reads in ADAM format **/
   private def loadFromADAM(filename: String,
                            sc: SparkContext,
+                           sampleId: Int,
                            filters: InputFilters,
                            config: ReadLoadingConfig): (RDD[Read], SequenceDictionary) = {
 
@@ -335,7 +348,7 @@ object ReadSets {
     val sequenceDictionary =
       new ADAMSpecificRecordSequenceDictionaryRDDAggregator(adamRecords).adamGetSequenceDictionary()
 
-    (adamRecords.map(Read(_)), sequenceDictionary)
+    (adamRecords.map(Read(_, sampleId)), sequenceDictionary)
   }
 
 

@@ -21,12 +21,13 @@ package org.hammerlab.guacamole.reads
 import htsjdk.samtools._
 import org.apache.spark.Logging
 import org.bdgenomics.formats.avro.AlignmentRecord
+import org.hammerlab.guacamole.readsets.HasSampleId
 import org.hammerlab.guacamole.util.Bases
 
 /**
  * The fields in the Read trait are common to any read, whether mapped (aligned) or not.
  */
-trait Read {
+trait Read extends HasSampleId {
 
   /* The template name. A read, its mate, and any alternate alignments have the same name. */
   def name: String

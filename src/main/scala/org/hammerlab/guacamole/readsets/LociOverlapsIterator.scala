@@ -7,7 +7,7 @@ import scala.collection.mutable
 
 case class LociIntervals[I <: Interval](locus: Locus, intervals: Iterable[I]) extends HasLocus
 
-class ContigWindowIterator[I <: Interval](halfWindowSize: Int, regions: BufferedIterator[I])
+class LociOverlapsIterator[I <: Interval](halfWindowSize: Int, regions: BufferedIterator[I])
   extends SkippableLociIterator[LociIntervals[I]] {
 
   private val queue = new mutable.PriorityQueue[I]()(Interval.orderByEnd[I])
@@ -26,7 +26,7 @@ class ContigWindowIterator[I <: Interval](halfWindowSize: Int, regions: Buffered
     Some(LociIntervals(locus, queue))
   }
 
-  def updateQueue(): Unit = {
+  private def updateQueue(): Unit = {
     val lowerLimit = locus - halfWindowSize
     val upperLimit = locus + halfWindowSize
 

@@ -17,7 +17,7 @@ class WindowIteratorSuite extends GuacFunSuite with Util {
   ): Unit = {
 
     val it =
-      new WindowIterator(
+      new PositionRegionsIterator(
         halfWindowSize,
         LociSet(lociStr),
         reads.buffered

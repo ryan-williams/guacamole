@@ -56,16 +56,26 @@ case class ReadSets(readsRDDs: PerSample[ReadsRDD],
 
   def coverage(halfWindowSize: Int): RDD[PositionCoverage] = allMappedReads.coverage(halfWindowSize)
 
-  def pileups(halfWindowSize: Int,
-              maxRegionsPerPartition: Int,
-              reference: ReferenceGenome,
-              loci: LociSet = LociSet.all(contigLengths)): RDD[Pileup] = {
+  def getPartitionLociSets(halfWindowSize: Int,
+                           maxRegionsPerPartition: Int,
+                           reference: ReferenceGenome,
+                           loci: LociSet = LociSet.all(contigLengths)): (RDD[MappedRead], RDD[LociSet]) = {
     val lociBroadcast = sc.broadcast(loci)
     val partitioning = allMappedReads.getPartitioning(halfWindowSize, maxRegionsPerPartition)
     val partitionedReads = allMappedReads.partition(halfWindowSize, partitioning)
 
     val partitionLociSets = partitioning.inverse.toArray.sortBy(_._1).map(_._2)
     val lociSetsRDD = sc.parallelize(partitionLociSets, partitionLociSets.length)
+
+    (partitionedReads, lociSetsRDD)
+  }
+
+  def pileups(halfWindowSize: Int,
+              maxRegionsPerPartition: Int,
+              reference: ReferenceGenome,
+              loci: LociSet = LociSet.all(contigLengths)): RDD[Pileup] = {
+
+    val (partitionedReads, lociSetsRDD) = getPartitionLociSets(halfWindowSize, maxRegionsPerPartition, reference, loci)
 
     partitionedReads.zipPartitions(lociSetsRDD, preservesPartitioning = true)((reads, lociIter) => {
       val loci = lociIter.next()
@@ -74,7 +84,7 @@ case class ReadSets(readsRDDs: PerSample[ReadsRDD],
       }
 
       val windowedReads =
-        new WindowIterator(
+        new PositionRegionsIterator(
           halfWindowSize,
           loci,
           reads.buffered
@@ -88,12 +98,37 @@ case class ReadSets(readsRDDs: PerSample[ReadsRDD],
     })
   }
 
-//  def perSamplePileups(halfWindowSize: Int,
-//                       maxRegionsPerPartition: Int,
-//                       reference: ReferenceGenome,
-//                       loci: LociSet = LociSet.all(contigLengths)): RDD[PerSample[Pileup]] = {
-//
-//  }
+  def perSamplePileups(halfWindowSize: Int,
+                       maxRegionsPerPartition: Int,
+                       reference: ReferenceGenome,
+                       loci: LociSet = LociSet.all(contigLengths)): RDD[PerSample[Pileup]] = {
+
+    val (partitionedReads, lociSetsRDD) = getPartitionLociSets(halfWindowSize, maxRegionsPerPartition, reference, loci)
+
+    partitionedReads.zipPartitions(lociSetsRDD, preservesPartitioning = true)((reads, lociIter) => {
+      val loci = lociIter.next()
+      if (lociIter.hasNext) {
+        throw new Exception(s"Expected 1 LociSet, found ${1 + lociIter.size}.\n$loci")
+      }
+
+      val windowedReads =
+        new PositionRegionsPerSampleIterator(
+          halfWindowSize,
+          readsRDDs.length,
+          loci,
+          reads.buffered
+        )
+
+      for {
+        (ReferencePosition(contig, locus), allReads) <- windowedReads
+      } yield {
+        for {
+          perSampleReads <- allReads
+        } yield
+          Pileup(perSampleReads, contig, locus, reference.getContig(contig))
+      }
+    })
+  }
 }
 
 object ReadSets {

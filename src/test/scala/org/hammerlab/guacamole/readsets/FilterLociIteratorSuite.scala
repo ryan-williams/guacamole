@@ -19,7 +19,7 @@ class FilterLociIteratorSuite extends GuacFunSuite with Util {
     val it =
       new FilterLociIterator(
         LociSet(lociStr).onContig("chr1").iterator,
-        new ContigWindowIterator(halfWindowSize, intervals.buffered)
+        new LociOverlapsIterator(halfWindowSize, intervals.buffered)
       )
 
     checkReads(

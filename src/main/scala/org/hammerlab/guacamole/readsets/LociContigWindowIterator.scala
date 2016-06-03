@@ -1,47 +1,31 @@
 package org.hammerlab.guacamole.readsets
 
 import org.hammerlab.guacamole.loci.set.LociIterator
-import org.hammerlab.guacamole.reference.{Interval, ReferencePosition}
+import org.hammerlab.guacamole.reference.ReferencePosition.Locus
+import org.hammerlab.guacamole.reference.{Contig, Interval, ReferencePosition}
+import org.hammerlab.guacamole.util.OptionIterator
 
-class LociContigWindowIterator[I <: Interval](loci: LociIterator, regions: ContigWindowIterator[I])
-  extends BufferedIterator[(ReferencePosition, Iterable[I])] {
+class LociContigWindowIterator[I <: Interval](loci: LociIterator, regionsIter: ContigWindowIterator[I])
+  extends OptionIterator[(Locus, Iterable[I])] {
 
-  var _next: (ReferencePosition, Iterable[I]) = _
+  override def _advance: Option[(Locus, Iterable[I])] = {
+    if (!loci.hasNext) return None
+    if (!regionsIter.hasNext) return None
 
-  override def head: (ReferencePosition, Iterable[I]) = {
-    if (!advance()) throw new NoSuchElementException
-    _next
-  }
+    val nextLocus = loci.head
+    val (nextRegionsLocus, regions) = regionsIter.head
 
-  def advance(): Boolean = {
-    if (_next != null) return true
-    if (!loci.hasNext) return false
-    if (!regions.hasNext) return false
-
-    val locus = loci.head
-    val n = regions.head
-    val pos = n._1.locus
-
-    if (pos > locus) {
-      loci.skipTo(pos)
-      advance()
-    } else if (locus > pos) {
-      regions.skipTo(locus)
-      advance()
+    if (nextRegionsLocus > nextLocus) {
+      loci.skipTo(nextRegionsLocus)
+      _advance
+    } else if (nextLocus > nextRegionsLocus) {
+      regionsIter.skipTo(nextLocus)
+      _advance
     } else {
-      _next = n
       loci.next()
-      regions.next()
-      true
+      regionsIter.next()
+      Some(nextRegionsLocus -> regions)
     }
   }
 
-  override def hasNext: Boolean = advance()
-
-  override def next(): (ReferencePosition, Iterable[I]) = {
-    if (!advance()) throw new NoSuchElementException
-    val n = _next
-    _next = null
-    n
-  }
 }

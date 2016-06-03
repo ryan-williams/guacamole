@@ -5,6 +5,7 @@ import scala.math.PartiallyOrdered
 
 case class ReferencePosition(contig: Contig, locus: Locus)
   extends ReferenceRegion
+    with HasLocus
     with PartiallyOrdered[ReferencePosition] {
 
   override def tryCompareTo[B >: ReferencePosition](that: B)(implicit ev: (B) => PartiallyOrdered[B]): Option[Int] = {

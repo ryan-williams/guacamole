@@ -18,7 +18,7 @@ trait OptionIterator[T] extends BufferedIterator[T] {
     _next.get
   }
 
-  def postNext(n: T): Unit
+  def postNext(n: T): Unit = {}
 
   override def next(): T = {
     val r = head

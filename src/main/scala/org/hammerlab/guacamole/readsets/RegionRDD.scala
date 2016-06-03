@@ -132,9 +132,10 @@ class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R],
 
   def getPartitioning(halfWindowSize: Int,
                       maxRegionsPerPartition: Int): LociPartitioning = {
-    val lociMapBuilder = LociMap.newBuilder[PartitionIndex]()
     val lociSetsRDD = makeCappedLociSets(halfWindowSize, maxRegionsPerPartition)
     val lociSets = lociSetsRDD.collect()
+
+    val lociMapBuilder = LociMap.newBuilder[PartitionIndex]()
     for {
       (loci, idx) <- lociSets.zipWithIndex
     } {

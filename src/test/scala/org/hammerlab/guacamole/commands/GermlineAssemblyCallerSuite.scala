@@ -53,7 +53,7 @@ class GermlineAssemblyCallerSuite extends GuacFunSuite with BeforeAndAfterAll {
         )
       )
 
-    val lociPartitions = UniformPartitioner(args.parallelism, lociParser.result(contigLengths))
+    val lociPartitions = new UniformPartitioner(args.parallelism).partition(lociParser.result(contigLengths))
 
     val variants =
       GermlineAssemblyCaller.Caller.discoverGermlineVariants(

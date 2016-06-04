@@ -26,7 +26,7 @@ object PartitionLoci extends SparkCommand[PartitionLociArgs] {
 
     val loci = args.parseLoci(sc.hadoopConfiguration).result(contigLengths)
 
-    val partitioning = ApproximatePartitioner(args, loci, mappedReads)
+    val partitioning = new ApproximatePartitioner(args).apply(loci, readsets.allMappedReads)
 
     val partitioningBroadcast = sc.broadcast(partitioning)
 

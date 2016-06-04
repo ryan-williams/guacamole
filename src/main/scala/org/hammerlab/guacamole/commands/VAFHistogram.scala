@@ -108,7 +108,7 @@ object VAFHistogram {
 
       val samplePercent = args.samplePercent
 
-      val ReadSets(readsRDDs, _, contigLengths) =
+      val readsets =
         ReadSets(
           sc,
           args.bams,
@@ -117,17 +117,20 @@ object VAFHistogram {
           config = ReadLoadingConfig(args)
         )
 
-      val lociPartitions = ArgsPartitioner(
-        args,
-        loci.result(contigLengths),
-        readsRDDs(0).mappedReads  // Use the first set of reads as a proxy for read depth
-      )
+      val ReadSets(readsRDDs, _, contigLengths) = readsets
+
+      val lociPartitions =
+        new ArgsPartitioner(args)
+          .apply(
+            loci.result(contigLengths),
+            readsets.allMappedReads
+          )
 
       val minReadDepth = args.minReadDepth
       val minVariantAlleleFrequency = args.minVAF
       val variantLoci = readsRDDs.map(reads =>
         variantLociFromReads(
-          reads.mappedReads,
+          reads,
           reference,
           lociPartitions,
           samplePercent,

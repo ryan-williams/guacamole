@@ -2,12 +2,10 @@ package org.hammerlab.guacamole.loci.partitioning
 
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.map.LociMap
-import org.hammerlab.guacamole.loci.partitioning.ApproximatePartitioner.MicroPartitionIndex
-import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.{LociPartitioning, NumPartitions, PartitionIndex}
+import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.{LociPartitioning, NumPartitions}
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.logging.DebugLogArgs
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
-import org.hammerlab.guacamole.readsets.PerSample
 import org.hammerlab.guacamole.reference.ReferenceRegion
 import org.kohsuke.args4j.{Option => Args4jOption}
 import spire.implicits._
@@ -26,19 +24,7 @@ trait UniformPartitionerArgs
   var parallelism: NumPartitions = 0
 }
 
-object UniformPartitioner extends LociPartitioner[UniformPartitionerArgs] {
-
-  override def apply[R <: ReferenceRegion: ClassTag](args: UniformPartitionerArgs,
-                                                     loci: LociSet,
-                                                     unused: PerSample[RDD[R]]): LociPartitioning =
-    partition(args.parallelism, loci)
-
-  def apply[M <: ReferenceRegion](numPartitions: PartitionIndex, loci: LociSet): LociMap[PartitionIndex] =
-    partition(numPartitions, loci)
-
-  def apply[M <: ReferenceRegion](numMicroPartitions: MicroPartitionIndex, loci: LociSet): LociMap[MicroPartitionIndex] =
-    partition(numMicroPartitions, loci)
-
+class UniformPartitionerBase[N: Integral](numPartitions: N) {
   /**
    * Assign loci to partitions. Contiguous intervals of loci will tend to get assigned to the same partition.
    *
@@ -46,13 +32,9 @@ object UniformPartitioner extends LociPartitioner[UniformPartitionerArgs] {
    * implementation, partitionLociByApproximateDepth, can be found below; it considers the depth of coverage at each
    * locus and assigns each partition loci corresponding to approximately the same number of regions.
    *
-   * @param numPartitions Number of partitions; these needn't map directly to a number of Spark partitions, since e.g.
-   *                      partitionLociByApproximateDepth does post-processing on a large number of "micro-partitions"
-   *                      computed here, combining them to generate partitions that are passed to Spark.
-   * @param loci Loci to partition
    * @return LociMap of locus -> partition assignments
    */
-  private def partition[N: Integral](numPartitions: N, loci: LociSet): LociMap[N] = {
+  def partition(loci: LociSet): LociMap[N] = {
 
     assume(numPartitions >= 1, "`numPartitions` (--parallelism) should be >= 1")
 
@@ -91,4 +73,17 @@ object UniformPartitioner extends LociPartitioner[UniformPartitionerArgs] {
     assert(result.count == loci.count)
     result
   }
+}
+
+class UniformPartitioner(numPartitions: NumPartitions)
+  extends UniformPartitionerBase(numPartitions)
+    with LociPartitioner {
+
+  override def apply[R <: ReferenceRegion : ClassTag](loci: LociSet, regions: RDD[R]): LociPartitioning = {
+    partition(loci)
+  }
+}
+
+object UniformPartitioner {
+  def apply(partitions: Int, loci: LociSet): LociPartitioning = new UniformPartitioner(partitions).partition(loci)
 }

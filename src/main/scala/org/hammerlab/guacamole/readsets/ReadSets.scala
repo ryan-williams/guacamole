@@ -12,7 +12,9 @@ import org.bdgenomics.adam.models.SequenceDictionary
 import org.bdgenomics.adam.rdd.{ADAMContext, ADAMSpecificRecordSequenceDictionaryRDDAggregator}
 import org.bdgenomics.formats.avro.AlignmentRecord
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
-import org.hammerlab.guacamole.loci.set.LociSet
+import org.hammerlab.guacamole.loci.map.LociMap
+import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.{LociPartitioning, PartitionIndex}
+import org.hammerlab.guacamole.loci.set.{LociSet, TakeLociIterator}
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.reads.{MappedRead, Read}
@@ -138,6 +140,27 @@ case class ReadSets(readsRDDs: PerSample[ReadsRDD],
       }
     })
   }
+
+//  def makeCappedLociSets(halfWindowSize: Int,
+//                         maxRegionsPerPartition: Int): RDD[LociSet] =
+//    coverage(halfWindowSize).mapPartitionsWithIndex((idx, it) =>
+//      new TakeLociIterator(it.buffered, maxRegionsPerPartition)
+//    )
+//
+//  def getPartitioning(halfWindowSize: Int,
+//                      maxRegionsPerPartition: Int): LociPartitioning = {
+//    val lociSetsRDD = makeCappedLociSets(halfWindowSize, maxRegionsPerPartition)
+//    val lociSets = lociSetsRDD.collect()
+//
+//    val lociMapBuilder = LociMap.newBuilder[PartitionIndex]()
+//    for {
+//      (loci, idx) <- lociSets.zipWithIndex
+//    } {
+//      lociMapBuilder.put(loci, idx)
+//    }
+//    lociMapBuilder.result()
+//  }
+
 }
 
 object ReadSets {

@@ -92,7 +92,7 @@ object VariantSupport {
             .collect()
         )
 
-      val lociPartitions = UniformPartitioner(args.parallelism, lociSet)
+      val lociPartitions = new UniformPartitioner(args.parallelism).partition(lociSet)
 
       val alleleCounts =
         reads.map(sampleReads =>

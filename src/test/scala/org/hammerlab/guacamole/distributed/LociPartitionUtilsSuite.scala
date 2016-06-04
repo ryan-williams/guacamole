@@ -154,7 +154,7 @@ class LociPartitionUtilsSuite extends GuacFunSuite {
       (7L, 1L),
       (8L, 1L)))
     val loci = LociSet("chr1:0-100")
-    val result = ApproximatePartitioner(2, loci, 100, Vector(reads))
+    val result = ApproximatePartitioner(2, 100).apply(loci, reads)
     result.toString should equal("chr1:0-7=0,chr1:7-100=1")
   }
 }

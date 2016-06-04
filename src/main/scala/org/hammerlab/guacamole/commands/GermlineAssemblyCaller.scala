@@ -68,11 +68,8 @@ object GermlineAssemblyCaller {
       val minAlignmentQuality = args.minAlignmentQuality
       val qualityReads = mappedReads.filter(_.alignmentQuality > minAlignmentQuality)
 
-      val lociPartitions = ArgsPartitioner(
-        args,
-        loci.result(contigLengths),
-        mappedReads
-      )
+      val lociPartitions =
+        new ArgsPartitioner(args).apply(loci.result(contigLengths), qualityReads)
 
       val genotypes: RDD[CalledAllele] = discoverGermlineVariants(
         qualityReads,

@@ -5,20 +5,26 @@ import org.hammerlab.guacamole.loci.LociArgs
 import org.hammerlab.guacamole.loci.map.LociMap
 import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.LociPartitioning
 import org.hammerlab.guacamole.loci.set.LociSet
-import org.hammerlab.guacamole.readsets.PerSample
 import org.hammerlab.guacamole.reference.ReferenceRegion
+import org.kohsuke.args4j.{Option => Args4JOption}
 
 import scala.reflect.ClassTag
 
 trait LociPartitionerArgs extends LociArgs
 
-trait LociPartitioner[Args <: LociPartitionerArgs] {
-  def apply[R <: ReferenceRegion: ClassTag](args: Args,
-                                            loci: LociSet,
-                                            regionsRDD: RDD[R]): LociPartitioning =
-    apply(args, loci, Vector(regionsRDD))
+trait AllLociPartitionerArgs
+  extends ApproximatePartitionerArgs
+    with ExactPartitionerArgs {
+  @Args4JOption(name = "--loci-partitioner")
+  var lociPartitionerName: String = "exact"
+}
 
-  def apply[R <: ReferenceRegion: ClassTag](args: Args, loci: LociSet, regionsRDDs: PerSample[RDD[R]]): LociPartitioning
+trait LociPartitioner {
+  def apply[R <: ReferenceRegion: ClassTag](loci: LociSet, regions: RDD[R]): LociPartitioning
+}
+
+trait LociPartitionerData {
+  def getPartitioner: LociPartitioner
 }
 
 object LociPartitioner {

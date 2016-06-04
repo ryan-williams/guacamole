@@ -42,4 +42,6 @@ object MappedReadsRDD {
 object ReadsRDD {
   def apply(pair: (RDD[Read], String), contigLengths: ContigLengths): ReadsRDD =
     new ReadsRDD(pair._1, pair._2, contigLengths)
+
+  implicit def readsRDDToMappedReads(readsRDD: ReadsRDD): RDD[MappedRead] = readsRDD.mappedReads
 }

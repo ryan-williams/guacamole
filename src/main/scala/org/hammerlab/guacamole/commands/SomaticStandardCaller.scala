@@ -94,11 +94,12 @@ object SomaticStandard {
 
       val oddsThreshold = args.oddsThreshold
 
-      val lociPartitions = ArgsPartitioner(
-        args,
-        loci.result(contigLengths),
-        Vector(tumorReads.mappedReads, normalReads.mappedReads)
-      )
+      val lociPartitions =
+        new ArgsPartitioner(args)
+          .apply(
+            loci.result(contigLengths),
+            tumorReads.mappedReads ++ normalReads.mappedReads
+          )
 
       var potentialGenotypes: RDD[CalledSomaticAllele] =
         pileupFlatMapTwoRDDs[CalledSomaticAllele](

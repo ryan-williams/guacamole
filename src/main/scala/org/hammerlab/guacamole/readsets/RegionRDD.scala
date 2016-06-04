@@ -170,8 +170,7 @@ object RegionRDD {
   implicit def rddToRegionRDD[R <: ReferenceRegion: ClassTag](
     rdd: RDD[R]
   )(
-    implicit ordering: PartialOrdering[R],
-    contigLengthsBroadcast: Broadcast[ContigLengths]
+    implicit contigLengthsBroadcast: Broadcast[ContigLengths]
   ): RegionRDD[R] =
     rddMap.getOrElseUpdate(
       rdd.id,

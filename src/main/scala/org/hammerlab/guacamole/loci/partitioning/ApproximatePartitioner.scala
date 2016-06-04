@@ -2,11 +2,10 @@ package org.hammerlab.guacamole.loci.partitioning
 
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.map.LociMap
-import org.hammerlab.guacamole.loci.partitioning.ApproximatePartitioner.NumMicroPartitions
+import org.hammerlab.guacamole.loci.partitioning.ApproximatePartitioner.{MicroPartitionIndex, NumMicroPartitions}
 import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.{LociPartitioning, NumPartitions, PartitionIndex}
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
-import org.hammerlab.guacamole.readsets.PerSample
 import org.hammerlab.guacamole.reference.ReferenceRegion
 import org.kohsuke.args4j.{Option => Args4jOption}
 
@@ -28,25 +27,17 @@ trait ApproximatePartitionerArgs extends UniformPartitionerArgs {
   var partitioningAccuracy: NumMicroPartitions = 250
 }
 
-object ApproximatePartitioner extends LociPartitioner[ApproximatePartitionerArgs] {
+class ApproximatePartitioner(args: ApproximatePartitionerArgs) extends LociPartitioner {
 
-  // Convenience types representing "micro-partitions" indices, or numbers of micro-partitions.
-  // Micro-partitions can be as numerous as loci in the genome, so we use Longs to represent them.
-  // Many of them can be combined into individual Spark partitions (which are Ints).
-  type MicroPartitionIndex = Long
-  type NumMicroPartitions = Long
-
-  override def apply[R <: ReferenceRegion: ClassTag](args: ApproximatePartitionerArgs,
-                                                     loci: LociSet,
-                                                     regionRDDs: PerSample[RDD[R]]): LociPartitioning = {
-    val sc = regionRDDs(0).sparkContext
+  override def apply[R <: ReferenceRegion: ClassTag](loci: LociSet, regions: RDD[R]): LociPartitioning = {
+    val sc = regions.sparkContext
     val numPartitions =
       if (args.parallelism == 0)
         sc.defaultParallelism
       else
         args.parallelism
 
-    apply(numPartitions, loci, args.partitioningAccuracy, regionRDDs)
+    apply(numPartitions, loci, args.partitioningAccuracy, regions)
   }
 
   /**
@@ -80,20 +71,18 @@ object ApproximatePartitioner extends LociPartitioner[ApproximatePartitionerArgs
    *                                    more exact but more expensive computation.
    *                                    In the extreme, setting this to greater than the number of loci (per partition)
    *                                    will result in an exact calculation.
-   * @param regionRDDs: region RDD 1, region RDD 2, ...
-   *                    Any number RDD[ReferenceRegion] arguments giving the regions to base the partitioning on.
+   * @param regions: RDDs of reads to base the partitioning on.
    * @return LociMap of locus -> partition assignments.
    */
   def apply[R <: ReferenceRegion: ClassTag](numPartitions: NumPartitions,
                                             loci: LociSet,
                                             microPartitionsPerPartition: NumMicroPartitions,
-                                            regionRDDs: PerSample[RDD[R]]): LociPartitioning = {
+                                            regions: RDD[R]): LociPartitioning = {
 
     assume(numPartitions >= 1)
     assume(loci.count > 0)
-    assume(regionRDDs.nonEmpty)
 
-    val sc = regionRDDs(0).sparkContext
+    val sc = regions.sparkContext
 
     // Step 1: split loci uniformly into micro partitions.
     val numMicroPartitions: NumMicroPartitions =
@@ -107,7 +96,7 @@ object ApproximatePartitioner extends LociPartitioner[ApproximatePartitionerArgs
       .format(numPartitions, numMicroPartitions)
     )
 
-    val lociToMicroPartitionMap = UniformPartitioner(numMicroPartitions, loci)
+    val lociToMicroPartitionMap = new UniformPartitionerBase(numMicroPartitions).partition(loci)
     val microPartitionToLociMap = lociToMicroPartitionMap.inverse
 
     progress("Done calculating micro partitions.")
@@ -118,15 +107,13 @@ object ApproximatePartitioner extends LociPartitioner[ApproximatePartitionerArgs
     val regionsPerMicroPartition: Map[MicroPartitionIndex, Long] = {
       var sampleNum = 1
 
-      sc.union(regionRDDs).flatMap(region =>
+      regions.flatMap(region =>
         broadcastMicroPartitions
           .value
           .onContig(region.contig)
           .getAll(region.start, region.end)
       ).countByValue()
     }
-
-//    val counts: Array[Long] = regionsPerMicroPartition.toArray.sortBy(_._1).map(_._2)
 
     // Step 3: assign loci to partitions, taking into account region depth in each micro partition.
     val totalRegions = regionsPerMicroPartition.values.sum
@@ -204,4 +191,20 @@ object ApproximatePartitioner extends LociPartitioner[ApproximatePartitionerArgs
     result
   }
 
+}
+
+object ApproximatePartitioner {
+  // Convenience types representing "micro-partitions" indices, or numbers of micro-partitions.
+  // Micro-partitions can be as numerous as loci in the genome, so we use Longs to represent them.
+  // Many of them can be combined into individual Spark partitions (which are Ints).
+  type MicroPartitionIndex = Long
+  type NumMicroPartitions = Long
+
+  def apply(partitions: Int, accuracy: Int): ApproximatePartitioner =
+    new ApproximatePartitioner({
+      val args = new ApproximatePartitionerArgs {}
+      args.parallelism = partitions
+      args.partitioningAccuracy = accuracy
+      args
+    })
 }

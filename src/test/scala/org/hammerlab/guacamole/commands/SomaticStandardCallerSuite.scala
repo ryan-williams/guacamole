@@ -99,6 +99,7 @@ class SomaticStandardCallerSuite extends GuacFunSuite with TableDrivenPropertyCh
         "tumor.chr20.tough.sam",
         "normal.chr20.tough.sam"
       )
+
     val positivePositions = Array[Long](
       755754,
       1843813,
@@ -126,6 +127,7 @@ class SomaticStandardCallerSuite extends GuacFunSuite with TableDrivenPropertyCh
       57280858,
       58201903
     )
+
     testVariants(tumorReads, normalReads, positivePositions, shouldFindVariant = true)
   }
 

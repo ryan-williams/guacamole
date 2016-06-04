@@ -180,7 +180,7 @@ class LociSetSuite extends GuacFunSuite {
     iter1.next() should be(2)
     iter1.next() should be(10)
     iter1.next() should be(11)
-    iter1.skipTo(6000000000L) // will hang if it steps through each locus.
+    iter1.skipTo(6000000000L)  // will hang if it steps through each locus.
     iter1.next() should be(6000000000L)
     iter1.next() should be(6000000001L)
     iter1.hasNext should be(true)

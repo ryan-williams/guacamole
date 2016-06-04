@@ -52,7 +52,7 @@ case class Pileup(referenceName: String,
       referenceName, elements.map(_.read.contig).filter(_ != referenceName).mkString(",")))
   assume(elements.forall(_.locus == locus), "Reads in pileup have mismatching loci")
 
-  lazy val distinctAlleles: Seq[Allele] = elements.map(_.allele).toSet.toVector.sorted
+  lazy val distinctAlleles: Seq[Allele] = elements.map(_.allele).toVector.distinct.sorted
 
   lazy val sampleName = elements.head.read.sampleName
 

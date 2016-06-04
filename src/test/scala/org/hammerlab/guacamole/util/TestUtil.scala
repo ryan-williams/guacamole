@@ -109,7 +109,8 @@ object TestUtil {
                start: Long = 1,
                chr: String = "chr1",
                qualityScores: Option[Seq[Int]] = None,
-               alignmentQuality: Int = 30): MappedRead = {
+               alignmentQuality: Int = 30,
+               sampleId: Int = 0): MappedRead = {
 
     val qualityScoreString = if (qualityScores.isDefined) {
       qualityScores.get.map(q => q + 33).map(_.toChar).mkString
@@ -122,6 +123,7 @@ object TestUtil {
       name = "read1",
       cigarString = cigar,
       start = start,
+      sampleId = sampleId,
       referenceContig = chr,
       baseQualities = qualityScoreString,
       alignmentQuality = alignmentQuality

@@ -312,8 +312,6 @@ class ReadSetsSuite extends GuacFunSuite with Util {
         ("chr2",  40,  42, 3)
       )
 
-    val n: ExpectedReadIdxs = Nil
-
     val pileups: Iterable[ExpectedPosPerSample] =
       List[ExpectedPosPerSample](
         "chr1" ->  98 -> ("", "", ""),

@@ -3,7 +3,6 @@ package org.hammerlab.guacamole.readsets
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
 import org.hammerlab.guacamole.loci.set.LociIterator
-import org.hammerlab.guacamole.reference.ContigPosition._
 import org.hammerlab.guacamole.reference.{Contig, Interval, ReferencePosition, ReferenceRegion}
 
 import scala.collection.mutable

@@ -6,6 +6,7 @@ import htsjdk.samtools.{QueryInterval, SAMRecordIterator, SamReaderFactory, Vali
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.LongWritable
 import org.apache.spark.SparkContext
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.bdgenomics.adam.models.SequenceDictionary
 import org.bdgenomics.adam.rdd.{ADAMContext, ADAMSpecificRecordSequenceDictionaryRDDAggregator}
@@ -73,9 +74,12 @@ case class ReadSets(readsRDDs: PerSample[ReadsRDD],
   def pileups(halfWindowSize: Int,
               maxRegionsPerPartition: Int,
               reference: ReferenceGenome,
-              loci: LociSet = LociSet.all(contigLengths)): RDD[Pileup] = {
+              loci: LociSet = LociSet.all(contigLengths),
+              forceCallLoci: LociSet = LociSet()): RDD[Pileup] = {
 
     val (partitionedReads, lociSetsRDD) = getPartitionLociSets(halfWindowSize, maxRegionsPerPartition, reference, loci)
+
+    val forceCallLociBroadcast: Broadcast[LociSet] = sc.broadcast(forceCallLoci)
 
     partitionedReads.zipPartitions(lociSetsRDD, preservesPartitioning = true)((reads, lociIter) => {
       val loci = lociIter.next()
@@ -87,6 +91,7 @@ case class ReadSets(readsRDDs: PerSample[ReadsRDD],
         new PositionRegionsIterator(
           halfWindowSize,
           loci,
+          forceCallLociBroadcast.value,
           reads.buffered
         )
 
@@ -101,9 +106,12 @@ case class ReadSets(readsRDDs: PerSample[ReadsRDD],
   def perSamplePileups(halfWindowSize: Int,
                        maxRegionsPerPartition: Int,
                        reference: ReferenceGenome,
-                       loci: LociSet = LociSet.all(contigLengths)): RDD[PerSample[Pileup]] = {
+                       loci: LociSet = LociSet.all(contigLengths),
+                       forceCallLoci: LociSet = LociSet()): RDD[PerSample[Pileup]] = {
 
     val (partitionedReads, lociSetsRDD) = getPartitionLociSets(halfWindowSize, maxRegionsPerPartition, reference, loci)
+
+    val forceCallLociBroadcast: Broadcast[LociSet] = sc.broadcast(forceCallLoci)
 
     partitionedReads.zipPartitions(lociSetsRDD, preservesPartitioning = true)((reads, lociIter) => {
       val loci = lociIter.next()
@@ -116,6 +124,7 @@ case class ReadSets(readsRDDs: PerSample[ReadsRDD],
           halfWindowSize,
           readsRDDs.length,
           loci,
+          forceCallLociBroadcast.value,
           reads.buffered
         )
 

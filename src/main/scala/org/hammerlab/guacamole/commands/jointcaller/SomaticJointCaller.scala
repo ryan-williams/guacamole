@@ -10,6 +10,7 @@ import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMapMulti
 import org.hammerlab.guacamole.loci.partitioning.{ApproximatePartitionerArgs, ArgsPartitioner}
 import org.hammerlab.guacamole.loci.set.{LociParser, LociSet}
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
+import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.readsets.{InputFilters, NoSequenceDictionaryArgs, PerSample, ReadSets}
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.kohsuke.args4j.spi.StringArrayOptionHandler
@@ -171,8 +172,51 @@ object SomaticJoint {
   }
 
   def makeCalls(sc: SparkContext,
+                   inputs: InputCollection,
+                   readsets: ReadSets,
+                   parameters: Parameters,
+                   reference: ReferenceBroadcast,
+                   loci: LociSet,
+                   forceCallLoci: LociSet = LociSet(),
+                   onlySomatic: Boolean = false,
+                   includeFiltered: Boolean = false,
+                   distributedUtilArguments: ApproximatePartitionerArgs = new ApproximatePartitionerArgs {}): RDD[MultiSampleMultiAlleleEvidence] = {
+
+    assume(loci.nonEmpty)
+
+    val perSamplePileupsRDD: RDD[PerSample[Pileup]] =
+      readsets.perSamplePileups(
+        halfWindowSize = 0,
+        maxRegionsPerPartition = 500000,
+        reference,
+        loci,  // TODO(ryan): do we need to use lociSetMinusOne(loci) here?
+        forceCallLoci
+      )
+
+    val broadcastForceCallLoci = sc.broadcast(forceCallLoci)
+
+    perSamplePileupsRDD.flatMap(pileups => {
+      val forceCall =
+        broadcastForceCallLoci
+          .value
+          .onContig(pileups.head.referenceName)
+          .contains(pileups.head.locus + 1)
+
+      MultiSampleMultiAlleleEvidence.make(
+        pileups,
+        inputs,
+        parameters,
+        reference,
+        forceCall,
+        onlySomatic,
+        includeFiltered
+      ).toIterator
+    })
+  }
+
+  def makeCallsBak(sc: SparkContext,
                 inputs: InputCollection,
-                readsRDDs: ReadSets,
+                readsets: ReadSets,
                 parameters: Parameters,
                 reference: ReferenceBroadcast,
                 loci: LociSet,
@@ -187,7 +231,7 @@ object SomaticJoint {
     // specified loci.
     val broadcastForceCallLoci = sc.broadcast(forceCallLoci)
 
-    val mappedReadRDDs = readsRDDs.mappedReadsRDDs
+    val mappedReadRDDs = readsets.mappedReadsRDDs
 
     val lociPartitions =
       ArgsPartitioner(

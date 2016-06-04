@@ -5,7 +5,7 @@ import org.hammerlab.guacamole.reference.{HasLocus, Interval}
 
 import scala.collection.mutable
 
-case class LociIntervals[I <: Interval](locus: Locus, intervals: Iterable[I]) extends HasLocus
+case class LociIntervals[+I <: Interval](locus: Locus, intervals: Iterable[I]) extends HasLocus
 
 class LociOverlapsIterator[I <: Interval](halfWindowSize: Int, regions: BufferedIterator[I])
   extends SkippableLociIterator[LociIntervals[I]] {

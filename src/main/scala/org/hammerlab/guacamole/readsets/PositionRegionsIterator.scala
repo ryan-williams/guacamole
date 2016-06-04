@@ -1,7 +1,8 @@
 package org.hammerlab.guacamole.readsets
 
 import org.hammerlab.guacamole.loci.set.LociSet
-import org.hammerlab.guacamole.reference.{HasLocus, ReferencePosition, ReferenceRegion}
+import org.hammerlab.guacamole.reference.ReferencePosition.Locus
+import org.hammerlab.guacamole.reference.{ContigPosition, HasLocus, ReferencePosition, ReferenceRegion}
 import org.hammerlab.guacamole.util.OptionIterator
 
 //class PositionRegions[R <: ReferenceRegion](pos: ReferencePosition,
@@ -14,14 +15,16 @@ import org.hammerlab.guacamole.util.OptionIterator
 
 abstract class PositionRegionsIteratorBase[R <: ReferenceRegion, T <: HasLocus, U](halfWindowSize: Int,
                                                                                    loci: LociSet,
-                                                                                   regions: BufferedIterator[R])
+                                                                                   forceCallLoci: LociSet,
+                                                                                   regions: BufferedIterator[R],
+                                                                                   empty: Locus => T)
   extends OptionIterator[(ReferencePosition, U)] {
 
   def newObjIterator(contigRegions: ContigIterator[R]): SkippableLociIterator[T]
 
   def objToResult(t: T): U
 
-  var curContig: FilterLociIterator[T] = _
+  var curContig: Iterator[T] = _
   var curContigName: String = _
 
   def clearContig(): Unit = {
@@ -43,14 +46,20 @@ abstract class PositionRegionsIteratorBase[R <: ReferenceRegion, T <: HasLocus, 
       // Iterator over the loci on this contig allowed by the input LociSet.
       val contigLoci = loci.onContig(curContigName).iterator
 
+      // Positions on this contig that we must emit records at, even if the underlying data would otherwise skip them.
+      val forceCallContigLoci = forceCallLoci.onContig(curContigName).iterator
+
       // Restrict to regions on the current contig.
       val contigRegions = ContigIterator(curContigName, regions)
 
       // Iterator over "piles" of regions (loci and the reads that overlap them, or a window around them) on this contig.
-      val contigRegionWindows = newObjIterator(contigRegions)
+      val contigRegionObjs = newObjIterator(contigRegions)
 
       // Iterator that merges the loci allowed by the LociSet with the loci that have reads overlapping them.
-      curContig = new FilterLociIterator(contigLoci, contigRegionWindows)
+      curContig = new UnionLociIterator(
+        forceCallContigLoci.map(pos => empty(pos)).buffered,
+        new IntersectLociIterator(contigLoci, contigRegionObjs)
+      )
 
       if (!curContig.hasNext)
         clearContig()
@@ -66,7 +75,7 @@ abstract class PositionRegionsIteratorBase[R <: ReferenceRegion, T <: HasLocus, 
     )
   }
 
-  override def postNext(n: (ReferencePosition, U)): Unit = {
+  override def postNext(): Unit = {
     if (!curContig.hasNext)
       clearContig()
   }
@@ -75,8 +84,15 @@ abstract class PositionRegionsIteratorBase[R <: ReferenceRegion, T <: HasLocus, 
 
 class PositionRegionsIterator[R <: ReferenceRegion](halfWindowSize: Int,
                                                     loci: LociSet,
+                                                    forceCallLoci: LociSet,
                                                     regions: BufferedIterator[R])
-  extends PositionRegionsIteratorBase[R, LociIntervals[R], Iterable[R]](halfWindowSize, loci, regions) {
+  extends PositionRegionsIteratorBase[R, LociIntervals[R], Iterable[R]](
+    halfWindowSize,
+    loci,
+    forceCallLoci,
+    regions,
+    LociIntervals(_, Nil)
+  ) {
 
   override def newObjIterator(contigRegions: ContigIterator[R]): SkippableLociIterator[LociIntervals[R]] =
     new LociOverlapsIterator(halfWindowSize, contigRegions)
@@ -87,8 +103,22 @@ class PositionRegionsIterator[R <: ReferenceRegion](halfWindowSize: Int,
 class PositionRegionsPerSampleIterator[R <: ReferenceRegion with HasSampleId](halfWindowSize: Int,
                                                                               numSamples: Int,
                                                                               loci: LociSet,
+                                                                              forceCallLoci: LociSet,
                                                                               regions: BufferedIterator[R])
-  extends PositionRegionsIteratorBase[R, LociIntervalsPerSample[R], PerSample[Iterable[R]]](halfWindowSize, loci, regions) {
+  extends PositionRegionsIteratorBase[R, LociIntervalsPerSample[R], PerSample[Iterable[R]]](
+    halfWindowSize,
+    loci,
+    forceCallLoci,
+    regions,
+    LociIntervalsPerSample(
+      _,
+      Vector.fill(
+        numSamples
+      )(
+        Nil
+      )
+    )
+  ) {
 
   override def newObjIterator(contigRegions: ContigIterator[R]): SkippableLociIterator[LociIntervalsPerSample[R]] =
     new LociOverlapsPerSampleIterator(halfWindowSize, numSamples, contigRegions)

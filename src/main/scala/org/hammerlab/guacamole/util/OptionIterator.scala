@@ -1,8 +1,12 @@
 package org.hammerlab.guacamole.util
 
-trait OptionIterator[T] extends BufferedIterator[T] {
+trait OptionIterator[+T] extends BufferedIterator[T] {
 
-  protected var _next: Option[T] = None
+  private[this] var _next: Option[T] = None
+
+  def clear(): Unit = {
+    _next = None
+  }
 
   def _advance: Option[T]
 
@@ -18,12 +22,12 @@ trait OptionIterator[T] extends BufferedIterator[T] {
     _next.get
   }
 
-  def postNext(n: T): Unit = {}
+  def postNext(): Unit = {}
 
   override def next(): T = {
     val r = head
-    _next = None
-    postNext(r)
+    clear()
+    postNext()
     r
   }
 }

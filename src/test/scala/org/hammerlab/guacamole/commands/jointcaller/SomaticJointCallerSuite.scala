@@ -22,7 +22,7 @@ class SomaticJointCallerSuite extends GuacFunSuite {
     ReferenceBroadcast(b37Chromosome22Fasta, sc, partialFasta = false)
   }
 
-  test("call a somatic variant") {
+  test("force-call a non-variant locus") {
     val inputs = InputCollection(cancerWGS1Bams)
     val loci = LociParser("chr12:65857040")
     val readSets = SomaticJoint.inputsToReadSets(sc, inputs, loci)

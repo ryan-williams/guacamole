@@ -76,26 +76,26 @@ trait Util extends Matchers {
   }
 
   def makeReadsRDD(numPartitions: Int, reads: (String, Int, Int, Int)*): RDD[TestRegion] =
-    sc.parallelize(makeReads(reads: _*).toSeq, numPartitions)
+    sc.parallelize(makeReads(reads).toSeq, numPartitions)
 
-  def makeIntervals(intervals: (Int, Int, Int)*): Iterator[TestInterval] =
+  def makeIntervals(intervals: Seq[(Int, Int, Int)]): BufferedIterator[TestInterval] =
     (for {
       (start, end, num) <- intervals
       i <- 0 until num
     } yield
       TestInterval(start, end)
-    ).iterator
+    ).iterator.buffered
 
   def makeReads(contig: String, reads: (Int, Int, Int)*): Iterator[TestRegion] =
-    makeReads((for { (start, end, num) <- reads } yield (contig, start, end, num)): _*)
+    makeReads((for { (start, end, num) <- reads } yield (contig, start, end, num)))
 
-  def makeReads(reads: (String, Int, Int, Int)*): Iterator[TestRegion] =
+  def makeReads(reads: Seq[(String, Int, Int, Int)]): BufferedIterator[TestRegion] =
     (for {
       (contig, start, end, num) <- reads
       i <- 0 until num
     } yield
       TestRegion(contig, start, end)
-    ).iterator
+    ).iterator.buffered
 
   def windowIteratorStrings[I <: Interval](
     windowIterator: Iterator[(ReferencePosition, Iterable[I])]

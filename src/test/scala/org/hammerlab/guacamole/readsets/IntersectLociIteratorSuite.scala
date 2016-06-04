@@ -4,12 +4,13 @@ import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.reference.{ReferencePosition, TestInterval}
 import org.hammerlab.guacamole.util.GuacFunSuite
 
-class FilterLociIteratorSuite extends GuacFunSuite with Util {
+class IntersectLociIteratorSuite extends GuacFunSuite with Util {
 
   def checkReads(
     halfWindowSize: Int,
-    lociStr: String,
-    intervals: Iterator[TestInterval]
+    loci: String
+  )(
+    intervals: (Int, Int, Int)*
   )(
     expected: (Int, String)*
   ): Unit = {
@@ -17,9 +18,12 @@ class FilterLociIteratorSuite extends GuacFunSuite with Util {
     val contig = "chr1"
 
     val it =
-      new FilterLociIterator(
-        LociSet(lociStr).onContig("chr1").iterator,
-        new LociOverlapsIterator(halfWindowSize, intervals.buffered)
+      new IntersectLociIterator(
+        LociSet(loci).onContig("chr1").iterator,
+        new LociOverlapsIterator(
+          halfWindowSize,
+          makeIntervals(intervals)
+        )
       )
 
     checkReads(
@@ -38,14 +42,13 @@ class FilterLociIteratorSuite extends GuacFunSuite with Util {
   test("hello world") {
     checkReads(
       halfWindowSize = 0,
-      List(
+      loci = List(
         "chr1:99-103",
         "chr1:199-202"
-      ).mkString(","),
-      makeIntervals(
-        (100, 200, 1),
-        (101, 201, 1)
-      )
+      ).mkString(",")
+    )(
+      (100, 200, 1),
+      (101, 201, 1)
     )(
       100 -> "[100,200)",
       101 -> "[100,200), [101,201)",
@@ -58,19 +61,18 @@ class FilterLociIteratorSuite extends GuacFunSuite with Util {
   test("simple reads, no window") {
     checkReads(
       halfWindowSize = 0,
-      List(
+      loci = List(
         "chr1:99-103",
         "chr1:198-202",
         "chr1:299-302",
         "chr1:399-401"
-      ).mkString(","),
-      makeIntervals(
-        (100, 200, 1),
-        (101, 201, 1),
-        (199, 299, 1),
-        (200, 300, 1),
-        (300, 400, 1)
-      )
+      ).mkString(",")
+    )(
+      (100, 200, 1),
+      (101, 201, 1),
+      (199, 299, 1),
+      (200, 300, 1),
+      (300, 400, 1)
     )(
       100 -> "[100,200)",
       101 -> "[100,200), [101,201)",
@@ -89,19 +91,18 @@ class FilterLociIteratorSuite extends GuacFunSuite with Util {
   test("simple reads, window 1") {
     checkReads(
       halfWindowSize = 1,
-      List(
+      loci = List(
         "chr1:98-102",
         "chr1:197-203",
         "chr1:299-302",
         "chr1:400-402"
-      ).mkString(","),
-      makeIntervals(
-        (100, 200, 1),
-        (101, 201, 1),
-        (199, 299, 1),
-        (200, 300, 1),
-        (300, 400, 1)
-      )
+      ).mkString(",")
+    )(
+      (100, 200, 1),
+      (101, 201, 1),
+      (199, 299, 1),
+      (200, 300, 1),
+      (300, 400, 1)
     )(
        99 -> "[100,200)",
       100 -> "[100,200), [101,201)",
@@ -122,21 +123,20 @@ class FilterLociIteratorSuite extends GuacFunSuite with Util {
   test("contained reads") {
     checkReads(
       halfWindowSize = 1,
-      List(
+      loci = List(
         "chr1:99-102",
         "chr1:148-150",
         "chr1:153-155",
         "chr1:160-162",
         "chr1:198-202",
         "chr1:255-257"
-      ).mkString(","),
-      makeIntervals(
-        (100, 200, 1),
-        (101, 199, 1),
-        (102, 198, 1),
-        (150, 160, 1),
-        (155, 255, 1)
-      )
+      ).mkString(",")
+    )(
+      (100, 200, 1),
+      (101, 199, 1),
+      (102, 198, 1),
+      (150, 160, 1),
+      (155, 255, 1)
     )(
        99 -> "[100,200)",
       100 -> "[100,200), [101,199)",
@@ -158,16 +158,15 @@ class FilterLociIteratorSuite extends GuacFunSuite with Util {
   test("many reads") {
     checkReads(
       halfWindowSize = 1,
-      List(
+      loci = List(
         "chr1:98-100",
         "chr1:108-111",
         "chr1:119-122",
         "chr1:199-202"
-      ).mkString(","),
-      makeIntervals(
-        (100, 200, 100000),
-        (110, 120, 100000)
-      )
+      ).mkString(",")
+    )(
+      (100, 200, 100000),
+      (110, 120, 100000)
     )(
        99 -> "[100,200)*100000",
       108 -> "[100,200)*100000",
@@ -184,32 +183,30 @@ class FilterLociIteratorSuite extends GuacFunSuite with Util {
   test("skip gaps and all reads") {
     checkReads(
       halfWindowSize = 1,
-      List(
+      loci = List(
         "chr1:50-52",
         "chr1:60-62",
         "chr1:150-152",
         "chr1:161-163"
-      ).mkString(","),
-      makeIntervals(
-        (100, 110, 10),
-        (120, 130, 10),
-        (153, 160, 10)
-      )
+      ).mkString(",")
+    )(
+      (100, 110, 10),
+      (120, 130, 10),
+      (153, 160, 10)
     )()
   }
 
   test("skip gaps and some reads") {
     checkReads(
       halfWindowSize = 1,
-      List(
+      loci = List(
         "chr1:50-52",
         "chr1:60-64",
         "chr1:150-153"
-      ).mkString(","),
-      makeIntervals(
-        (62, 70, 10),
-        (80, 90, 100)
-      )
+      ).mkString(",")
+    )(
+      (62, 70, 10),
+      (80, 90, 100)
     )(
       61 -> "[62,70)*10",
       62 -> "[62,70)*10",

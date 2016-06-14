@@ -5,6 +5,7 @@ import java.lang.{Long => JLong}
 
 import com.google.common.collect.{RangeSet, TreeRangeSet, Range => JRange}
 import org.hammerlab.guacamole.loci.SimpleRange
+import org.hammerlab.guacamole.reference.ReferencePosition.Locus
 import org.hammerlab.guacamole.strings.TruncatedToString
 
 import scala.collection.JavaConversions._
@@ -41,7 +42,7 @@ case class Contig(var name: String, private var rangeSet: RangeSet[JLong]) exten
   }
 
   /** Is the given locus contained in this set? */
-  def contains(locus: Long): Boolean = rangeSet.contains(locus)
+  def contains(locus: Locus): Boolean = rangeSet.contains(locus)
 
   /** This set as a regular scala array of ranges. */
   lazy val ranges: Array[SimpleRange] = {

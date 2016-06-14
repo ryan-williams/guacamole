@@ -1,8 +1,8 @@
 package org.hammerlab.guacamole.loci.partitioning
 
-import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.map.LociMap
-import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.{LociPartitioning, NumPartitions}
+import org.hammerlab.guacamole.loci.partitioning.ApproximatePartitioner.NumMicroPartitions
+import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.NumPartitions
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.logging.DebugLogArgs
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
@@ -24,7 +24,8 @@ trait UniformPartitionerArgs
   var parallelism: NumPartitions = 0
 }
 
-class UniformPartitionerBase[N: Integral](numPartitions: N) {
+abstract class UniformPartitionerBase[N: Integral](numPartitions: N) {
+
   /**
    * Assign loci to partitions. Contiguous intervals of loci will tend to get assigned to the same partition.
    *
@@ -75,15 +76,13 @@ class UniformPartitionerBase[N: Integral](numPartitions: N) {
   }
 }
 
+case class UniformMicroPartitioner(numPartitions: NumMicroPartitions)
+  extends UniformPartitionerBase[NumMicroPartitions](numPartitions)
+
 class UniformPartitioner(numPartitions: NumPartitions)
   extends UniformPartitionerBase(numPartitions)
-    with LociPartitioner {
-
-  override def apply[R <: ReferenceRegion : ClassTag](loci: LociSet, regions: RDD[R]): LociPartitioning = {
-    partition(loci)
-  }
-}
+    with LociPartitioner
 
 object UniformPartitioner {
-  def apply(partitions: Int, loci: LociSet): LociPartitioning = new UniformPartitioner(partitions).partition(loci)
+  def apply(args: UniformPartitionerArgs): UniformPartitioner = new UniformPartitioner(args.parallelism)
 }

@@ -14,4 +14,6 @@ package org.hammerlab.guacamole
 package object readsets {
   type PerSample[A] = IndexedSeq[A]
   type ContigLengths = Map[String, Long]
+  type SampleId = Int
+  type NumSamples = Int
 }

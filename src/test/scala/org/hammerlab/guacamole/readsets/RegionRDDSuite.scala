@@ -95,10 +95,10 @@ class RegionRDDSuite extends GuacFunSuite with Util {
         ("chr5",  90,  91, 10)
       )
 
-    implicit val contigLengthsBroadcast: Broadcast[ContigLengths] =
-      sc.broadcast(Map("chr1" -> 1000, "chr2" -> 1000, "chr5" -> 1000))
+    val contigLengths: ContigLengths = Map("chr1" -> 1000, "chr2" -> 1000, "chr5" -> 1000)
+    implicit val contigLengthsBroadcast: Broadcast[ContigLengths] = sc.broadcast(contigLengths)
 
-    val rdd = readsRDD.coverage(0)
+    val rdd = readsRDD.coverage(0, LociSet.all(contigLengths))
 
     val expected =
       List(
@@ -122,7 +122,7 @@ class RegionRDDSuite extends GuacFunSuite with Util {
          "chr5:91" -> ( 0,  0, 10)
       )
 
-    val shuffled = readsRDD.shuffleCoverage(0)
+    val shuffled = readsRDD.shuffleCoverage(0, contigLengthsBroadcast)
 
     checkCoverage(rdd, expected)
     checkCoverage(shuffled, expected)

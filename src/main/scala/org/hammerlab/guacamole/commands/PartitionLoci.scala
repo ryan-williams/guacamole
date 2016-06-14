@@ -1,16 +1,15 @@
 package org.hammerlab.guacamole.commands
 
 import org.apache.spark.SparkContext
-import org.hammerlab.guacamole.loci.partitioning.{ApproximatePartitioner, ApproximatePartitionerArgs}
+import org.hammerlab.guacamole.loci.partitioning.{AllLociPartitionerArgs, ApproximatePartitioner, ApproximatePartitionerArgs}
 import org.hammerlab.guacamole.readsets.ReadSets
-import org.kohsuke.args4j.{Argument, Option => Args4jOption}
+import org.kohsuke.args4j.{Option => Args4jOption}
 
-class PartitionLociArgs extends ApproximatePartitionerArgs {
-  @Argument(required = true, multiValued = true,
-    usage = "FILE1 FILE2 FILE3")
-  var paths: Array[String] = Array.empty
-
-  @Args4jOption(name = "--half-window", usage = "Partitions get assigned all reads that overlap any base within this distance of either end of its range.")
+class PartitionLociArgs extends ReadSets.Arguments with AllLociPartitionerArgs {
+  @Args4jOption(
+    name = "--half-window",
+    usage = "Partitions get assigned all reads that overlap any base within this distance of either end of its range."
+  )
   var halfWindow: Int = 50
 }
 
@@ -20,13 +19,13 @@ object PartitionLoci extends SparkCommand[PartitionLociArgs] {
 
   override def run(args: PartitionLociArgs, sc: SparkContext): Unit = {
 
-    val readsets = ReadSets(sc, args.paths)
+    val readsets = ReadSets(sc, args.pathsAndSampleNames)
     val mappedReads = readsets.mappedReadsRDDs
     val ReadSets(_, sequenceDictionary, contigLengths) = readsets
 
     val loci = args.parseLoci(sc.hadoopConfiguration).result(contigLengths)
 
-    val partitioning = new ApproximatePartitioner(args).apply(loci, readsets.allMappedReads)
+    val partitioning = ApproximatePartitioner(readsets.allMappedReads, args.halfWindow, args).partition(loci)
 
     val partitioningBroadcast = sc.broadcast(partitioning)
 

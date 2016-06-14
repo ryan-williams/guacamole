@@ -11,6 +11,7 @@ import org.hammerlab.guacamole.reads.{MappedRead, PairedRead, Read}
  */
 case class ReadsRDD(reads: RDD[Read],
                     sourceFile: String,
+                    sampleName: String,
                     contigLengths: ContigLengths) {
 
   val basename = new File(sourceFile).getName
@@ -30,18 +31,12 @@ case class ReadsRDD(reads: RDD[Read],
     }).setName(s"Mapped reads: $shortName")
 }
 
-case class MappedReadsRDD(reads: RDD[MappedRead],
-                          sourceFile: String,
-                          override val contigLengthsBroadcast: Broadcast[ContigLengths])
-  extends RegionRDD(reads, contigLengthsBroadcast)
+case class MappedReadsRDD(reads: RDD[MappedRead], sourceFile: String) extends RegionRDD(reads)
 
 object MappedReadsRDD {
   implicit def mappedReadsRDDToRDD(mappedReadsRDD: MappedReadsRDD): RDD[MappedRead] = mappedReadsRDD.reads
 }
 
 object ReadsRDD {
-  def apply(pair: (RDD[Read], String), contigLengths: ContigLengths): ReadsRDD =
-    new ReadsRDD(pair._1, pair._2, contigLengths)
-
   implicit def readsRDDToMappedReads(readsRDD: ReadsRDD): RDD[MappedRead] = readsRDD.mappedReads
 }

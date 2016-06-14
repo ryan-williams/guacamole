@@ -8,7 +8,6 @@ import org.hammerlab.guacamole.reference.{Contig, Interval, ReferencePosition, R
 import scala.collection.mutable
 
 class ContigCoverageIterator private(halfWindowSize: Int,
-                                     contigLength: Long,
                                      contig: Contig,
                                      regions: BufferedIterator[Interval],
                                      loci: LociIterator)
@@ -20,9 +19,10 @@ class ContigCoverageIterator private(halfWindowSize: Int,
   private var _next: Coverage = _
 
   private def advance(): Boolean = {
-    if (!loci.hasNext)
+    if (!loci.hasNext) {
       return false
-    else {
+    } else {
+      assert(loci.hasNext)
       val nextLocus = loci.head
       if (ends.isEmpty) {
         if (regions.isEmpty)
@@ -32,22 +32,19 @@ class ContigCoverageIterator private(halfWindowSize: Int,
         if (nextReadWindowStart > nextLocus) {
           curPos = nextReadWindowStart
           loci.skipTo(nextReadWindowStart)
+          return advance()
         }
       }
       curPos = loci.next()
     }
 
     val lowerLimit = math.max(0, curPos - halfWindowSize)
-    val upperLimit = math.min(contigLength, curPos + halfWindowSize)
+    val upperLimit = curPos + halfWindowSize
 
     var numDropped = 0
     while (ends.headOption.exists(_ <= lowerLimit)) {
       ends.dequeue()
       numDropped += 1
-    }
-
-    if (curPos == contigLength) {
-      numDropped += ends.dequeueAll.size
     }
 
     var numAdded = 0
@@ -80,8 +77,7 @@ class ContigCoverageIterator private(halfWindowSize: Int,
 
 object ContigCoverageIterator {
   def apply(halfWindowSize: Int,
-            contigLength: Long,
             regions: ContigIterator[ReferenceRegion],
             loci: LociIterator): ContigCoverageIterator =
-    new ContigCoverageIterator(halfWindowSize, contigLength, regions.contig, regions.buffered, loci)
+    new ContigCoverageIterator(halfWindowSize, regions.contig, regions.buffered, loci)
 }

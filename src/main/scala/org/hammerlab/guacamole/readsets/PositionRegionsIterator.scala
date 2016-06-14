@@ -110,14 +110,7 @@ class PositionRegionsPerSampleIterator[R <: ReferenceRegion with HasSampleId](ha
     loci,
     forceCallLoci,
     regions,
-    LociIntervalsPerSample(
-      _,
-      Vector.fill(
-        numSamples
-      )(
-        Nil
-      )
-    )
+    LociIntervalsPerSample(_, Vector.fill(numSamples)(Nil))
   ) {
 
   override def newObjIterator(contigRegions: ContigIterator[R]): SkippableLociIterator[LociIntervalsPerSample[R]] =

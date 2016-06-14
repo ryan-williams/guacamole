@@ -95,5 +95,4 @@ class PositionRegionsIteratorSuite extends GuacFunSuite with Util {
       "chr5" -> 101 -> "[90,110)*10"
     )
   }
-
 }

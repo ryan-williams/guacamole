@@ -4,8 +4,6 @@ import java.io.{BufferedWriter, File, FileWriter}
 
 import org.apache.spark.SparkContext
 import org.hammerlab.guacamole.commands.SparkCommand
-import org.apache.spark.Logging
-import org.bdgenomics.utils.cli.Args4j
 import org.hammerlab.guacamole.loci.SimpleRange
 import org.hammerlab.guacamole.loci.partitioning.ApproximatePartitionerArgs
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
@@ -70,12 +68,12 @@ object GeneratePartialFasta extends SparkCommand[GeneratePartialFastaArguments] 
     val readsets =
       ReadSets(
         sc,
-        args.bams,
+        args.bams.zip(args.bams),
         InputFilters.empty,
         config = ReadLoadingConfig(args)
       )
 
-    val reads = sc.union(readsets.mappedReadsRDDs)
+    val reads = readsets.allMappedReads
 
     val regions = reads.map(read => (read.contig, read.start, read.end))
     regions.collect.foreach(triple => {

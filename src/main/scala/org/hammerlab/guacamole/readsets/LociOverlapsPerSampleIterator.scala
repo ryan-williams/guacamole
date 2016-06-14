@@ -7,12 +7,14 @@ import org.hammerlab.guacamole.reference.ReferencePosition.Locus
 import scala.collection.mutable
 
 trait HasSampleId {
-  def sampleId: Int
+  def sampleId: SampleId
 }
 
 case class LociIntervalsPerSample[I <: SampleInterval](locus: Locus, intervals: PerSample[Iterable[I]]) extends HasLocus
 
-class LociOverlapsPerSampleIterator[I <: SampleInterval](halfWindowSize: Int, numSamples: Int, regions: BufferedIterator[I])
+class LociOverlapsPerSampleIterator[I <: SampleInterval](halfWindowSize: Int,
+                                                         numSamples: Int,
+                                                         regions: BufferedIterator[I])
   extends SkippableLociIterator[LociIntervalsPerSample[I]] {
 
   private val queues = Vector.fill(numSamples)(new mutable.PriorityQueue[I]()(Interval.orderByEnd[I]))

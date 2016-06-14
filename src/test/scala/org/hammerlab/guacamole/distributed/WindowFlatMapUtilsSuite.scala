@@ -3,6 +3,7 @@ package org.hammerlab.guacamole.distributed
 import org.hammerlab.guacamole.loci.partitioning.UniformPartitioner
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.reads.MappedRead
+import org.hammerlab.guacamole.readsets.PartitionedRegions
 import org.hammerlab.guacamole.util.{GuacFunSuite, TestUtil}
 import org.hammerlab.guacamole.windowing.SlidingWindow
 
@@ -26,10 +27,17 @@ class WindowFlatMapUtilsSuite extends GuacFunSuite {
       TestUtil.makeRead("TCGATCGA", "8M", 4),
       TestUtil.makeRead("GGGGGGG", "7M", 9)))
 
+    val partitioning = new UniformPartitioner(5).partition(LociSet("chr1:0-20"))
+    val partitionedReads =
+      PartitionedRegions(
+        reads,
+        // Split loci in 5 partitions - we will compute an aggregate value per partition
+        partitioning
+      )
+
     val counts = WindowFlatMapUtils.windowFoldLoci(
-      Vector(reads),
-      // Split loci in 5 partitions - we will compute an aggregate value per partition
-      UniformPartitioner(5, LociSet("chr1:0-20")),
+      numSamples = 1,
+      partitionedReads,
       skipEmpty = false,
       halfWindowSize = 0,
       initialValue = (0L, 0L),

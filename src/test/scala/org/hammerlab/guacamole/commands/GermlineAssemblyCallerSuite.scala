@@ -4,7 +4,7 @@ import org.hammerlab.guacamole.commands.GermlineAssemblyCaller.Arguments
 import org.hammerlab.guacamole.data.NA12878TestUtil
 import org.hammerlab.guacamole.loci.partitioning.UniformPartitioner
 import org.hammerlab.guacamole.loci.set.LociParser
-import org.hammerlab.guacamole.readsets.{InputFilters, ReadSets}
+import org.hammerlab.guacamole.readsets.{InputFilters, PartitionedRegions, ReadSets}
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.hammerlab.guacamole.util.{Bases, GuacFunSuite, TestUtil}
 import org.hammerlab.guacamole.variants.CalledAllele
@@ -53,18 +53,19 @@ class GermlineAssemblyCallerSuite extends GuacFunSuite with BeforeAndAfterAll {
         )
       )
 
-    val lociPartitions = new UniformPartitioner(args.parallelism).partition(lociParser.result(contigLengths))
+    val lociPartitioning = new UniformPartitioner(args.parallelism).partition(lociParser.result(contigLengths))
+
+    val partitionedReads = PartitionedRegions(mappedReads, lociPartitioning)
 
     val variants =
       GermlineAssemblyCaller.Caller.discoverGermlineVariants(
-        mappedReads,
+        partitionedReads,
         kmerSize = kmerSize,
         assemblyWindowRange = assemblyWindowRange,
         minOccurrence = minOccurrence,
         minMeanKmerQuality = 20,
         minAreaVaf = minVaf,
         reference = reference,
-        lociPartitions = lociPartitions,
         shortcutAssembly = shortcutAssembly
       ).collect().sortBy(_.start)
 

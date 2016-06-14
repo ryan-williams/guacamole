@@ -37,7 +37,7 @@ class ContigCoverageIteratorSuite extends FunSuite with Matchers {
       } yield
         ReferencePosition(contig, locus) -> Coverage(depth, starts, ends)
 
-    ContigCoverageIterator(halfWindowSize, contigLengths(contig), ContigIterator(reads), loci).toList should be(expected)
+    ContigCoverageIterator(halfWindowSize, ContigIterator(reads), loci).toList should be(expected)
   }
 
   test("simple") {

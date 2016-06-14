@@ -27,14 +27,14 @@ import org.hammerlab.guacamole.loci.partitioning.{UniformPartitioner, UniformPar
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.reads.MappedRead
-import org.hammerlab.guacamole.readsets.{InputFilters, ReadLoadingConfig, ReadLoadingConfigArgs, ReadSets}
+import org.hammerlab.guacamole.readsets.{InputFilters, NumSamples, PartitionedRegions, ReadLoadingConfig, ReadLoadingConfigArgs, ReadSets, SampleId}
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.hammerlab.guacamole.util.Bases
-import org.kohsuke.args4j.{Argument, Option => Args4jOption}
+import org.kohsuke.args4j.{Option => Args4jOption}
 
 object VariantSupport {
 
-  protected class Arguments extends UniformPartitionerArgs with ReadLoadingConfigArgs {
+  protected class Arguments extends UniformPartitionerArgs with ReadLoadingConfigArgs with ReadSets.Arguments {
     @Args4jOption(name = "--input-variant", required = true, aliases = Array("-v"),
       usage = "")
     var variants: String = ""
@@ -42,10 +42,6 @@ object VariantSupport {
     @Args4jOption(name = "--output", metaVar = "OUT", required = true, aliases = Array("-o"),
       usage = "Output path for CSV")
     var output: String = ""
-
-    @Argument(required = true, multiValued = true,
-      usage = "Retrieve read data from BAMs at each variant position")
-    var bams: Array[String] = Array.empty
 
     @Args4jOption(name = "--reference-fasta", required = true, usage = "Local path to a reference FASTA file")
     var referenceFastaPath: String = ""
@@ -56,14 +52,14 @@ object VariantSupport {
     override val name = "variant-support"
     override val description = "Find number of reads that support each variant across BAMs"
 
-    case class AlleleCount(sample: String,
+    case class AlleleCount(sampleName: String,
                            contig: String,
                            locus: Long,
                            reference: String,
                            alternate: String,
                            count: Int) {
       override def toString: String = {
-        s"$sample, $contig, $locus, $reference, $alternate, $count"
+        s"$sampleName, $contig, $locus, $reference, $alternate, $count"
       }
     }
 
@@ -75,38 +71,36 @@ object VariantSupport {
 
       val variants: RDD[Variant] = adamContext.loadVariants(args.variants)
 
-      val reads: Seq[RDD[MappedRead]] =
+      val readsets =
         ReadSets(
           sc,
-          args.bams,
+          args.pathsAndSampleNames,
           InputFilters.empty,
           config = ReadLoadingConfig(args)
-        ).mappedReadsRDDs
+        )
 
 
       // Build a loci set from the variant positions
-      val lociSet =
+      val loci =
         LociSet(
           variants
             .map(variant => (variant.getContig.getContigName, variant.getStart: Long, variant.getEnd: Long))
             .collect()
         )
 
-      val lociPartitions = new UniformPartitioner(args.parallelism).partition(lociSet)
+      val lociPartitioning = UniformPartitioner(args).partition(loci)
+
+      val partitionedReads = PartitionedRegions(readsets.allMappedReads, lociPartitioning)
 
       val alleleCounts =
-        reads.map(sampleReads =>
-          pileupFlatMap[AlleleCount](
-            sampleReads,
-            lociPartitions,
-            skipEmpty = true,
-            pileupToAlleleCounts,
-            reference = reference
-          )
-        ).reduce(_ ++ _)
+        pileupFlatMap[AlleleCount](
+          partitionedReads,
+          skipEmpty = true,
+          pileupToAlleleCounts,
+          reference = reference
+        )
 
       alleleCounts.saveAsTextFile(args.output)
-
     }
 
     /**
@@ -115,14 +109,19 @@ object VariantSupport {
      * @param pileup Pileup of reads a given locu
      * @return Iterator of AlleleCount which contains pair of reference and alternate with a count
      */
-    def pileupToAlleleCounts(pileup: Pileup): Iterator[AlleleCount] = {
-      val alleles = pileup.elements.groupBy(_.allele)
-      alleles.map(kv => AlleleCount(pileup.sampleName,
-        pileup.referenceName,
-        pileup.locus,
-        Bases.basesToString(kv._1.refBases),
-        Bases.basesToString(kv._1.altBases),
-        kv._2.size)).iterator
-    }
+    def pileupToAlleleCounts(pileup: Pileup): Iterator[AlleleCount] =
+      (for {
+        (sampleId, samplePileup) <- pileup.bySampleMap
+        (allele, elements) <- samplePileup.elements.groupBy(_.allele)
+      } yield
+        AlleleCount(
+          pileup.sampleName,
+          pileup.referenceName,
+          pileup.locus,
+          Bases.basesToString(allele.refBases),
+          Bases.basesToString(allele.altBases),
+          elements.size
+        )
+      ).iterator
   }
 }

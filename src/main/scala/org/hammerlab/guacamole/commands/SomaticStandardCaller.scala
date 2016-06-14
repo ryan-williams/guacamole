@@ -27,11 +27,10 @@ import org.hammerlab.guacamole.filters.PileupFilter.PileupFilterArguments
 import org.hammerlab.guacamole.filters.SomaticGenotypeFilter.SomaticGenotypeFilterArguments
 import org.hammerlab.guacamole.filters.{PileupFilter, SomaticAlternateReadDepthFilter, SomaticGenotypeFilter, SomaticReadDepthFilter}
 import org.hammerlab.guacamole.likelihood.Likelihood
-import org.hammerlab.guacamole.loci.partitioning.ArgsPartitioner
 import org.hammerlab.guacamole.logging.DelayedMessages
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.pileup.Pileup
-import org.hammerlab.guacamole.readsets.{InputFilters, ReadSets, SomaticCallerArgs}
+import org.hammerlab.guacamole.readsets.{InputFilters, PartitionedRegions, ReadSets, SomaticCallerArgs}
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.hammerlab.guacamole.variants.{Allele, AlleleConversions, AlleleEvidence, CalledSomaticAllele, GenotypeOutputArgs, VariantUtils}
 import org.kohsuke.args4j.{Option => Args4jOption}
@@ -94,18 +93,16 @@ object SomaticStandard {
 
       val oddsThreshold = args.oddsThreshold
 
-      val lociPartitions =
-        new ArgsPartitioner(args)
-          .apply(
-            loci.result(contigLengths),
-            tumorReads.mappedReads ++ normalReads.mappedReads
-          )
+      val partitionedReads =
+        PartitionedRegions(
+          tumorReads.mappedReads ++ normalReads.mappedReads,
+          loci.result(contigLengths),
+          args
+        )
 
       var potentialGenotypes: RDD[CalledSomaticAllele] =
         pileupFlatMapTwoRDDs[CalledSomaticAllele](
-          tumorReads.mappedReads,
-          normalReads.mappedReads,
-          lociPartitions,
+          partitionedReads,
           skipEmpty = true, // skip empty pileups
           function = (pileupTumor, pileupNormal) =>
             findPotentialVariantAtLocus(

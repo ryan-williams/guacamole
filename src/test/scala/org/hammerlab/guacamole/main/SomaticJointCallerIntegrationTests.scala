@@ -48,7 +48,7 @@ object SomaticJointCallerIntegrationTests extends SparkCommand[Arguments] with V
         args.somaticGenotypePolicy = "trigger"
         args.loci = ((1).until(22).map(i => "chr%d".format(i)) ++ Seq("chrX", "chrY")).mkString(",")
 
-        args.paths = CancerWGSTestUtil.bams.toArray
+        args.paths = CancerWGSTestUtil.bams.toVector
 
         val forceCallLoci =
           LociSet(
@@ -85,7 +85,7 @@ object SomaticJointCallerIntegrationTests extends SparkCommand[Arguments] with V
       if (true) {
         val args = new SomaticJoint.Arguments()
         args.out = resultFile
-        args.paths = Seq(NA12878TestUtil.subsetBam).toArray
+        args.paths = Seq(NA12878TestUtil.subsetBam).toVector
         args.loci = "chr1:0-6700000"
         args.forceCallLociFromFile = NA12878TestUtil.expectedCallsVCF
         args.referenceFastaPath = NA12878TestUtil.chr1PrefixFasta

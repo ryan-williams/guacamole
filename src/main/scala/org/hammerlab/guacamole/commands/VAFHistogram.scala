@@ -9,14 +9,13 @@ import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMap
-import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.LociPartitioning
-import org.hammerlab.guacamole.loci.partitioning.{ApproximatePartitionerArgs, ArgsPartitioner}
+import org.hammerlab.guacamole.loci.partitioning.AllLociPartitionerArgs
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.pileup.Pileup
-import org.hammerlab.guacamole.reads.MappedRead
-import org.hammerlab.guacamole.readsets.{InputFilters, ReadLoadingConfig, ReadLoadingConfigArgs, ReadSets}
+import org.hammerlab.guacamole.readsets.PartitionedRegions.PartitionedReads
+import org.hammerlab.guacamole.readsets.{InputFilters, PartitionedRegions, ReadLoadingConfig, ReadLoadingConfigArgs, ReadSets}
 import org.hammerlab.guacamole.reference.{ReferenceBroadcast, ReferenceGenome}
-import org.kohsuke.args4j.{Argument, Option => Args4jOption}
+import org.kohsuke.args4j.{Option => Args4jOption}
 
 /**
  * VariantLocus is a locus and the variant allele frequency at that locus
@@ -47,7 +46,7 @@ object VariantLocus {
 
 object VAFHistogram {
 
-  protected class Arguments extends ApproximatePartitionerArgs with ReadLoadingConfigArgs {
+  protected class Arguments extends AllLociPartitionerArgs with ReadLoadingConfigArgs with ReadSets.Arguments {
 
     @Args4jOption(name = "--out", required = false, forbids = Array("--local-out"),
       usage = "HDFS file path to save the variant allele frequency histogram")
@@ -84,11 +83,6 @@ object VAFHistogram {
 
     @Args4jOption(name = "--reference-fasta", required = true, usage = "Local path to a reference FASTA file")
     var referenceFastaPath: String = ""
-
-    @Argument(required = true, multiValued = true,
-      usage = "BAMs")
-    var bams: Array[String] = Array.empty
-
   }
 
   object Caller extends SparkCommand[Arguments] {
@@ -96,8 +90,6 @@ object VAFHistogram {
     override val description = "Compute and cluster the variant allele frequencies"
 
     override def run(args: Arguments, sc: SparkContext): Unit = {
-      val reference = ReferenceBroadcast(args.referenceFastaPath, sc)
-
       val loci = args.parseLoci(sc.hadoopConfiguration)
       val filters =
         InputFilters(
@@ -111,7 +103,7 @@ object VAFHistogram {
       val readsets =
         ReadSets(
           sc,
-          args.bams,
+          args.pathsAndSampleNames,
           filters,
           contigLengthsFromDictionary = true,
           config = ReadLoadingConfig(args)
@@ -119,20 +111,23 @@ object VAFHistogram {
 
       val ReadSets(readsRDDs, _, contigLengths) = readsets
 
-      val lociPartitions =
-        new ArgsPartitioner(args)
-          .apply(
-            loci.result(contigLengths),
-            readsets.allMappedReads
-          )
+      val partitionedReads =
+        PartitionedRegions(
+          readsets.allMappedReads,
+          loci.result(contigLengths),
+          args
+        )
+
+      val reference = ReferenceBroadcast(args.referenceFastaPath, sc)
 
       val minReadDepth = args.minReadDepth
       val minVariantAlleleFrequency = args.minVAF
+
       val variantLoci = readsRDDs.map(reads =>
         variantLociFromReads(
-          reads,
+          reads.sampleName,
+          partitionedReads,
           reference,
-          lociPartitions,
           samplePercent,
           minReadDepth,
           minVariantAlleleFrequency,
@@ -144,7 +139,6 @@ object VAFHistogram {
       val variantAlleleHistograms =
         variantLoci.map(variantLoci => generateVAFHistogram(variantLoci, bins))
 
-      val sampleAndFileNames = args.bams.zip(readsRDDs.map(_.mappedReads.take(1)(0).sampleName))
       val binSize = 100 / bins
 
       def histogramToString(kv: (Int, Long)): String = {
@@ -152,7 +146,7 @@ object VAFHistogram {
       }
 
       val histogramOutput =
-        sampleAndFileNames
+        args.pathsAndSampleNames
           .zip(variantAlleleHistograms)
           .flatMap {
             case ((filename, sampleName), histogram) =>
@@ -214,27 +208,24 @@ object VAFHistogram {
   /**
    * Find all non-reference loci in the sample
    *
-   * @param reads RDD of mapped reads for the sample
+   * @param partitionedReads RDD of mapped reads for the sample
    * @param reference genome
-   * @param lociPartitions Positions which to examine for non-reference loci
    * @param samplePercent Percent of non-reference loci to use for descriptive statistics
    * @param minReadDepth Minimum read depth before including variant allele frequency
    * @param minVariantAlleleFrequency Minimum variant allele frequency to include
    * @param printStats Print descriptive statistics for the variant allele frequency distribution
    * @return RDD of VariantLocus, which contain the locus and non-zero variant allele frequency
    */
-  def variantLociFromReads(reads: RDD[MappedRead],
+  def variantLociFromReads(sampleName: String,
+                           partitionedReads: PartitionedReads,
                            reference: ReferenceGenome,
-                           lociPartitions: LociPartitioning,
                            samplePercent: Int = 100,
                            minReadDepth: Int = 0,
                            minVariantAlleleFrequency: Int = 0,
                            printStats: Boolean = false): RDD[VariantLocus] = {
-    val sampleName = reads.take(1)(0).sampleName
     val variantLoci =
       pileupFlatMap[VariantLocus](
-        reads,
-        lociPartitions,
+        partitionedReads,
         skipEmpty = true,
         pileup =>
           VariantLocus(pileup)

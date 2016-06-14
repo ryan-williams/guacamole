@@ -19,9 +19,13 @@
 package org.hammerlab.guacamole.pileup
 
 import org.hammerlab.guacamole.reads.MappedRead
+import org.hammerlab.guacamole.readsets.{NumSamples, PerSample, SampleId}
 import org.hammerlab.guacamole.reference.{ContigSequence, ReferenceBroadcast}
 import org.hammerlab.guacamole.util.Bases
 import org.hammerlab.guacamole.variants.{Allele, Genotype}
+
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 /**
  * A [[Pileup]] at a locus contains a sequence of [[PileupElement]] instances, one for every read that overlaps that
@@ -60,11 +64,18 @@ case class Pileup(referenceName: String,
    * Split this [[Pileup]] by sample name. Returns a map from sample name to [[Pileup]] instances that use only reads
    * from that sample.
    */
-  lazy val bySample: Map[String, Pileup] = {
-    elements.groupBy(element => Option(element.read.sampleName).map(_.toString).getOrElse("default")).map({
-      case (sample, newElements) => (sample, Pileup(referenceName, locus, referenceContigSequence, newElements))
-    })
+  def bySample(numSamples: NumSamples): PerSample[Pileup] = {
+    val elementBuffers = Vector.fill(numSamples)(ArrayBuffer[PileupElement]())
+    for {
+      element <- elements
+    } {
+      elementBuffers(element.read.sampleId) += element
+    }
+    elementBuffers.map(Pileup(referenceName, locus, referenceContigSequence, _))
   }
+
+  lazy val bySampleMap: Map[SampleId, Pileup] =
+    elements.groupBy(_.read.sampleId).mapValues(Pileup(referenceName, locus, referenceContigSequence, _))
 
   /**
    * Depth of pileup - number of reads at locus
@@ -140,6 +151,7 @@ case class Pileup(referenceName: String,
     (alleleElements.size, numAllelePositiveElements)
   }
 }
+
 object Pileup {
   /**
    * Given reads and a locus, returns a [[Pileup]] at the specified locus.

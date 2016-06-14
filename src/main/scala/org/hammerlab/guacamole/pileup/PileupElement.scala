@@ -256,7 +256,7 @@ object PileupElement {
   /**
    * Create a new [[PileupElement]] backed by the given read at the specified locus. The read must overlap the locus.
    */
-  def apply(read: MappedRead, locus: Long, referenceContigSequence: ContigSequence): PileupElement = {
+  def apply(read: MappedRead, locus: Long, referenceContigSequence: ContigSequence): PileupElement =
     PileupElement(
       read = read,
       locus = read.start,
@@ -264,8 +264,8 @@ object PileupElement {
       cigarElementIndex = 0,
       cigarElementLocus = read.start,
       indexWithinCigarElement = 0,
-      referenceContigSequence = referenceContigSequence).advanceToLocus(locus)
-  }
+      referenceContigSequence = referenceContigSequence
+    ).advanceToLocus(locus)
 }
 
 case class InvalidCigarElementException(elem: PileupElement)

@@ -3,15 +3,14 @@ package org.hammerlab.guacamole.commands.jointcaller
 import htsjdk.samtools.SAMSequenceDictionary
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-import org.hammerlab.guacamole._
 import org.hammerlab.guacamole.commands.SparkCommand
 import org.hammerlab.guacamole.commands.jointcaller.evidence.{MultiSampleMultiAlleleEvidence, MultiSampleSingleAlleleEvidence}
-import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMapMultipleRDDs
-import org.hammerlab.guacamole.loci.partitioning.{AllLociPartitionerArgs, ApproximatePartitionerArgs, ArgsPartitioner, ExactPartitionerArgs}
-import org.hammerlab.guacamole.loci.set.{LociParser, LociSet}
+import org.hammerlab.guacamole.loci.partitioning.AllLociPartitionerArgs
+import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
-import org.hammerlab.guacamole.pileup.Pileup
-import org.hammerlab.guacamole.readsets.{InputFilters, NoSequenceDictionaryArgs, PerSample, ReadSets}
+import org.hammerlab.guacamole.pileup.{Pileup, PileupsRDD}
+import PileupsRDD._
+import org.hammerlab.guacamole.readsets.{PartitionedRegions, PerSample, ReadSets}
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.kohsuke.args4j.spi.StringArrayOptionHandler
 import org.kohsuke.args4j.{Option => Args4jOption}
@@ -20,7 +19,6 @@ object SomaticJoint {
   class Arguments
     extends AllLociPartitionerArgs
       with Parameters.CommandlineArguments
-      with NoSequenceDictionaryArgs
       with InputCollection.Arguments {
 
     @Args4jOption(name = "--out", usage = "Output path for all variants in VCF. Default: no output")
@@ -59,21 +57,6 @@ object SomaticJoint {
     var headerMetadata: Array[String] = Array.empty
   }
 
-  /**
-   * Load ReadSet instances from user-specified BAMs (specified as an InputCollection).
-   */
-  def inputsToReadSets(sc: SparkContext,
-                       inputs: InputCollection,
-                       loci: LociParser,
-                       contigLengthsFromDictionary: Boolean = true): ReadSets = {
-    ReadSets(
-      sc,
-      inputs.items.map(_.path),
-      InputFilters(overlapsLoci = loci),
-      contigLengthsFromDictionary = contigLengthsFromDictionary
-    )
-  }
-
   object Caller extends SparkCommand[Arguments] {
     override val name = "somatic-joint"
     override val description = "call germline and somatic variants based on any number of samples from the same patient"
@@ -81,16 +64,12 @@ object SomaticJoint {
     override def run(args: Arguments, sc: SparkContext): Unit = {
       val inputs = InputCollection(args)
 
+      val (readsets, loci) = ReadSets(sc, args)
+
       if (!args.quiet) {
-        println("Running on %d inputs:".format(inputs.items.length))
-        inputs.items.foreach(input => println(input))
+        println(s"Running on ${inputs.items.length} inputs:")
+        inputs.items.foreach(println)
       }
-
-      val reference = ReferenceBroadcast(args.referenceFastaPath, sc, partialFasta = args.referenceFastaIsPartial)
-
-      val loci = args.parseLoci(sc.hadoopConfiguration)
-
-      val readsets = inputsToReadSets(sc, inputs, loci, !args.noSequenceDictionary)
 
       val forceCallLoci =
         if (args.forceCallLoci.nonEmpty || args.forceCallLociFromFile.nonEmpty) {
@@ -111,13 +90,15 @@ object SomaticJoint {
 
       val parameters = Parameters(args)
 
+      val reference = ReferenceBroadcast(args.referenceFastaPath, sc, partialFasta = args.referenceFastaIsPartial)
+
       val calls = makeCalls(
         sc,
         inputs,
         readsets,
         parameters,
         reference,
-        loci.result(readsets.contigLengths),
+        loci,
         forceCallLoci = forceCallLoci,
         onlySomatic = args.onlySomatic,
         includeFiltered = args.includeFiltered,
@@ -184,91 +165,42 @@ object SomaticJoint {
 
     assume(loci.nonEmpty)
 
-    if (args.lociPartitionerName == "exact") {
+    val partitioning =
+      args
+        .getPartitioner(readsets.allMappedReads)
+        .partition(lociSetMinusOne(loci))
 
-      val perSamplePileupsRDD: RDD[PerSample[Pileup]] =
-        readsets.perSamplePileups(
-          halfWindowSize = 0,
-          maxRegionsPerPartition = 500000,
-          reference,
-          loci, // TODO(ryan): do we need to use lociSetMinusOne(loci) here?
-          forceCallLoci
-        )
+    val partitionedReads = PartitionedRegions(readsets.allMappedReads, partitioning)
 
-      val broadcastForceCallLoci = sc.broadcast(forceCallLoci)
-
-      perSamplePileupsRDD.flatMap(pileups => {
-        val forceCall =
-          broadcastForceCallLoci
-            .value
-            .onContig(pileups.head.referenceName)
-            .contains(pileups.head.locus + 1)
-
-        MultiSampleMultiAlleleEvidence.make(
-          pileups,
-          inputs,
-          parameters,
-          reference,
-          forceCall,
-          onlySomatic,
-          includeFiltered
-        ).toIterator
-      })
-    } else {
-      makeCallsApproximate(
-        sc, inputs, readsets, parameters, reference, loci, forceCallLoci, onlySomatic, includeFiltered, args
-      )
-    }
-
-  }
-
-  def makeCallsApproximate(sc: SparkContext,
-                           inputs: InputCollection,
-                           readsets: ReadSets,
-                           parameters: Parameters,
-                           reference: ReferenceBroadcast,
-                           loci: LociSet,
-                           forceCallLoci: LociSet = LociSet(),
-                           onlySomatic: Boolean = false,
-                           includeFiltered: Boolean = false,
-                           args: ApproximatePartitionerArgs = new ApproximatePartitionerArgs {}): RDD[MultiSampleMultiAlleleEvidence] = {
-
-    assume(loci.nonEmpty)
-
-    val lociPartitions =
-      new ArgsPartitioner(args).apply(
-        // When mapping over pileups, at locus x we call variants at locus x + 1. Therefore we subtract 1 from the user-
-        // specified loci.
-        lociSetMinusOne(loci),
-        readsets.allMappedReads
+    val perSamplePileupsRDD: RDD[PerSample[Pileup]] =
+      partitionedReads.perSamplePileups(
+        readsets.numSamples,
+        halfWindowSize = 0,
+        reference,
+        forceCallLoci
       )
 
-    val mappedReadRDDs = readsets.mappedReadsRDDs
+    progress(s"Partitioned reads")
 
-    // When mapping over pileups, at locus x we call variants at locus x + 1. Therefore we subtract 1 from the user-
-    // specified loci.
     val broadcastForceCallLoci = sc.broadcast(forceCallLoci)
 
-    pileupFlatMapMultipleRDDs(
-      mappedReadRDDs,
-      lociPartitions,
-      skipEmpty = true,  // TODO: shouldn't skip empty positions if we might force call them. Need an efficient way to handle this.
-      rawPileups => {
-        val forceCall =
-          broadcastForceCallLoci.value.onContig(rawPileups.head.referenceName)
-            .contains(rawPileups.head.locus + 1)
+    perSamplePileupsRDD.flatMap(pileups => {
+      val forceCall =
+        broadcastForceCallLoci
+          .value
+          .onContig(pileups.head.referenceName)
+          .contains(pileups.head.locus + 1)
 
-        MultiSampleMultiAlleleEvidence.make(
-          rawPileups,
-          inputs,
-          parameters,
-          reference,
-          forceCall = forceCall,
-          onlySomatic = onlySomatic,
-          includeFiltered = includeFiltered).toIterator
-      },
-      reference = reference
-    )
+      MultiSampleMultiAlleleEvidence.make(
+        pileups,
+        inputs,
+        parameters,
+        reference,
+        forceCall,
+        onlySomatic,
+        includeFiltered
+      ).toIterator
+    })
   }
 
   def writeCalls(calls: Seq[MultiSampleMultiAlleleEvidence],

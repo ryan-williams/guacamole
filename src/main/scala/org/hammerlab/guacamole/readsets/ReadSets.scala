@@ -12,15 +12,14 @@ import org.bdgenomics.adam.models.SequenceDictionary
 import org.bdgenomics.adam.rdd.{ADAMContext, ADAMSpecificRecordSequenceDictionaryRDDAggregator}
 import org.bdgenomics.formats.avro.AlignmentRecord
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
-import org.hammerlab.guacamole.loci.map.LociMap
-import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.{LociPartitioning, PartitionIndex}
-import org.hammerlab.guacamole.loci.set.{LociSet, TakeLociIterator}
+import org.hammerlab.guacamole.loci.LociArgs
+import org.hammerlab.guacamole.loci.set.{LociParser, LociSet}
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
-import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.reads.{MappedRead, Read}
 import org.hammerlab.guacamole.readsets.RegionRDD._
-import org.hammerlab.guacamole.reference.{ReferenceGenome, ReferencePosition}
 import org.hammerlab.magic.rdd.RDDStats._
+import org.kohsuke.args4j.spi.StringArrayOptionHandler
+import org.kohsuke.args4j.{Argument, Option => Args4JOption}
 import org.seqdoop.hadoop_bam.util.SAMHeaderReader
 import org.seqdoop.hadoop_bam.{AnySAMInputFormat, SAMRecordWritable}
 
@@ -35,8 +34,9 @@ case class ReadSets(readsRDDs: PerSample[ReadsRDD],
                     contigLengths: ContigLengths)
   extends PerSample[ReadsRDD] {
 
-  override def length: Int = readsRDDs.length
-  override def apply(idx: Int): ReadsRDD = readsRDDs(idx)
+  def numSamples: NumSamples = length
+  override def length: NumSamples = readsRDDs.length
+  override def apply(sampleId: SampleId): ReadsRDD = readsRDDs(sampleId)
 
   def sc = readsRDDs.head.reads.sparkContext
 
@@ -48,8 +48,12 @@ case class ReadSets(readsRDDs: PerSample[ReadsRDD],
 
   implicit val contigLengthsBroadcast = sc.broadcast(contigLengths)
 
-  def coveragePerSample(halfWindowSize: Int): PerSample[RDD[PositionCoverage]] =
-    mappedReadsRDDs.map(_.coverage(halfWindowSize))
+  @transient lazy val allLoci = LociSet.all(contigLengths)
+  @transient lazy val allLociBroadcast = sc.broadcast(allLoci)
+
+  def coveragePerSample(halfWindowSize: Int,
+                        lociBroadcast: Broadcast[LociSet] = allLociBroadcast): PerSample[RDD[PositionCoverage]] =
+    mappedReadsRDDs.map(_.coverage(halfWindowSize, lociBroadcast))
 
   def totaledCoverage(halfWindowSize: Int): RDD[PositionCoverage] =
     sc
@@ -57,125 +61,66 @@ case class ReadSets(readsRDDs: PerSample[ReadsRDD],
       .reduceByKey(_ + _)
       .sortByKey()
 
-  def coverage(halfWindowSize: Int): RDD[PositionCoverage] = allMappedReads.coverage(halfWindowSize)
+  def coverage(halfWindowSize: Int, lociBroadcast: Broadcast[LociSet] = allLociBroadcast): RDD[PositionCoverage] =
+    allMappedReads.coverage(halfWindowSize, lociBroadcast)
 
-  def getPartitionLociSets(halfWindowSize: Int,
-                           maxRegionsPerPartition: Int,
-                           reference: ReferenceGenome,
-                           loci: LociSet = LociSet.all(contigLengths)): (RDD[MappedRead], RDD[LociSet]) = {
-    val lociBroadcast = sc.broadcast(loci)
-    val partitioning = allMappedReads.getPartitioning(halfWindowSize, maxRegionsPerPartition)
-    val partitionedReads = allMappedReads.partition(halfWindowSize, partitioning)
-
-    val partitionLociSets = partitioning.inverse.toArray.sortBy(_._1).map(_._2)
-    val lociSetsRDD = sc.parallelize(partitionLociSets, partitionLociSets.length)
-
-    (partitionedReads, lociSetsRDD)
-  }
-
-  def pileups(halfWindowSize: Int,
-              maxRegionsPerPartition: Int,
-              reference: ReferenceGenome,
-              loci: LociSet = LociSet.all(contigLengths),
-              forceCallLoci: LociSet = LociSet()): RDD[Pileup] = {
-
-    val (partitionedReads, lociSetsRDD) = getPartitionLociSets(halfWindowSize, maxRegionsPerPartition, reference, loci)
-
-    val forceCallLociBroadcast: Broadcast[LociSet] = sc.broadcast(forceCallLoci)
-
-    partitionedReads.zipPartitions(lociSetsRDD, preservesPartitioning = true)((reads, lociIter) => {
-      val loci = lociIter.next()
-      if (lociIter.hasNext) {
-        throw new Exception(s"Expected 1 LociSet, found ${1 + lociIter.size}.\n$loci")
-      }
-
-      val windowedReads =
-        new PositionRegionsIterator(
-          halfWindowSize,
-          loci,
-          forceCallLociBroadcast.value,
-          reads.buffered
-        )
-
-      for {
-        (ReferencePosition(contig, locus), reads) <- windowedReads
-      } yield {
-        Pileup(reads, contig, locus, reference.getContig(contig))
-      }
-    })
-  }
-
-  def perSamplePileups(halfWindowSize: Int,
-                       maxRegionsPerPartition: Int,
-                       reference: ReferenceGenome,
-                       loci: LociSet = LociSet.all(contigLengths),
-                       forceCallLoci: LociSet = LociSet()): RDD[PerSample[Pileup]] = {
-
-    val (partitionedReads, lociSetsRDD) = getPartitionLociSets(halfWindowSize, maxRegionsPerPartition, reference, loci)
-
-    val forceCallLociBroadcast: Broadcast[LociSet] = sc.broadcast(forceCallLoci)
-
-    partitionedReads.zipPartitions(lociSetsRDD, preservesPartitioning = true)((reads, lociIter) => {
-      val loci = lociIter.next()
-      if (lociIter.hasNext) {
-        throw new Exception(s"Expected 1 LociSet, found ${1 + lociIter.size}.\n$loci")
-      }
-
-      val windowedReads =
-        new PositionRegionsPerSampleIterator(
-          halfWindowSize,
-          readsRDDs.length,
-          loci,
-          forceCallLociBroadcast.value,
-          reads.buffered
-        )
-
-      for {
-        (ReferencePosition(contig, locus), allReads) <- windowedReads
-      } yield {
-        for {
-          perSampleReads <- allReads
-        } yield
-          Pileup(perSampleReads, contig, locus, reference.getContig(contig))
-      }
-    })
-  }
-
-//  def makeCappedLociSets(halfWindowSize: Int,
-//                         maxRegionsPerPartition: Int): RDD[LociSet] =
-//    coverage(halfWindowSize).mapPartitionsWithIndex((idx, it) =>
-//      new TakeLociIterator(it.buffered, maxRegionsPerPartition)
-//    )
+//  def partitionReads(halfWindowSize: Int,
+//                     maxRegionsPerPartition: Int,
+//                     loci: LociSet = LociSet.all(contigLengths),
+//                     partitionedReadsPath: String,
+//                     savePartitioningPath: String): PartitionedReadsRDD[MappedRead] = {
 //
-//  def getPartitioning(halfWindowSize: Int,
-//                      maxRegionsPerPartition: Int): LociPartitioning = {
-//    val lociSetsRDD = makeCappedLociSets(halfWindowSize, maxRegionsPerPartition)
-//    val lociSets = lociSetsRDD.collect()
+//    if (partitionedReadsPath.nonEmpty)
+//      PartitionedReadsRDD.load(sc, partitionedReadsPath)
+//    else {
 //
-//    val lociMapBuilder = LociMap.newBuilder[PartitionIndex]()
-//    for {
-//      (loci, idx) <- lociSets.zipWithIndex
-//    } {
-//      lociMapBuilder.put(loci, idx)
+//      val lociBroadcast = sc.broadcast(loci)
+//      val partitioning = allMappedReads.getPartitioning(halfWindowSize, maxRegionsPerPartition)
+//      val partitionedReads = allMappedReads.partition(halfWindowSize, partitioning)
+//
+//      val rdd = PartitionedReadsRDD(partitionedReads, partitioning)
+//      if (savePartitioningPath.nonEmpty)
+//        rdd.save(savePartitioningPath)
+//
+//      rdd
 //    }
-//    lociMapBuilder.result()
 //  }
-
 }
 
 object ReadSets {
+
+  trait Arguments extends LociArgs with NoSequenceDictionaryArgs {
+    @Argument(required = true, multiValued = true, usage = "FILE1 FILE2 FILE3")
+    var paths: PerSample[String] = Vector.empty
+
+    @Args4JOption(name = "--sample-names", handler = classOf[StringArrayOptionHandler], usage = "name1 ... nameN")
+    var sampleNames: PerSample[String] = Vector.empty
+
+    lazy val pathsAndSampleNames: PerSample[(String, String)] = {
+      paths.indices.map(i =>
+        paths(i) ->
+          (
+            if (i < sampleNames.length)
+              sampleNames(i)
+            else
+              paths(i)
+          )
+      )
+    }
+  }
 
   /**
    * Load one read-set from an input file.
    */
   def loadReads(args: ReadsArgs,
                 sc: SparkContext,
-                filters: InputFilters): (ReadsRDD, ContigLengths) = {
+                filters: InputFilters,
+                sampleName: String = "normal"): (ReadsRDD, ContigLengths) = {
 
     val ReadSets(reads, _, contigLengths) =
       ReadSets(
         sc,
-        Seq(args.reads),
+        Seq(args.reads -> sampleName),
         filters,
         contigLengthsFromDictionary = !args.noSequenceDictionary,
         config = ReadLoadingConfig(args)
@@ -208,7 +153,7 @@ object ReadSets {
     val ReadSets(readsets, _, contigLengths) =
       ReadSets(
         sc,
-        Seq(args.tumorReads, args.normalReads),
+        Seq(args.tumorReads -> "tumor", args.normalReads -> "normal"),
         filters,
         !args.noSequenceDictionary,
         ReadLoadingConfig(args)
@@ -218,29 +163,54 @@ object ReadSets {
   }
 
   /**
+   * Load ReadSet instances from user-specified BAMs (specified as an InputCollection).
+   */
+  def apply(sc: SparkContext,
+            pathsAndSampleNames: PerSample[(String, String)],
+            loci: LociParser,
+            contigLengthsFromDictionary: Boolean): ReadSets = {
+    ReadSets(
+      sc,
+      pathsAndSampleNames,
+      InputFilters(overlapsLoci = loci),
+      contigLengthsFromDictionary = contigLengthsFromDictionary
+    )
+  }
+
+
+  def apply(sc: SparkContext, args: Arguments): (ReadSets, LociSet) = {
+    val loci = args.parseLoci(sc.hadoopConfiguration)
+
+    val readsets = apply(sc, args.pathsAndSampleNames, loci, !args.noSequenceDictionary)
+
+    (readsets, loci.result(readsets.contigLengths))
+  }
+
+  /**
     * Load reads from multiple files, merging their sequence dictionaries and verifying that they are consistent.
     */
   def apply(sc: SparkContext,
-            filenames: Seq[String],
+            fileAndSampleNames: Seq[(String, String)],
             filters: InputFilters = InputFilters.empty,
             contigLengthsFromDictionary: Boolean = true,
             config: ReadLoadingConfig = ReadLoadingConfig.default): ReadSets = {
-    apply(sc, filenames.map((_, filters)), contigLengthsFromDictionary, config)
+    apply(sc, fileAndSampleNames.map((_, filters)), contigLengthsFromDictionary, config)
   }
 
   /**
    * Load reads from multiple files, allowing different filters to be applied to each file.
    */
   def apply(sc: SparkContext,
-            inputs: Seq[(String, InputFilters)],
+            inputs: Seq[((String, String), InputFilters)],
             contigLengthsFromDictionary: Boolean,
             config: ReadLoadingConfig): ReadSets = {
 
-    val (filenames, _) = inputs.unzip
+    val (filenamesAndSampleNames, _) = inputs.unzip
+    val (filenames, sampleNames) = filenamesAndSampleNames.unzip
 
     val (readRDDs, sequenceDictionaries) =
       (for {
-        ((filename, filters), sampleId) <- inputs.zipWithIndex
+        (((filename, sampleName), filters), sampleId) <- inputs.zipWithIndex
       } yield
         load(filename, sc, sampleId, filters, config)
       ).unzip
@@ -261,10 +231,11 @@ object ReadSets {
     }
 
     ReadSets(
-      readRDDs
-        .zip(filenames)
-        .map(ReadsRDD(_, contigLengths))
-        .toVector,
+      (for {
+        ((reads, filename), sampleName) <- readRDDs.zip(filenames).zip(sampleNames)
+      } yield
+       ReadsRDD(reads, filename, sampleName, contigLengths)
+      ).toVector,
       sequenceDictionary,
       contigLengths
     )

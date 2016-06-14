@@ -27,57 +27,46 @@ trait ApproximatePartitionerArgs extends UniformPartitionerArgs {
   var partitioningAccuracy: NumMicroPartitions = 250
 }
 
-class ApproximatePartitioner(args: ApproximatePartitionerArgs) extends LociPartitioner {
+/**
+ * Assign loci from a LociSet to partitions, where each partition overlaps approximately the same number of "regions"
+ * (reads mapped to a reference genome).
+ *
+ * The approach we take is:
+ *
+ *  (1) chop up the loci uniformly into many genomic "micro partitions."
+ *
+ *  (2) for each micro partition, calculate the number of regions that overlap it.
+ *
+ *  (3) using these counts, assign loci to real (Spark) partitions, assuming approximately uniform depth within each
+ *      micro partition.
+ *
+ *  Some advantages of this approach are:
+ *
+ *  - Stages (1) and (3), which are done locally by the Spark master, are constant time with respect to the number
+ *    of regions (though linear in the number of micro-partitions).
+ *
+ *  - Stage (2), where runtime does depend on the number of regions, is done in parallel with Spark.
+ *
+ *  - Accuracy vs. performance can be tuned by setting `accuracy`.
+ *
+ *  - Does not require a distributed sort.
+ *
+ * @param regions: RDD of reads to base the partitioning on.
+ * @param numPartitions Number of partitions to split reads into.
+ * @param microPartitionsPerPartition Long >= 1. Number of micro-partitions generated for each of the `numPartitions`
+ *                                    Spark partitions that will be computed. Higher values of this will result in a
+ *                                    more exact but more expensive computation.
+ *                                    In the extreme, setting this to greater than the number of loci (per partition)
+ *                                    will result in an exact calculation.
+ * @return LociMap of locus -> partition assignments.
+ */
+class ApproximatePartitioner[R <: ReferenceRegion: ClassTag](regions: RDD[R],
+                                                             halfWindowSize: Int,
+                                                             numPartitions: NumPartitions,
+                                                             microPartitionsPerPartition: NumMicroPartitions)
+  extends LociPartitioner {
 
-  override def apply[R <: ReferenceRegion: ClassTag](loci: LociSet, regions: RDD[R]): LociPartitioning = {
-    val sc = regions.sparkContext
-    val numPartitions =
-      if (args.parallelism == 0)
-        sc.defaultParallelism
-      else
-        args.parallelism
-
-    apply(numPartitions, loci, args.partitioningAccuracy, regions)
-  }
-
-  /**
-   * Assign loci from a LociSet to partitions, where each partition overlaps approximately the same number of "regions"
-   * (reads mapped to a reference genome).
-   *
-   * The approach we take is:
-   *
-   *  (1) chop up the loci uniformly into many genomic "micro partitions."
-   *
-   *  (2) for each micro partition, calculate the number of regions that overlap it.
-   *
-   *  (3) using these counts, assign loci to real (Spark) partitions, assuming approximately uniform depth within each
-   *      micro partition.
-   *
-   *  Some advantages of this approach are:
-   *
-   *  - Stages (1) and (3), which are done locally by the Spark master, are constant time with respect to the number
-   *    of regions (though linear in the number of micro-partitions).
-   *
-   *  - Stage (2), where runtime does depend on the number of regions, is done in parallel with Spark.
-   *
-   *  - Accuracy vs. performance can be tuned by setting `accuracy`.
-   *
-   *  - Does not require a distributed sort.
-   *
-   * @param numPartitions Number of partitions to split reads into.
-   * @param loci Only consider reads overlapping these loci.
-   * @param microPartitionsPerPartition Long >= 1. Number of micro-partitions generated for each of the `numPartitions`
-   *                                    Spark partitions that will be computed. Higher values of this will result in a
-   *                                    more exact but more expensive computation.
-   *                                    In the extreme, setting this to greater than the number of loci (per partition)
-   *                                    will result in an exact calculation.
-   * @param regions: RDDs of reads to base the partitioning on.
-   * @return LociMap of locus -> partition assignments.
-   */
-  def apply[R <: ReferenceRegion: ClassTag](numPartitions: NumPartitions,
-                                            loci: LociSet,
-                                            microPartitionsPerPartition: NumMicroPartitions,
-                                            regions: RDD[R]): LociPartitioning = {
+  def partition(loci: LociSet): LociPartitioning = {
 
     assume(numPartitions >= 1)
     assume(loci.count > 0)
@@ -96,7 +85,7 @@ class ApproximatePartitioner(args: ApproximatePartitionerArgs) extends LociParti
       .format(numPartitions, numMicroPartitions)
     )
 
-    val lociToMicroPartitionMap = new UniformPartitionerBase(numMicroPartitions).partition(loci)
+    val lociToMicroPartitionMap = new UniformMicroPartitioner(numMicroPartitions).partition(loci)
     val microPartitionToLociMap = lociToMicroPartitionMap.inverse
 
     progress("Done calculating micro partitions.")
@@ -190,7 +179,6 @@ class ApproximatePartitioner(args: ApproximatePartitionerArgs) extends LociParti
     assert(result.count == loci.count, s"Expected ${loci.count} loci, got ${result.count}")
     result
   }
-
 }
 
 object ApproximatePartitioner {
@@ -200,11 +188,16 @@ object ApproximatePartitioner {
   type MicroPartitionIndex = Long
   type NumMicroPartitions = Long
 
-  def apply(partitions: Int, accuracy: Int): ApproximatePartitioner =
-    new ApproximatePartitioner({
-      val args = new ApproximatePartitionerArgs {}
-      args.parallelism = partitions
-      args.partitioningAccuracy = accuracy
-      args
-    })
+  def apply[R <: ReferenceRegion : ClassTag](regions: RDD[R],
+                                             halfWindowSize: Int,
+                                             args: ApproximatePartitionerArgs): ApproximatePartitioner[R] = {
+    val sc = regions.sparkContext
+    val numPartitions =
+      if (args.parallelism == 0)
+        sc.defaultParallelism
+      else
+        args.parallelism
+
+    new ApproximatePartitioner(regions, halfWindowSize, numPartitions, args.partitioningAccuracy)
+  }
 }

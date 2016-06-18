@@ -3,7 +3,7 @@ package org.hammerlab.guacamole.pileup
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.set.LociSet
-import org.hammerlab.guacamole.readsets.PartitionedRegions.PartitionedReads
+import org.hammerlab.guacamole.readsets.PartitionedReads
 import org.hammerlab.guacamole.readsets.{NumSamples, PerSample, PositionRegionsIterator}
 import org.hammerlab.guacamole.reference.{ReferenceGenome, ReferencePosition}
 
@@ -18,7 +18,7 @@ class PileupsRDD(partitionedReads: PartitionedReads) {
 
     val forceCallLociBroadcast: Broadcast[LociSet] = sc.broadcast(forceCallLoci)
 
-    partitionedReads.zipPartitions(lociSetsRDD, preservesPartitioning = true)((reads, lociIter) => {
+    partitionedReads.regions.zipPartitions(lociSetsRDD, preservesPartitioning = true)((reads, lociIter) => {
       val loci = lociIter.next()
       if (lociIter.hasNext) {
         throw new Exception(s"Expected 1 LociSet, found ${1 + lociIter.size}.\n$loci")

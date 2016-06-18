@@ -2,8 +2,10 @@ package org.hammerlab.guacamole.loci.partitioning
 
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.map.LociMap
-import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.{LociPartitioning, PartitionIndex}
+import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.PartitionIndex
 import org.hammerlab.guacamole.loci.set.LociSet
+import org.hammerlab.guacamole.logging.LoggingUtils.progress
+import org.hammerlab.guacamole.readsets.RegionRDD
 import org.hammerlab.guacamole.readsets.RegionRDD._
 import org.hammerlab.guacamole.reference.ReferenceRegion
 import org.kohsuke.args4j.{Option => Args4jOption}
@@ -16,18 +18,6 @@ trait ExactPartitionerArgs extends LociPartitionerArgs {
     usage = "Maximum number of reads to allow any one partition to have. Loci that have more depth than this will be dropped."
   )
   var maxReadsPerPartition: Int = 500000
-
-  @Args4jOption(
-    name = "--partitioned-reads-path",
-    usage = "Directory from which to read an existing partition-reads RDD, with accompanying LociMap partitioning."
-  )
-  var partitionedReadsPath: String = ""
-
-  @Args4jOption(
-    name = "--save-partitioning",
-    usage = "Directory path within which to save the partitioned reads and accompanying LociMap partitioning."
-  )
-  var savePartitioningPath: String = ""
 }
 
 class ExactPartitioner[R <: ReferenceRegion: ClassTag](regions: RDD[R],
@@ -36,7 +26,33 @@ class ExactPartitioner[R <: ReferenceRegion: ClassTag](regions: RDD[R],
   extends LociPartitioner {
 
   def partition(loci: LociSet): LociPartitioning = {
-    val lociSetsRDD = regions.makeCappedLociSets(loci, halfWindowSize, maxRegionsPerPartition)
+    val lociSetsRDD = regions.makeCappedLociSets(halfWindowSize, loci, maxRegionsPerPartition)
+
+    val depthRunsRDD = regions.partitionDepths(halfWindowSize, loci, maxRegionsPerPartition)
+    val (validLoci, invalidLoci) = RegionRDD.validLociCounts(depthRunsRDD)
+
+    val totalLoci = validLoci + invalidLoci
+
+    val numDepthRuns = depthRunsRDD.count
+    val numDepthRunsToTake = 1000
+    val depthRuns = depthRunsRDD.take(numDepthRunsToTake)
+
+    val overflowMsg =
+      if (numDepthRuns > numDepthRunsToTake)
+        s". First $numDepthRunsToTake runs:"
+      else
+        ":"
+
+    progress(
+      s"$validLoci (%.1f%%) valid loci, $invalidLoci invalid ($totalLoci total of ${loci.count} eligible)${overflowMsg}"
+        .format(100.0 * validLoci / totalLoci),
+      (for {
+        ((contig, validDepth), numLoci) <- depthRuns
+      } yield
+        s"$contig:$validDepth\t$numLoci"
+      ).mkString("\n")
+    )
+
     val lociSets = lociSetsRDD.collect()
 
     val lociMapBuilder = LociMap.newBuilder[PartitionIndex]()

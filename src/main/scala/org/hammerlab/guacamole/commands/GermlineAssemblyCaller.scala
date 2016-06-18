@@ -12,7 +12,7 @@ import org.hammerlab.guacamole.logging.DelayedMessages
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.reads.MappedRead
-import org.hammerlab.guacamole.readsets.PartitionedRegions.PartitionedReads
+import org.hammerlab.guacamole.readsets.PartitionedReads
 import org.hammerlab.guacamole.readsets.{GermlineCallerArgs, InputFilters, PartitionedRegions, ReadSets}
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.hammerlab.guacamole.variants.{Allele, AlleleConversions, AlleleEvidence, CalledAllele, VariantUtils}

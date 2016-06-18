@@ -2,8 +2,8 @@ package org.hammerlab.guacamole.distributed
 
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.map.LociMap
-import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.{LociPartitioning, NumPartitions, PartitionIndex}
-import org.hammerlab.guacamole.loci.partitioning.{ApproximatePartitioner, UniformPartitioner}
+import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.{NumPartitions, PartitionIndex}
+import org.hammerlab.guacamole.loci.partitioning.{ApproximatePartitioner, LociPartitioning, UniformPartitioner}
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.reads.MappedRead
 import org.hammerlab.guacamole.util.{GuacFunSuite, TestUtil}

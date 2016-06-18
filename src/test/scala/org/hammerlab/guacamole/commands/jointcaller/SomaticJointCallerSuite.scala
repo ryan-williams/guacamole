@@ -31,8 +31,13 @@ class SomaticJointCallerSuite extends GuacFunSuite with Util {
       sc, inputs, readSets, Parameters.defaults, hg19PartialReference, loci.result, loci.result).collect
 
     calls.length should equal(1)
-    calls.head.singleAlleleEvidences.length should equal(1)
-    calls.head.singleAlleleEvidences.map(_.allele.ref) should equal(Seq("G"))
+
+    val evidences = calls.head.singleAlleleEvidences
+    evidences.length should equal(1)
+
+    val allele = evidences.head.allele
+    allele.start should be(65857040)
+    allele.ref should be("G")
   }
 
   test("call a somatic deletion") {

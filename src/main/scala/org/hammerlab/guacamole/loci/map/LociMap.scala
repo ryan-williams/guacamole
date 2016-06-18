@@ -18,15 +18,13 @@
 
 package org.hammerlab.guacamole.loci.map
 
-import java.io.{BufferedReader, IOException, InputStream, InputStreamReader, OutputStream, PrintStream}
-import java.util.NoSuchElementException
+import java.io.{InputStream, OutputStream, PrintStream}
 
-import breeze.io.TextWriter.PrintStreamWriter
 import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.PartitionIndex
 import org.hammerlab.guacamole.loci.set.{LociSet, Builder => LociSetBuilder}
 import org.hammerlab.guacamole.reference.ReferenceRegion
 import org.hammerlab.guacamole.strings.TruncatedToString
-import org.hammerlab.guacamole.util.OptionIterator
+import org.hammerlab.guacamole.util.LinesIterator
 
 import scala.collection.immutable.TreeMap
 import scala.collection.{SortedMap, mutable}
@@ -95,18 +93,7 @@ object LociMap {
   def apply[T](): LociMap[T] = LociMap(TreeMap[String, Contig[T]]())
 
   def load(is: InputStream): LociMap[PartitionIndex] = {
-    val br = new BufferedReader(new InputStreamReader(is))
-    fromLines(
-      new OptionIterator[String] {
-        override def _advance: Option[String] = {
-          try {
-            Some(br.readLine())
-          } catch {
-            case e: IOException => None
-          }
-        }
-      }
-    )
+    fromLines(LinesIterator(is))
   }
 
   def fromLines(lines: TraversableOnce[String]): LociMap[PartitionIndex] = {
@@ -115,10 +102,10 @@ object LociMap {
     for {
       line <- lines
       m <- re.findFirstMatchIn(line)
-      contig = m.group(0)
-      start = m.group(1).toLong
-      end = m.group(2).toLong
-      partition = m.group(3).toInt
+      contig = m.group(1)
+      start = m.group(2).toLong
+      end = m.group(3).toLong
+      partition = m.group(4).toInt
     } {
       builder.put(contig, start, end, partition)
     }

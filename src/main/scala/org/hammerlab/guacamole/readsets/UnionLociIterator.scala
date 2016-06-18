@@ -1,7 +1,7 @@
 package org.hammerlab.guacamole.readsets
 
 import org.hammerlab.guacamole.reference.HasLocus
-import org.hammerlab.guacamole.util.OptionIterator
+import org.hammerlab.magic.iterator.OptionIterator
 
 /**
  *

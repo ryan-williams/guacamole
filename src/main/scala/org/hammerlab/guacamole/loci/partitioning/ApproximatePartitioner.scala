@@ -3,7 +3,7 @@ package org.hammerlab.guacamole.loci.partitioning
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.map.LociMap
 import org.hammerlab.guacamole.loci.partitioning.ApproximatePartitioner.{MicroPartitionIndex, NumMicroPartitions}
-import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.{LociPartitioning, NumPartitions, PartitionIndex}
+import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.{NumPartitions, PartitionIndex}
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.reference.ReferenceRegion
@@ -85,7 +85,7 @@ class ApproximatePartitioner[R <: ReferenceRegion: ClassTag](regions: RDD[R],
       .format(numPartitions, numMicroPartitions)
     )
 
-    val lociToMicroPartitionMap = new UniformMicroPartitioner(numMicroPartitions).partition(loci)
+    val lociToMicroPartitionMap = new UniformMicroPartitioner(numMicroPartitions).partitionsMap(loci)
     val microPartitionToLociMap = lociToMicroPartitionMap.inverse
 
     progress("Done calculating micro partitions.")

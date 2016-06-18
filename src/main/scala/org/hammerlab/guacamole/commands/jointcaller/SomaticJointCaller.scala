@@ -165,12 +165,12 @@ object SomaticJoint {
 
     assume(loci.nonEmpty)
 
-    val partitioning =
-      args
-        .getPartitioner(readsets.allMappedReads)
-        .partition(lociSetMinusOne(loci))
-
-    val partitionedReads = PartitionedRegions(readsets.allMappedReads, partitioning)
+    val partitionedReads =
+      PartitionedRegions(
+        readsets.allMappedReads,
+        lociSetMinusOne(loci),
+        args
+      )
 
     val perSamplePileupsRDD: RDD[PerSample[Pileup]] =
       partitionedReads.perSamplePileups(

@@ -1,11 +1,13 @@
 package org.hammerlab.guacamole.readsets
 
+import org.hammerlab.magic.rdd.RunLengthRDD._
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
 import org.hammerlab.guacamole.loci.set.{LociSet, TakeLociIterator}
-import org.hammerlab.guacamole.reference.{ReferencePosition, ReferenceRegion}
+import org.hammerlab.guacamole.reference.ReferencePosition.{Locus, NumLoci}
+import org.hammerlab.guacamole.reference.{Contig, ReferencePosition, ReferenceRegion}
 import org.hammerlab.magic.rdd.RDDStats._
 import org.hammerlab.magic.util.Stats
 
@@ -22,14 +24,14 @@ class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R])
     numEmptyPartitions: Int,
     numPartitionsSpanningContigs: Int,
     partitionSpans: ArrayBuffer[Long],
-    spanStats: Stats,
-    nonEmptySpanStats: Stats
+    spanStats: Stats[NumLoci],
+    nonEmptySpanStats: Stats[NumLoci]
   ) = {
     val partitionBounds = rdd.partitionBounds
     var numEmpty = 0
     var numCrossingContigs = 0
-    val spans = ArrayBuffer[Long]()
-    val nonEmptySpans = ArrayBuffer[Long]()
+    val spans = ArrayBuffer[NumLoci]()
+    val nonEmptySpans = ArrayBuffer[NumLoci]()
 
     partitionBounds.foreach {
       case None =>
@@ -94,33 +96,37 @@ class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R])
       }
     )
 
-//  @transient val depths_ = mutable.Map[Int, RDD[(Int, ReferencePosition)]]()
-//  def depths(halfWindowSize: Int): RDD[(Int, ReferencePosition)] =
-//    depths_.getOrElseUpdate(
-//      halfWindowSize,
-//      coverage(halfWindowSize).map(t => t._2.depth -> t._1).sortByKey(ascending = false)
-//    )
-//
-//  @transient val starts_ = mutable.Map[Int, RDD[(Int, ReferencePosition)]]()
-//  def starts(halfWindowSize: Int): RDD[(Int, ReferencePosition)] =
-//    starts_.getOrElseUpdate(
-//      halfWindowSize,
-//      coverage(halfWindowSize).map(t => t._2.starts -> t._1).sortByKey(ascending = false)
-//    )
-//
-//  @transient val ends_ = mutable.Map[Int, RDD[(Int, ReferencePosition)]]()
-//  def ends(halfWindowSize: Int): RDD[(Int, ReferencePosition)] =
-//    ends_.getOrElseUpdate(
-//      halfWindowSize,
-//      coverage(halfWindowSize).map(t => t._2.ends -> t._1).sortByKey(ascending = false)
-//    )
-//
-//  def partitionDepths(halfWindowSize: Int, depthCutoff: Int): RDD[((String, Boolean), Int)] = {
-//    coverage(halfWindowSize).map(t => t._1.contig -> (t._2.depth >= depthCutoff)).runLengthEncode
-//  }
+  @transient val depths_ = mutable.Map[(Int, LociSet), RDD[(Int, ReferencePosition)]]()
+  def depths(halfWindowSize: Int, loci: LociSet): RDD[(Int, ReferencePosition)] =
+    depths_.getOrElseUpdate(
+      halfWindowSize -> loci,
+      coverage(halfWindowSize, loci).map(t => t._2.depth -> t._1).sortByKey(ascending = false)
+    )
 
-  def makeCappedLociSets(loci: LociSet,
-                         halfWindowSize: Int,
+  @transient val starts_ = mutable.Map[(Int, LociSet), RDD[(Int, ReferencePosition)]]()
+  def starts(halfWindowSize: Int, loci: LociSet): RDD[(Int, ReferencePosition)] =
+    starts_.getOrElseUpdate(
+      halfWindowSize -> loci,
+      coverage(halfWindowSize, loci).map(t => t._2.starts -> t._1).sortByKey(ascending = false)
+    )
+
+  @transient val ends_ = mutable.Map[(Int, LociSet), RDD[(Int, ReferencePosition)]]()
+  def ends(halfWindowSize: Int, loci: LociSet): RDD[(Int, ReferencePosition)] =
+    ends_.getOrElseUpdate(
+      halfWindowSize -> loci,
+      coverage(halfWindowSize, loci).map(t => t._2.ends -> t._1).sortByKey(ascending = false)
+    )
+
+  def partitionDepths(halfWindowSize: Int, loci: LociSet, depthCutoff: Int): RDD[((String, Boolean), Int)] = {
+    (for {
+      (ReferencePosition(contig, _), Coverage(depth, _, _)) <- coverage(halfWindowSize, loci)
+    } yield
+      contig -> (depth <= depthCutoff)
+    ).runLengthEncode
+  }
+
+  def makeCappedLociSets(halfWindowSize: Int,
+                         loci: LociSet,
                          maxRegionsPerPartition: Int): RDD[LociSet] =
     coverage(halfWindowSize, sc.broadcast(loci)).mapPartitionsWithIndex((idx, it) =>
       new TakeLociIterator(it.buffered, maxRegionsPerPartition)
@@ -136,4 +142,15 @@ object RegionRDD {
       rdd.id,
       new RegionRDD[R](rdd)
     ).asInstanceOf[RegionRDD[R]]
+
+  def validLociCounts(depthRuns: RDD[((String, Boolean), Int)]): (NumLoci, NumLoci) = {
+    val map =
+      (for {
+        ((_, validDepth), numLoci) <- depthRuns
+      } yield
+        validDepth -> numLoci.toLong
+        ).reduceByKey(_ + _).collectAsMap
+
+    (map.getOrElse(true, 0), map.getOrElse(false, 0))
+  }
 }

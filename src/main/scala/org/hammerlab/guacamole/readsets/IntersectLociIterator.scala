@@ -1,7 +1,7 @@
 package org.hammerlab.guacamole.readsets
 
 import org.hammerlab.guacamole.reference.{ContigPosition, HasLocus}
-import org.hammerlab.guacamole.util.OptionIterator
+import org.hammerlab.magic.iterator.OptionIterator
 
 /**
  * Merge two iterators of objects that exist at discrete genomic positions on one (shared) contig.

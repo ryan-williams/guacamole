@@ -18,8 +18,8 @@ import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.reads.{MappedRead, Read}
 import org.hammerlab.guacamole.readsets.RegionRDD._
 import org.hammerlab.magic.rdd.RDDStats._
-import org.kohsuke.args4j.spi.StringArrayOptionHandler
-import org.kohsuke.args4j.{Argument, Option => Args4JOption}
+import org.kohsuke.args4j.spi.{OptionHandler, Setter, StringArrayOptionHandler}
+import org.kohsuke.args4j.{Argument, CmdLineParser, OptionDef, Option => Args4JOption}
 import org.seqdoop.hadoop_bam.util.SAMHeaderReader
 import org.seqdoop.hadoop_bam.{AnySAMInputFormat, SAMRecordWritable}
 
@@ -64,37 +64,16 @@ case class ReadSets(readsRDDs: PerSample[ReadsRDD],
   def coverage(halfWindowSize: Int, lociBroadcast: Broadcast[LociSet] = allLociBroadcast): RDD[PositionCoverage] =
     allMappedReads.coverage(halfWindowSize, lociBroadcast)
 
-//  def partitionReads(halfWindowSize: Int,
-//                     maxRegionsPerPartition: Int,
-//                     loci: LociSet = LociSet.all(contigLengths),
-//                     partitionedReadsPath: String,
-//                     savePartitioningPath: String): PartitionedReadsRDD[MappedRead] = {
-//
-//    if (partitionedReadsPath.nonEmpty)
-//      PartitionedReadsRDD.load(sc, partitionedReadsPath)
-//    else {
-//
-//      val lociBroadcast = sc.broadcast(loci)
-//      val partitioning = allMappedReads.getPartitioning(halfWindowSize, maxRegionsPerPartition)
-//      val partitionedReads = allMappedReads.partition(halfWindowSize, partitioning)
-//
-//      val rdd = PartitionedReadsRDD(partitionedReads, partitioning)
-//      if (savePartitioningPath.nonEmpty)
-//        rdd.save(savePartitioningPath)
-//
-//      rdd
-//    }
-//  }
 }
 
 object ReadSets {
 
   trait Arguments extends LociArgs with NoSequenceDictionaryArgs {
     @Argument(required = true, multiValued = true, usage = "FILE1 FILE2 FILE3")
-    var paths: PerSample[String] = Vector.empty
+    var paths: Array[String] = Array()
 
     @Args4JOption(name = "--sample-names", handler = classOf[StringArrayOptionHandler], usage = "name1 ... nameN")
-    var sampleNames: PerSample[String] = Vector.empty
+    var sampleNames: Array[String] = Array()
 
     lazy val pathsAndSampleNames: PerSample[(String, String)] = {
       paths.indices.map(i =>

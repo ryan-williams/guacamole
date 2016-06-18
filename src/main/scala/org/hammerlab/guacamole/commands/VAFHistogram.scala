@@ -12,7 +12,7 @@ import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMap
 import org.hammerlab.guacamole.loci.partitioning.AllLociPartitionerArgs
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.pileup.Pileup
-import org.hammerlab.guacamole.readsets.PartitionedRegions.PartitionedReads
+import org.hammerlab.guacamole.readsets.PartitionedReads
 import org.hammerlab.guacamole.readsets.{InputFilters, PartitionedRegions, ReadLoadingConfig, ReadLoadingConfigArgs, ReadSets}
 import org.hammerlab.guacamole.reference.{ReferenceBroadcast, ReferenceGenome}
 import org.kohsuke.args4j.{Option => Args4jOption}

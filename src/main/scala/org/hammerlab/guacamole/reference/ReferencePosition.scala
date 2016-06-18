@@ -40,4 +40,5 @@ object ReferencePosition {
   }
 
   type Locus = Long
+  type NumLoci = Long
 }

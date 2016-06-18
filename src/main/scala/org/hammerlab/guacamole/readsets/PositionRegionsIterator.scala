@@ -3,7 +3,7 @@ package org.hammerlab.guacamole.readsets
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.reference.ReferencePosition.Locus
 import org.hammerlab.guacamole.reference.{ContigPosition, HasLocus, ReferencePosition, ReferenceRegion}
-import org.hammerlab.guacamole.util.OptionIterator
+import org.hammerlab.magic.iterator.OptionIterator
 
 //class PositionRegions[R <: ReferenceRegion](pos: ReferencePosition,
 //                                            regions: Iterable[R])

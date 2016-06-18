@@ -6,7 +6,7 @@ import org.hammerlab.guacamole.loci.partitioning.AllLociPartitionerArgs
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.pileup.PileupsRDD._
 import org.hammerlab.guacamole.reads.{MappedRead, Read}
-import org.hammerlab.guacamole.readsets.PartitionedRegions.PartitionedReads
+import org.hammerlab.guacamole.readsets.PartitionedReads
 import org.hammerlab.guacamole.readsets.Util.{TestPileup, simplifyPileup}
 import org.hammerlab.guacamole.readsets.{ContigLengths, PartitionedRegions, PerSample, ReadSets, ReadsRDD, Util}
 import org.hammerlab.guacamole.reference.ReferenceBroadcast.MapBackedReferenceSequence
@@ -21,7 +21,6 @@ class PileupsRDDSuiteRegistrar extends KryoTestRegistrar {
     kryo.register(classOf[Array[IndexedSeq[_]]])
   }
 }
-
 
 class PileupsRDDSuite extends GuacFunSuite with Util {
   type TestRead = (String, Int, Int, Int)

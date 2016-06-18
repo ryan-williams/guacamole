@@ -6,12 +6,9 @@ import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.NumPartitions
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.logging.DebugLogArgs
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
-import org.hammerlab.guacamole.reference.ReferenceRegion
 import org.kohsuke.args4j.{Option => Args4jOption}
 import spire.implicits._
 import spire.math.Integral
-
-import scala.reflect.ClassTag
 
 trait UniformPartitionerArgs
   extends DebugLogArgs
@@ -35,7 +32,7 @@ abstract class UniformPartitionerBase[N: Integral](numPartitions: N) {
    *
    * @return LociMap of locus -> partition assignments
    */
-  def partition(loci: LociSet): LociMap[N] = {
+  def partitionsMap(loci: LociSet): LociMap[N] = {
 
     assume(numPartitions >= 1, "`numPartitions` (--parallelism) should be >= 1")
 
@@ -81,7 +78,9 @@ case class UniformMicroPartitioner(numPartitions: NumMicroPartitions)
 
 class UniformPartitioner(numPartitions: NumPartitions)
   extends UniformPartitionerBase(numPartitions)
-    with LociPartitioner
+    with LociPartitioner {
+  override def partition(loci: LociSet): LociPartitioning = partitionsMap(loci)
+}
 
 object UniformPartitioner {
   def apply(args: UniformPartitionerArgs): UniformPartitioner = new UniformPartitioner(args.parallelism)

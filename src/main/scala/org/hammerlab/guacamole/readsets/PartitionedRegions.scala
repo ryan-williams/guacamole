@@ -3,21 +3,21 @@ package org.hammerlab.guacamole.readsets
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.hadoop.io.compress.BZip2Codec
-import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-import org.hammerlab.guacamole.loci.map.LociMap
-import org.hammerlab.guacamole.loci.partitioning.AllLociPartitionerArgs
-import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.{LociPartitioning, PartitionIndex}
+import org.apache.spark.{Accumulable, SparkContext}
+import org.hammerlab.guacamole.loci.partitioning.{AllLociPartitionerArgs, LociPartitioning}
 import org.hammerlab.guacamole.loci.set.LociSet
-import org.hammerlab.guacamole.reads.MappedRead
+import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.reference.ReferenceRegion
+import org.hammerlab.magic.accumulables.{HistogramParam, HashMap => MagicHashMap}
 import org.hammerlab.magic.rdd.KeyPartitioner
 import org.hammerlab.magic.rdd.SequenceFileSerializableRDD._
+import org.hammerlab.magic.util.Stats
 
 import scala.reflect.ClassTag
 
 class PartitionedRegions[R <: ReferenceRegion: ClassTag] private(@transient val regions: RDD[R],
-                                                                 @transient val partitioning: LociMap[PartitionIndex])
+                                                                 @transient val partitioning: LociPartitioning)
   extends Serializable {
 
   def sc: SparkContext = regions.sparkContext
@@ -26,20 +26,17 @@ class PartitionedRegions[R <: ReferenceRegion: ClassTag] private(@transient val 
   lazy val partitionLociSets = partitioning.inverse.toArray.sortBy(_._1).map(_._2)
   lazy val lociSetsRDD = sc.parallelize(partitionLociSets, partitionLociSets.length)
 
-  def save(fn: String): Unit = {
-    val fs = FileSystem.get(hc)
-
-    regions.saveCompressed(PartitionedRegions.regionsPath(fn))
-    val mapOut = fs.create(PartitionedRegions.mapPath(fn))
-
-    partitioning.prettyPrint(mapOut)
-    mapOut.close()
+  def save(dir: String, overwrite: Boolean = false): Unit = {
+    regions.saveCompressed(PartitionedRegions.regionsPath(dir))
+    partitioning.save(sc, PartitionedRegions.regionsPath(dir), overwrite)
   }
 }
 
 object PartitionedRegions {
 
-  type PartitionedReads = PartitionedRegions[MappedRead]
+  type IntHist = MagicHashMap[Int, Int]
+
+  def IntHist(): IntHist = MagicHashMap[Int, Int]()
 
   def regionsPath(fn: String) = new Path(fn, "regions")
   def mapPath(fn: String) = new Path(fn, "partitioning")
@@ -48,7 +45,7 @@ object PartitionedRegions {
     val regions = sc.fromSequenceFile[R](regionsPath(fn).toString, classOf[BZip2Codec])
 
     val fs = FileSystem.get(sc.hadoopConfiguration)
-    val partitioning = LociMap.load(fs.open(mapPath(fn)))
+    val partitioning = LociPartitioning.load(fs.open(mapPath(fn)))
 
     new PartitionedRegions(regions, partitioning)
   }
@@ -56,14 +53,26 @@ object PartitionedRegions {
   def apply[R <: ReferenceRegion: ClassTag](regions: RDD[R],
                                             loci: LociSet,
                                             args: AllLociPartitionerArgs,
-                                            halfWindowSize: Int = 0): PartitionedRegions[R] =
-    apply(
-      regions,
-      args
-        .getPartitioner(regions, halfWindowSize)
-        .partition(loci),
-      halfWindowSize
+                                            halfWindowSize: Int = 0): PartitionedRegions[R] = {
+
+    val lociPartitioning = LociPartitioning(regions, loci, args, halfWindowSize)
+
+    progress(
+      s"Partitioned loci into ${lociPartitioning.numPartitions} partitions.",
+      "Partition-size stats:",
+      lociPartitioning.partitionSizeStats.toString(),
+      "",
+      "Contigs-spanned-per-partition stats:",
+      lociPartitioning.partitionContigStats.toString()
     )
+
+    if (args.savePartitioningPath.nonEmpty) {
+      lociPartitioning.save(regions.sparkContext, mapPath(args.savePartitioningPath))
+      progress(s"Saved loci-partitioning to ${args.savePartitioningPath}")
+    }
+
+    apply(regions, lociPartitioning, halfWindowSize)
+  }
 
   def apply[R <: ReferenceRegion: ClassTag](regions: RDD[R],
                                             partitioning: LociPartitioning): PartitionedRegions[R] =
@@ -75,20 +84,61 @@ object PartitionedRegions {
 
     val partitioningBroadcast = regions.sparkContext.broadcast(partitioning)
 
-    val numPartitions = partitioning.inverse.size
+    val numPartitions = partitioning.numPartitions
+
+    implicit val accumulableParam = new HistogramParam[Int, Int]
+
+    val sc = regions.sparkContext
+
+    val regionCopiesHistogram: Accumulable[IntHist, Int] = sc.accumulable(IntHist(), "copies-per-region")
+
+    val partitionRegionsHistogram: Accumulable[IntHist, Int] = sc.accumulable(IntHist(), "regions-per-partition")
 
     val partitionedRegions =
       (for {
         r <- regions
-        partition <- partitioningBroadcast.value.getAll(r, halfWindowSize)
-      } yield
+        partitions = partitioningBroadcast.value.getAll(r, halfWindowSize)
+        _ = (regionCopiesHistogram += partitions.size)
+        partition <- partitions
+      } yield {
+        partitionRegionsHistogram += partition
         (partition, r.contig, r.start) -> r
-      )
+      })
       .repartitionAndSortWithinPartitions(KeyPartitioner(numPartitions))
       .values
+
+    // Need to force materialization for the accumulator to have data… but that's reasonable because anything downstream
+    // is presumably going to reuse this RDD.
+    // TODO(ryan): worth adding a bypass here / pushing the printing of these statistics to later, for applications that
+    // want to save this ~extra materialization. Worth benchmarking, in any case.
+    val totalReadCopies = partitionedRegions.count
+
+    val totalReads = regions.count
+
+    val regionCopies = regionCopiesHistogram.value.toArray.sortBy(_._1)
+
+    val readsPlaced = regionCopies.map(_._2.toLong).sum
+
+    val regionsPerPartition = partitionRegionsHistogram.value.toArray.sortBy(_._1)
+
+    progress(
+      s"Partitioned reads, placed $readsPlaced of $totalReads (%.1f%%)) %.1fx on avg; copies per read histogram:"
+        .format(
+          100.0 * totalReadCopies / totalReads,
+          totalReadCopies * 1.0 / readsPlaced
+        ),
+      (for {
+        (numCopies, numReads) <- regionCopies
+      } yield
+        s"$numCopies:\t$numReads"
+      ).mkString("\n"),
+      "",
+      "Reads per partition stats:",
+      Stats(regionsPerPartition.map(_._2)).toString()
+    )
 
     new PartitionedRegions(partitionedRegions, partitioning)
   }
 
-  implicit def partitionedReadsRDDToRDDMappedRead[R <: ReferenceRegion: ClassTag](prRDD: PartitionedRegions[R]): RDD[R] = prRDD.regions
+//  implicit def unwrapPartitionedRegions[R <: ReferenceRegion: ClassTag](pr: PartitionedRegions[R]): RDD[R] = pr.regions
 }

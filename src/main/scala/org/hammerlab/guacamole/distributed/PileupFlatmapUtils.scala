@@ -2,10 +2,9 @@ package org.hammerlab.guacamole.distributed
 
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.distributed.WindowFlatMapUtils.windowFlatMapWithState
-import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.LociPartitioning
 import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.reads.MappedRead
-import org.hammerlab.guacamole.readsets.PartitionedRegions.PartitionedReads
+import org.hammerlab.guacamole.readsets.PartitionedReads
 import org.hammerlab.guacamole.readsets.{NumSamples, PerSample}
 import org.hammerlab.guacamole.reference.{ContigSequence, ReferenceGenome}
 import org.hammerlab.guacamole.windowing.SlidingWindow

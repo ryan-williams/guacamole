@@ -22,6 +22,7 @@ class Serializer[T] extends KryoSerializer[LociMap[T]] {
       val obj = kryo.readObject(input, classOf[Contig[T]])
       obj.name -> obj
     })
+    println(s"kryo deser'ing map with $count contigs")
     LociMap[T](TreeMap[String, Contig[T]](pairs: _*))
   }
 }

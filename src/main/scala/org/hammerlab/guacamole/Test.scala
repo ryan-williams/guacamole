@@ -165,7 +165,7 @@ class BothCustomSerializer extends Serializer[BothCustom] {
 
 import scala.collection.JavaConversions._
 
-object Test {
+object Scratch {
   def main(args: Array[String]): Unit = {
     run(SparkContext.getOrCreate())
   }

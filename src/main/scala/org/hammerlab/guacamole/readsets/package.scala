@@ -1,5 +1,7 @@
 package org.hammerlab.guacamole
 
+import org.hammerlab.guacamole.reads.MappedRead
+
 /**
  * Guacamole is a framework for writing variant callers on the Apache Spark platform. Several variant callers are
  * implemented in the [[org.hammerlab.guacamole.commands]] package. The remaining packages implement a library of
@@ -16,4 +18,5 @@ package object readsets {
   type ContigLengths = Map[String, Long]
   type SampleId = Int
   type NumSamples = Int
+  type PartitionedReads = PartitionedRegions[MappedRead]
 }

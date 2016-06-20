@@ -256,7 +256,7 @@ object SomaticJoint {
     if (outDir.nonEmpty) {
       def path(filename: String) = outDir + "/" + filename + ".vcf"
       def anyForced(evidence: MultiSampleSingleAlleleEvidence): Boolean = {
-        forceCallLoci.onContig(evidence.allele.referenceContig)
+        forceCallLoci.onContig(evidence.allele.contig)
           .intersects(evidence.allele.start, evidence.allele.end)
       }
 

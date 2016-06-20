@@ -18,7 +18,7 @@
 
 package org.hammerlab.guacamole.loci.set
 
-import java.io.{File, InputStreamReader, ObjectInputStream, ObjectOutputStream}
+import java.io.{File, InputStreamReader}
 import java.lang.{Long => JLong}
 
 import com.google.common.collect.{Range => JRange}
@@ -26,7 +26,8 @@ import htsjdk.variant.vcf.VCFFileReader
 import org.apache.commons.io.IOUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
-import org.hammerlab.guacamole.reference.{ReferencePosition, ReferenceRegion}
+import org.hammerlab.guacamole.readsets.ContigLengths
+import org.hammerlab.guacamole.reference.{ReferenceRegion, Contig => ReferenceContig}
 import org.hammerlab.guacamole.strings.TruncatedToString
 
 import scala.collection.JavaConversions._
@@ -44,7 +45,7 @@ import scala.collection.immutable.TreeMap
  *
  * @param map A map from contig-name to Contig, which is a set or genomic intervals as described above.
  */
-case class LociSet(private val map: SortedMap[String, Contig]) extends TruncatedToString {
+case class LociSet private(private val map: SortedMap[ReferenceContig, Contig]) extends TruncatedToString {
 
 //  def readObject(in: ObjectInputStream): Unit = {
 //    val n = in.readInt()
@@ -134,9 +135,9 @@ case class LociSet(private val map: SortedMap[String, Contig]) extends Truncated
 
 object LociSet {
   /** An empty LociSet. */
-  def apply(): LociSet = LociSet(TreeMap.empty[String, Contig])
+  def apply(): LociSet = LociSet(TreeMap.empty[ReferenceContig, Contig])
 
-  def all(contigLengths: Map[String, Long]) = LociParser.all.result(contigLengths)
+  def all(contigLengths: ContigLengths) = LociParser.all.result(contigLengths)
 
   def apply(loci: String): LociSet = LociParser(loci).result
 
@@ -153,10 +154,10 @@ object LociSet {
           .filterNot(_.isEmpty)
           .map(contig => contig.name -> contig)
           .toSeq: _*
-      )
+      )(ReferenceContig.ordering)
     )
 
-  def apply(contigs: Iterable[(String, Long, Long)]): LociSet =
+  def apply(contigs: Iterable[(ReferenceContig, Long, Long)]): LociSet =
     LociSet.fromContigs({
       (for {
         (name, start, end) <- contigs
@@ -187,7 +188,7 @@ object LociSet {
    * @param contigLengths contig lengths, by name
    * @return a LociSet
    */
-  private def loadFromFile(filePath: String, contigLengths: Map[String, Long]): LociSet = {
+  private def loadFromFile(filePath: String, contigLengths: ContigLengths): LociSet = {
     if (filePath.endsWith(".vcf")) {
       LociSet(
         new VCFFileReader(new File(filePath), false)
@@ -215,7 +216,7 @@ object LociSet {
    * @param contigLengths contig lengths, by name
    * @return a LociSet
    */
-  def load(loci: String, lociFromFilePath: String, contigLengths: Map[String, Long]): LociSet = {
+  def load(loci: String, lociFromFilePath: String, contigLengths: ContigLengths): LociSet = {
     if (loci.nonEmpty && lociFromFilePath.nonEmpty) {
       throw new IllegalArgumentException("Specify at most one of the 'loci' and 'loci-from-file' arguments")
     }

@@ -58,18 +58,13 @@ object PartitionedRegions {
     val lociPartitioning = LociPartitioning(regions, loci, args, halfWindowSize)
 
     progress(
-      s"Partitioned loci into ${lociPartitioning.numPartitions} partitions.",
+      s"Partitioned loci: ${lociPartitioning.numPartitions} partitions.",
       "Partition-size stats:",
       lociPartitioning.partitionSizeStats.toString(),
       "",
       "Contigs-spanned-per-partition stats:",
       lociPartitioning.partitionContigStats.toString()
     )
-
-    if (args.savePartitioningPath.nonEmpty) {
-      lociPartitioning.save(regions.sparkContext, mapPath(args.savePartitioningPath))
-      progress(s"Saved loci-partitioning to ${args.savePartitioningPath}")
-    }
 
     apply(regions, lociPartitioning, halfWindowSize)
   }
@@ -81,6 +76,7 @@ object PartitionedRegions {
   def apply[R <: ReferenceRegion: ClassTag](regions: RDD[R],
                                             partitioning: LociPartitioning,
                                             halfWindowSize: Int): PartitionedRegions[R] = {
+
 
     val partitioningBroadcast = regions.sparkContext.broadcast(partitioning)
 

@@ -4,13 +4,14 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.set.LociParser
 import org.hammerlab.guacamole.pileup.Pileup
-import org.hammerlab.guacamole.reference.{Interval, ReferencePosition, ReferenceRegion, TestInterval}
+import org.hammerlab.guacamole.reference.ReferencePosition.Locus
+import org.hammerlab.guacamole.reference.{Contig, Interval, ReferencePosition, ReferenceRegion, TestInterval}
 import org.hammerlab.magic.iterator.RunLengthIterator
 import org.scalatest.Matchers
 
 import scala.collection.{SortedMap, mutable}
 
-case class TestRegion(contig: String, start: Long, end: Long) extends ReferenceRegion
+case class TestRegion(contig: Contig, start: Long, end: Long) extends ReferenceRegion
 
 trait Util extends Matchers {
 
@@ -116,7 +117,7 @@ trait Util extends Matchers {
 }
 
 object Util {
-  type TestPileup = (String, Long, String)
+  type TestPileup = (Contig, Locus, String)
 
   // This is used as a closure in `RDD.map`s in ReadSetsSuite, so it's advantageous to keep it in its own object here
   // and not serialize ReadSetsSuite (which is not Serializable due to scalatest Matchers' `assertionsHelper`).

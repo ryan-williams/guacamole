@@ -19,6 +19,7 @@
 package org.hammerlab.guacamole.variants
 
 import org.bdgenomics.adam.util.PhredUtils
+import org.hammerlab.guacamole.reference.Contig
 
 /**
  *
@@ -35,7 +36,7 @@ import org.bdgenomics.adam.util.PhredUtils
  * @param length length of the variant
  */
 case class CalledSomaticAllele(sampleName: String,
-                               contig: String,
+                               contig: Contig,
                                start: Long,
                                allele: Allele,
                                somaticLogOdds: Double,

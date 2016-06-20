@@ -2,6 +2,7 @@ package org.hammerlab.guacamole.loci.partitioning
 
 import java.io.{InputStream, OutputStream}
 
+import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.map.LociMap
 import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.PartitionIndex
@@ -35,6 +36,8 @@ case class LociPartitioning(map: LociMap[PartitionIndex]) extends Saveable {
   override def save(os: OutputStream): Unit = {
     map.prettyPrint(os)
   }
+
+  override def toString: String = map.toString
 }
 
 object LociPartitioning {
@@ -46,10 +49,30 @@ object LociPartitioning {
   def apply[R <: ReferenceRegion: ClassTag](regions: RDD[R],
                                             loci: LociSet,
                                             args: AllLociPartitionerArgs,
-                                            halfWindowSize: Int = 0): LociPartitioning =
-    args
-      .getPartitioner(regions, halfWindowSize)
-      .partition(loci)
+                                            halfWindowSize: Int = 0): LociPartitioning = {
+    for (lociPartitioningPath <- args.lociPartitioningPathOpt) {
+      val path = new Path(lociPartitioningPath)
+      val fs = path.getFileSystem(regions.sparkContext.hadoopConfiguration)
+      if (fs.exists(path)) {
+        return load(fs.open(path))
+      }
+    }
+
+    val lp =
+      args
+        .getPartitioner(regions, halfWindowSize)
+        .partition(loci)
+
+    for (lociPartitioningPath <- args.lociPartitioningPathOpt) {
+      lp.save(
+        FileSystem
+          .get(regions.sparkContext.hadoopConfiguration)
+          .create(new Path(lociPartitioningPath))
+      )
+    }
+
+    lp
+  }
 
   implicit def lociMapToLociPartitioning(map: LociMap[PartitionIndex]): LociPartitioning = LociPartitioning(map)
   implicit def lociPartitioningToLociMap(partitioning: LociPartitioning): LociMap[PartitionIndex] = partitioning.map

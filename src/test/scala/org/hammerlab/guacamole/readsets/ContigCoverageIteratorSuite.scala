@@ -5,7 +5,7 @@ import org.hammerlab.guacamole.loci.set.{LociParser, LociSet}
 import org.hammerlab.guacamole.reference.ReferencePosition
 import org.scalatest.{FunSuite, Matchers}
 
-class ContigCoverageIteratorSuite extends FunSuite with Matchers {
+class ContigCoverageIteratorSuite extends FunSuite with Matchers with ContigLengthsUtil {
 
   def check(contig: String,
             halfWindowSize: Int,
@@ -28,7 +28,7 @@ class ContigCoverageIteratorSuite extends FunSuite with Matchers {
         TestRegion(contig, start, end)
       ).iterator.buffered
 
-    val contigLengths: ContigLengths = Map("chr1" -> 100, "chr2" -> 200)
+    val contigLengths: ContigLengths = makeContigLengths("chr1" -> 100, "chr2" -> 200)
     val loci = LociParser(lociStr).result(contigLengths).onContig(contig).iterator
 
     val expected =

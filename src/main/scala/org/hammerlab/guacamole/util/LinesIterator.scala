@@ -9,7 +9,10 @@ class LinesIterator(br: BufferedReader) extends OptionIterator[String] {
     try {
       Some(br.readLine())
     } catch {
-      case e: IOException => None
+      case e: IOException => {
+        br.close()
+        None
+      }
     }
   }
 }

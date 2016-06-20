@@ -22,7 +22,7 @@ import java.io.{InputStream, OutputStream, PrintStream}
 
 import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.PartitionIndex
 import org.hammerlab.guacamole.loci.set.{LociSet, Builder => LociSetBuilder}
-import org.hammerlab.guacamole.reference.ReferenceRegion
+import org.hammerlab.guacamole.reference.{ReferenceRegion, Contig => ReferenceContig}
 import org.hammerlab.guacamole.strings.TruncatedToString
 import org.hammerlab.guacamole.util.LinesIterator
 
@@ -38,7 +38,8 @@ import scala.collection.{SortedMap, mutable}
  *
  * @param map Map from contig names to [[Contig]] instances giving the regions and values on that contig.
  */
-case class LociMap[T](@transient private val map: SortedMap[String, Contig[T]]) extends TruncatedToString {
+case class LociMap[T] private(@transient private val map: SortedMap[ReferenceContig, Contig[T]])
+  extends TruncatedToString {
 
   /** The contigs included in this LociMap with a nonempty set of loci. */
   @transient lazy val contigs = map.values.toSeq
@@ -90,7 +91,7 @@ object LociMap {
   def newBuilder[T](): Builder[T] = new Builder[T]()
 
   /** Construct an empty LociMap. */
-  def apply[T](): LociMap[T] = LociMap(TreeMap[String, Contig[T]]())
+  def apply[T](): LociMap[T] = LociMap(TreeMap[ReferenceContig, Contig[T]]())
 
   def load(is: InputStream): LociMap[PartitionIndex] = {
     fromLines(LinesIterator(is))
@@ -127,6 +128,6 @@ object LociMap {
     LociMap(
       TreeMap(
         contigs.map(contig => contig.name -> contig).toSeq: _*
-      )
+      )(ReferenceContig.ordering)
     )
 }

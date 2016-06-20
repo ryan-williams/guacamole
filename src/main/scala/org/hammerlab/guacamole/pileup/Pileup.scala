@@ -20,11 +20,9 @@ package org.hammerlab.guacamole.pileup
 
 import org.hammerlab.guacamole.reads.MappedRead
 import org.hammerlab.guacamole.readsets.{NumSamples, PerSample, SampleId}
-import org.hammerlab.guacamole.reference.{ContigSequence, ReferenceBroadcast}
-import org.hammerlab.guacamole.util.Bases
-import org.hammerlab.guacamole.variants.{Allele, Genotype}
+import org.hammerlab.guacamole.reference.{Contig, ContigSequence}
+import org.hammerlab.guacamole.variants.Allele
 
-import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 /**
@@ -38,7 +36,7 @@ import scala.collection.mutable.ArrayBuffer
  * @param elements Sequence of [[PileupElement]] instances giving the sequenced bases that align to a particular
  *                 reference locus, in arbitrary order.
  */
-case class Pileup(referenceName: String,
+case class Pileup(referenceName: Contig,
                   locus: Long,
                   referenceContigSequence: ContigSequence,
                   elements: Iterable[PileupElement]) {

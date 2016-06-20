@@ -30,15 +30,19 @@ import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.PartitionIndex
 import org.hammerlab.guacamole.loci.partitioning.LociPartitioning
 import org.hammerlab.guacamole.loci.set.{LociSet, Contig => LociSetContig, ContigSerializer => LociSetContigSerializer, Serializer => LociSetSerializer}
 import org.hammerlab.guacamole.reads.{MappedRead, MappedReadSerializer, MateAlignmentProperties, PairedRead, Read, UnmappedRead, UnmappedReadSerializer}
-import org.hammerlab.guacamole.reference.ReferencePosition
+import org.hammerlab.guacamole.readsets.ContigLengths
+import org.hammerlab.guacamole.reference.{Contig, ReferencePosition}
 import org.hammerlab.guacamole.variants.{Allele, AlleleEvidence, AlleleSerializer, CalledAllele}
 import org.hammerlab.magic.accumulables.{HashMap => MagicHashMap}
+import org.hammerlab.magic.rdd.RunLengthRDD
 
 class Registrar extends KryoRegistrator {
   override def registerClasses(kryo: Kryo) {
 
     // Register ADAM serializers.
     new ADAMKryoRegistrator().registerClasses(kryo)
+
+    RunLengthRDD.registerKryo(kryo)
 
     // Register Joint-Caller serializers.
     new JointCallerRegistrar().registerClasses(kryo)
@@ -47,6 +51,9 @@ class Registrar extends KryoRegistrator {
     // Read.ADAMSequenceDictionaryRDDAggregator. ADAM should register these itself.
     kryo.register(classOf[SequenceDictionary])
     kryo.register(classOf[SequenceRecord])
+
+    kryo.register(classOf[Contig])
+    kryo.register(classOf[ContigLengths])
 
     // Reads
     kryo.register(classOf[MappedRead], new MappedReadSerializer)

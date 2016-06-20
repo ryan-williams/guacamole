@@ -1,10 +1,8 @@
 package org.hammerlab.guacamole.loci.set
 
-import java.lang.{Long => JLong}
+import org.hammerlab.guacamole.readsets.ContigLengths
+import org.hammerlab.guacamole.reference.{Contig => ReferenceContig}
 
-import com.google.common.collect.{TreeRangeSet, Range => JRange}
-
-import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 /**
@@ -37,7 +35,7 @@ class LociParser {
    * (contig, start, end) ranges which have been added to this builder.
    * If end is None, it indicates "until the end of the contig"
    */
-  private val ranges = ArrayBuffer[(String, Long, Option[Long])]()
+  private val ranges = ArrayBuffer[(ReferenceContig, Long, Option[Long])]()
 
   /**
    * Add an interval to this LociParser.
@@ -100,17 +98,17 @@ class LociParser {
    * The wrappers here all delegate to the private implementation that follows.
    */
   def result: LociSet = result(None)  // enables omitting parentheses: builder.result instead of builder.result()
-  def result(contigLengths: Map[String, Long]): LociSet = result(Some(contigLengths))
-  def result(contigLengths: (String, Long)*): LociSet =
-    result(
-      // Calling .result() should pass None, not Some(Map.empty)
-      if (contigLengths.nonEmpty)
-        Some(contigLengths.toMap)
-      else
-        None
-    )
+  def result(contigLengths: ContigLengths): LociSet = result(Some(contigLengths))
+//  def result(contigLengths: (ReferenceContig, Long)*): LociSet =
+//    result(
+//      // Calling .result() should pass None, not Some(Map.empty)
+//      if (contigLengths.nonEmpty)
+//        Some(contigLengths.toMap)
+//      else
+//        None
+//    )
 
-  private def result(contigLengthsOpt: Option[Map[String, Long]] = None): LociSet = {
+  private def result(contigLengthsOpt: Option[ContigLengths] = None): LociSet = {
 
     // Check for invalid contigs.
     for {

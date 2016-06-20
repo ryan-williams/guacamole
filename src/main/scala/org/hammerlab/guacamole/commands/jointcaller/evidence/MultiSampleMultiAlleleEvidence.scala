@@ -4,7 +4,7 @@ import org.hammerlab.guacamole.commands.jointcaller.pileup_summarization.{Multip
 import org.hammerlab.guacamole.commands.jointcaller.{AlleleAtLocus, InputCollection, Parameters}
 import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.readsets.PerSample
-import org.hammerlab.guacamole.reference.{ReferenceBroadcast, ReferenceRegion}
+import org.hammerlab.guacamole.reference.{Contig, ReferenceBroadcast, ReferenceRegion}
 import org.hammerlab.guacamole.util.Bases
 
 /**
@@ -15,12 +15,13 @@ import org.hammerlab.guacamole.util.Bases
  * written out.
  *
  */
-case class MultiSampleMultiAlleleEvidence(contig: String,
+case class MultiSampleMultiAlleleEvidence(contig: Contig,
                                           start: Long,
                                           singleAlleleEvidences: Seq[MultiSampleSingleAlleleEvidence])
     extends ReferenceRegion {
 
-  assume(singleAlleleEvidences.forall(_.allele.referenceContig == contig))
+
+  assume(singleAlleleEvidences.forall(_.allele.contig == contig))
   assume(singleAlleleEvidences.forall(_.allele.start == start))
 
   val end: Long = if (singleAlleleEvidences.isEmpty) start else singleAlleleEvidences.map(_.allele.end).max
@@ -145,7 +146,7 @@ object MultiSampleMultiAlleleEvidence {
 
     // Create a MultiSampleMultiAlleleEvidence to group all the alleles and their evidence.
     val calls = MultiSampleMultiAlleleEvidence(
-      contig = evidences.head.allele.referenceContig,
+      contig = evidences.head.allele.contig,
       start = evidences.head.allele.start,
       singleAlleleEvidences = evidences)
 

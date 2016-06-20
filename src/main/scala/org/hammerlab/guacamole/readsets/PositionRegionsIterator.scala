@@ -2,7 +2,7 @@ package org.hammerlab.guacamole.readsets
 
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.reference.ReferencePosition.Locus
-import org.hammerlab.guacamole.reference.{ContigPosition, HasLocus, ReferencePosition, ReferenceRegion}
+import org.hammerlab.guacamole.reference.{Contig, ContigPosition, HasLocus, ReferencePosition, ReferenceRegion}
 import org.hammerlab.magic.iterator.OptionIterator
 
 //class PositionRegions[R <: ReferenceRegion](pos: ReferencePosition,
@@ -24,59 +24,59 @@ abstract class PositionRegionsIteratorBase[R <: ReferenceRegion, T <: HasLocus, 
 
   def objToResult(t: T): U
 
-  var curContig: Iterator[T] = _
-  var curContigName: String = _
+  var curContigLociIterator: Iterator[T] = _
+  var curContig: Contig = _
 
   def clearContig(): Unit = {
-    curContig = null
-    while (regions.hasNext && regions.head.contig == curContigName) {
+    curContigLociIterator = null
+    while (regions.hasNext && regions.head.contig == curContig) {
       regions.next()
     }
   }
 
   override def _advance: Option[(ReferencePosition, U)] = {
-    while (curContig == null) {
+    while (curContigLociIterator == null) {
 
       if (!regions.hasNext)
         return None
 
       // We will restrict ourselves to loci and regions on this contig in this iteration of the loop.
-      curContigName = regions.head.contig
+      curContig = regions.head.contig
 
       // Iterator over the loci on this contig allowed by the input LociSet.
-      val contigLoci = loci.onContig(curContigName).iterator
+      val contigLoci = loci.onContig(curContig).iterator
 
       // Positions on this contig that we must emit records at, even if the underlying data would otherwise skip them.
-      val forceCallContigLoci = forceCallLoci.onContig(curContigName).iterator
+      val forceCallContigLoci = forceCallLoci.onContig(curContig).iterator
 
       // Restrict to regions on the current contig.
-      val contigRegions = ContigIterator(curContigName, regions)
+      val contigRegions = ContigIterator(curContig, regions)
 
       // Iterator over "piles" of regions (loci and the reads that overlap them, or a window around them) on this contig.
       val contigRegionObjs = newObjIterator(contigRegions)
 
       // Iterator that merges the loci allowed by the LociSet with the loci that have reads overlapping them.
-      curContig = new UnionLociIterator(
+      curContigLociIterator = new UnionLociIterator(
         forceCallContigLoci.map(pos => empty(pos)).buffered,
         new IntersectLociIterator(contigLoci, contigRegionObjs)
       )
 
-      if (!curContig.hasNext)
+      if (!curContigLociIterator.hasNext)
         clearContig()
     }
 
     // We can only get here when curContig != null && curContig.hasNext. We return None in the loop if that can no
     // longer happen, which signals that this iterator is done.
 
-    val obj = curContig.next()
+    val obj = curContigLociIterator.next()
 
     Some(
-      ReferencePosition(curContigName, obj.locus) -> objToResult(obj)
+      ReferencePosition(curContig, obj.locus) -> objToResult(obj)
     )
   }
 
   override def postNext(): Unit = {
-    if (!curContig.hasNext)
+    if (!curContigLociIterator.hasNext)
       clearContig()
   }
 

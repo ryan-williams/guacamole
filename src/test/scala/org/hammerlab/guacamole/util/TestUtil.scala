@@ -29,7 +29,8 @@ import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.reads.{MappedRead, MateAlignmentProperties, PairedRead, Read}
 import org.hammerlab.guacamole.readsets.{InputFilters, ReadLoadingConfig, ReadSets, ReadsArgs, ReadsRDD}
 import org.hammerlab.guacamole.reference.ReferenceBroadcast.MapBackedReferenceSequence
-import org.hammerlab.guacamole.reference.{ContigSequence, ReferenceBroadcast}
+import org.hammerlab.guacamole.reference.ReferencePosition.Locus
+import org.hammerlab.guacamole.reference.{Contig, ContigSequence, ReferenceBroadcast}
 
 import scala.collection.mutable
 import scala.math._
@@ -221,8 +222,8 @@ object TestUtil {
   def loadPileup(sc: SparkContext,
                  filename: String,
                  reference: ReferenceBroadcast,
-                 locus: Long = 0,
-                 maybeContig: Option[String] = None): Pileup = {
+                 locus: Locus = 0,
+                 maybeContig: Option[Contig] = None): Pileup = {
     val records =
       TestUtil.loadReads(
         sc,

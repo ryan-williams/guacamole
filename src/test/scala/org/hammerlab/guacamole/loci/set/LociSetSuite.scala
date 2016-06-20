@@ -21,8 +21,9 @@ package org.hammerlab.guacamole.loci.set
 import org.hammerlab.guacamole.loci.LociArgs
 import org.hammerlab.guacamole.logging.DebugLogArgs
 import org.hammerlab.guacamole.util.{GuacFunSuite, TestUtil}
+import org.hammerlab.guacamole.reference.{Contig => ReferenceContig}
 
-class LociSetSuite extends GuacFunSuite {
+class LociSetSuite extends GuacFunSuite with Util {
 
   test("properties of empty LociSet") {
     val empty = LociSet()
@@ -35,7 +36,7 @@ class LociSetSuite extends GuacFunSuite {
 
   test("count, containment, intersection testing of a loci set") {
     val set = LociSet("chr21:100-200,chr20:0-10,chr20:8-15,chr20:100-120,empty:10-10")
-    set.contigs.map(_.name) should be(Seq("chr20", "chr21"))
+    set.contigs.map(_.name) should be(Seq[ReferenceContig]("chr20", "chr21"))
     set.count should equal(135)
     set.onContig("chr20").contains(110) should be(true)
     set.onContig("chr20").contains(100) should be(true)
@@ -127,22 +128,20 @@ class LociSetSuite extends GuacFunSuite {
   }
 
   test("loci set parsing with contig lengths") {
-    LociParser(
-      "chr1,chr2,17,chr2:3-5,chr20:10-20"
-    )
-    .result(
+    makeLociSet(
+      "chr1,chr2,17,chr2:3-5,chr20:10-20",
       "chr1" -> 10L,
       "chr2" -> 20L,
       "17" -> 12L,
       "chr20" -> 5000L
     )
     .toString should equal(
-      "17:0-12,chr1:0-10,chr2:0-20,chr20:10-20"
+      "chr1:0-10,chr2:0-20,17:0-12,chr20:10-20"
     )
   }
 
   test("parse half-open interval") {
-    LociParser("chr1:10000-").result("chr1" -> 20000L).toString should be("chr1:10000-20000")
+    makeLociSet("chr1:10000-", "chr1" -> 20000L).toString should be("chr1:10000-20000")
   }
 
   test("loci set single contig iterator basic") {

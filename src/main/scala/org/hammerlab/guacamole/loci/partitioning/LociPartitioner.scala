@@ -19,13 +19,19 @@ trait AllLociPartitionerArgs
     name = "--partitioned-reads-path",
     usage = "Directory from which to read an existing partition-reads RDD, with accompanying LociMap partitioning."
   )
-  var partitionedReadsPath: String = ""
+  private var _partitionedReadsPath: String = ""
 
   @Args4JOption(
-    name = "--save-partitioning",
+    name = "--loci-partitioning-path",
     usage = "Directory path within which to save the partitioned reads and accompanying LociMap partitioning."
   )
-  var savePartitioningPath: String = ""
+  private var _lociPartitioningPath: String = ""
+
+  def lociPartitioningPathOpt: Option[String] =
+    if (_lociPartitioningPath.isEmpty)
+      None
+    else
+      Some(_lociPartitioningPath)
 
   @Args4JOption(name = "--loci-partitioner")
   var lociPartitionerName: String = "exact"

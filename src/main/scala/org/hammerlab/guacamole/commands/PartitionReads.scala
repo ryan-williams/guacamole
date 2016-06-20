@@ -26,15 +26,6 @@ object PartitionReads extends SparkCommand[PartitionReadsArgs] {
 
     val loci = args.parseLoci(sc.hadoopConfiguration).result(contigLengths)
 
-    val partitionedReads = PartitionedRegions(readsets.allMappedReads, loci, args, args.halfWindow)
-
-    println("done partitioning")
-    progress(args.savePartitioningPath)
-    if (args.savePartitioningPath.nonEmpty) {
-      progress(s"Saving to: ${args.savePartitioningPath}")
-      partitionedReads.save(args.savePartitioningPath)
-    } else {
-      println("no save path")
-    }
+    PartitionedRegions(readsets.allMappedReads, loci, args, args.halfWindow)
   }
 }

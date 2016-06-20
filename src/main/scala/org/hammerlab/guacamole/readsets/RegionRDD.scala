@@ -1,14 +1,14 @@
 package org.hammerlab.guacamole.readsets
 
-import org.hammerlab.magic.rdd.RunLengthRDD._
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
 import org.hammerlab.guacamole.loci.set.{LociSet, TakeLociIterator}
-import org.hammerlab.guacamole.reference.ReferencePosition.{Locus, NumLoci}
+import org.hammerlab.guacamole.reference.ReferencePosition.NumLoci
 import org.hammerlab.guacamole.reference.{Contig, ReferencePosition, ReferenceRegion}
 import org.hammerlab.magic.rdd.RDDStats._
+import org.hammerlab.magic.rdd.RunLengthRDD._
 import org.hammerlab.magic.util.Stats
 
 import scala.collection.mutable
@@ -117,7 +117,7 @@ class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R])
       coverage(halfWindowSize, loci).map(t => t._2.ends -> t._1).sortByKey(ascending = false)
     )
 
-  def partitionDepths(halfWindowSize: Int, loci: LociSet, depthCutoff: Int): RDD[((String, Boolean), Int)] = {
+  def partitionDepths(halfWindowSize: Int, loci: LociSet, depthCutoff: Int): RDD[((Contig, Boolean), Int)] = {
     (for {
       (ReferencePosition(contig, _), Coverage(depth, _, _)) <- coverage(halfWindowSize, loci)
     } yield
@@ -135,21 +135,21 @@ class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R])
 
 object RegionRDD {
   private val rddMap = mutable.Map[Int, RegionRDD[_]]()
-  implicit def rddToRegionRDD[R <: ReferenceRegion: ClassTag](
-    rdd: RDD[R]
-  ): RegionRDD[R] =
+  implicit def rddToRegionRDD[R <: ReferenceRegion: ClassTag](rdd: RDD[R]): RegionRDD[R] =
     rddMap.getOrElseUpdate(
       rdd.id,
       new RegionRDD[R](rdd)
     ).asInstanceOf[RegionRDD[R]]
 
-  def validLociCounts(depthRuns: RDD[((String, Boolean), Int)]): (NumLoci, NumLoci) = {
+  def validLociCounts(depthRuns: RDD[((Contig, Boolean), Int)]): (NumLoci, NumLoci) = {
     val map =
       (for {
         ((_, validDepth), numLoci) <- depthRuns
       } yield
         validDepth -> numLoci.toLong
-        ).reduceByKey(_ + _).collectAsMap
+      )
+      .reduceByKey(_ + _)
+      .collectAsMap
 
     (map.getOrElse(true, 0), map.getOrElse(false, 0))
   }

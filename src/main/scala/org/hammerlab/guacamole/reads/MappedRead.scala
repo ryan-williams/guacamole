@@ -22,7 +22,7 @@ import htsjdk.samtools.{Cigar, CigarElement}
 import org.bdgenomics.adam.util.PhredUtils
 import org.hammerlab.guacamole.pileup.PileupElement
 import org.hammerlab.guacamole.readsets.SampleId
-import org.hammerlab.guacamole.reference.{ContigSequence, ReferenceRegion}
+import org.hammerlab.guacamole.reference.{Contig, ContigSequence, ReferenceRegion}
 import org.hammerlab.guacamole.util.{Bases, CigarUtils}
 
 import scala.collection.JavaConversions
@@ -42,7 +42,7 @@ case class MappedRead(
     isDuplicate: Boolean,
     sampleId: SampleId,
     sampleName: String,
-    contig: String,
+    contig: Contig,
     alignmentQuality: Int,
     start: Long,
     cigar: Cigar,

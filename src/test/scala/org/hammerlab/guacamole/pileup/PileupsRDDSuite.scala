@@ -6,9 +6,8 @@ import org.hammerlab.guacamole.loci.partitioning.AllLociPartitionerArgs
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.pileup.PileupsRDD._
 import org.hammerlab.guacamole.reads.{MappedRead, Read}
-import org.hammerlab.guacamole.readsets.PartitionedReads
+import org.hammerlab.guacamole.readsets.{ContigLengths, ContigLengthsUtil, PartitionedReads, PartitionedRegions, PerSample, ReadSets, ReadsRDD, Util}
 import org.hammerlab.guacamole.readsets.Util.{TestPileup, simplifyPileup}
-import org.hammerlab.guacamole.readsets.{ContigLengths, PartitionedRegions, PerSample, ReadSets, ReadsRDD, Util}
 import org.hammerlab.guacamole.reference.ReferenceBroadcast.MapBackedReferenceSequence
 import org.hammerlab.guacamole.reference.ReferencePosition.Locus
 import org.hammerlab.guacamole.reference.{Contig, ReferenceBroadcast}
@@ -22,7 +21,7 @@ class PileupsRDDSuiteRegistrar extends KryoTestRegistrar {
   }
 }
 
-class PileupsRDDSuite extends GuacFunSuite with Util {
+class PileupsRDDSuite extends GuacFunSuite with Util with ContigLengthsUtil {
   type TestRead = (String, Int, Int, Int)
   type TestReads = Seq[TestRead]
   type TestPos = (String, Int)
@@ -39,7 +38,7 @@ class PileupsRDDSuite extends GuacFunSuite with Util {
   override def registrar: String = "org.hammerlab.guacamole.pileup.PileupsRDDSuiteRegistrar"
 
   val contigLengths: ContigLengths =
-    Map(
+    makeContigLengths(
       "chr1" -> 200,
       "chr2" -> 300,
       "chr5" -> 400

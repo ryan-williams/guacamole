@@ -17,6 +17,7 @@ import org.hammerlab.guacamole.loci.set.{LociParser, LociSet}
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.reads.{MappedRead, Read}
 import org.hammerlab.guacamole.readsets.RegionRDD._
+import org.hammerlab.guacamole.reference.Contig
 import org.hammerlab.magic.rdd.RDDStats._
 import org.kohsuke.args4j.spi.{OptionHandler, Setter, StringArrayOptionHandler}
 import org.kohsuke.args4j.{Argument, CmdLineParser, OptionDef, Option => Args4JOption}
@@ -200,12 +201,14 @@ object ReadSets {
       if (contigLengthsFromDictionary) {
         getContigLengthsFromSequenceDictionary(sequenceDictionary)
       } else {
+//        ContigLengths(
         sc.union(readRDDs)
           .flatMap(_.asMappedRead)
           .map(read => read.contig -> read.end)
           .reduceByKey(math.max)
           .collectAsMap()
           .toMap
+//        )
       }
     }
 
@@ -371,7 +374,7 @@ object ReadSets {
 
   /** Extract the length of each contig from a sequence dictionary */
   private def contigLengths(sequenceDictionary: SequenceDictionary): ContigLengths = {
-    val builder = Map.newBuilder[String, Long]
+    val builder = Map.newBuilder[Contig, Long]
     sequenceDictionary.records.foreach(record => builder += ((record.name.toString, record.length)))
     builder.result
   }
@@ -456,7 +459,7 @@ object ReadSets {
     * Construct a map from contig name -> length of contig, using a SequenceDictionary.
     */
   private def getContigLengthsFromSequenceDictionary(sequenceDictionary: SequenceDictionary): ContigLengths = {
-    val builder = Map.newBuilder[String, Long]
+    val builder = Map.newBuilder[Contig, Long]
     for {
       record <- sequenceDictionary.records
     } {

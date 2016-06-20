@@ -18,6 +18,8 @@
 
 package org.hammerlab.guacamole.variants
 
+import org.hammerlab.guacamole.reference.Contig
+
 /**
  *
  * A variant that exists in the sample; includes supporting read statistics
@@ -30,7 +32,7 @@ package org.hammerlab.guacamole.variants
  * @param length length of the variant
  */
 case class CalledAllele(sampleName: String,
-                        contig: String,
+                        contig: Contig,
                         start: Long,
                         allele: Allele,
                         evidence: AlleleEvidence,

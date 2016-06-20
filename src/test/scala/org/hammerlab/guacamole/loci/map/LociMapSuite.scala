@@ -21,6 +21,7 @@ package org.hammerlab.guacamole.loci.map
 import org.hammerlab.guacamole.loci.SimpleRange
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.util.GuacFunSuite
+import org.hammerlab.guacamole.reference.{Contig => ReferenceContig}
 
 class LociMapSuite extends GuacFunSuite {
 
@@ -40,7 +41,7 @@ class LociMapSuite extends GuacFunSuite {
 
     lociMap.count should be(101)
     lociMap.toString should be("chr1:100-200=A,chr20:200-201=B")
-    lociMap.contigs.map(_.name) should be(Seq("chr1", "chr20"))
+    lociMap.contigs.map(_.name) should be(Seq[ReferenceContig]("chr1", "chr20"))
 
     lociMap should not equal (LociMap[String]())
 

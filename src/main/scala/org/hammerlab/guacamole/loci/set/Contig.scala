@@ -6,6 +6,7 @@ import java.lang.{Long => JLong}
 import com.google.common.collect.{RangeSet, TreeRangeSet, Range => JRange}
 import org.hammerlab.guacamole.loci.SimpleRange
 import org.hammerlab.guacamole.reference.ReferencePosition.Locus
+import org.hammerlab.guacamole.reference.{Contig => ReferenceContig}
 import org.hammerlab.guacamole.strings.TruncatedToString
 
 import scala.collection.JavaConversions._
@@ -14,7 +15,7 @@ import scala.collection.mutable.ArrayBuffer
 /**
  * A set of loci on a contig, stored/manipulated as loci ranges.
  */
-case class Contig(var name: String, private var rangeSet: RangeSet[JLong]) extends TruncatedToString {
+case class Contig(var name: ReferenceContig, private var rangeSet: RangeSet[JLong]) extends TruncatedToString {
 
   private def readObject(in: ObjectInputStream): Unit = {
     name = in.readUTF()
@@ -109,11 +110,11 @@ case class Contig(var name: String, private var rangeSet: RangeSet[JLong]) exten
 
 private[loci] object Contig {
   // Empty-contig constructor, for convenience.
-  def apply(name: String): Contig = Contig(name, TreeRangeSet.create[JLong]())
+  def apply(name: ReferenceContig): Contig = Contig(name, TreeRangeSet.create[JLong]())
 
   // Constructors that make a Contig from its name and some ranges.
-  def apply(tuple: (String, Iterable[JRange[JLong]])): Contig = Contig(tuple._1, tuple._2)
-  def apply(name: String, ranges: Iterable[JRange[JLong]]): Contig =
+  def apply(tuple: (ReferenceContig, Iterable[JRange[JLong]])): Contig = Contig(tuple._1, tuple._2)
+  def apply(name: ReferenceContig, ranges: Iterable[JRange[JLong]]): Contig =
     Contig(
       name,
       {

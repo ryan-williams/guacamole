@@ -20,12 +20,13 @@ object PartitionReads extends SparkCommand[PartitionReadsArgs] {
 
   override def run(args: PartitionReadsArgs, sc: SparkContext): Unit = {
 
-    val readsets = ReadSets(sc, args.pathsAndSampleNames)
-    val mappedReads = readsets.mappedReadsRDDs
-    val ReadSets(_, sequenceDictionary, contigLengths) = readsets
-
-    val loci = args.parseLoci(sc.hadoopConfiguration).result(contigLengths)
-
-    PartitionedRegions(readsets.allMappedReads, loci, args, args.halfWindow)
+    println(args.partitioningDirOpt)
+//    val readsets = ReadSets(sc, args.pathsAndSampleNames)
+//    val mappedReads = readsets.mappedReadsRDDs
+//    val ReadSets(_, sequenceDictionary, contigLengths) = readsets
+//
+//    val loci = args.parseLoci(sc.hadoopConfiguration).result(contigLengths)
+//
+//    PartitionedRegions(readsets.allMappedReads, loci, args, args.halfWindow)
   }
 }

@@ -5,7 +5,8 @@ import org.hammerlab.guacamole.loci.LociArgs
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.readsets.PartitionedRegions
 import org.hammerlab.guacamole.reference.ReferenceRegion
-import org.kohsuke.args4j.{Option => Args4JOption}
+import org.kohsuke.args4j.spi.{OptionHandler, Parameters, Setter}
+import org.kohsuke.args4j.{CmdLineParser, OptionDef, Option => Args4JOption}
 
 import scala.reflect.ClassTag
 
@@ -15,23 +16,43 @@ trait AllLociPartitionerArgs
   extends ApproximatePartitionerArgs
     with ExactPartitionerArgs {
 
+  def strToOpt(str: String): Option[String] =
+    if (str.isEmpty)
+      None
+    else
+      Some(str)
+
+//  @Args4JOption(
+//    name = "--partitioning-dir",
+//    usage = "Directory from which to read an existing partition-reads RDD, with accompanying LociMap partitioning.",
+//    forbids = Array("--partitioned-reads-path", "--loci-partitioning-path")
+//  )
+//  private var _partitioningDir: String = ""
+
+  @Args4JOption(
+    name = "--partitioning-dir",
+    usage = "Directory from which to read an existing partition-reads RDD, with accompanying LociMap partitioning.",
+    forbids = Array("--partitioned-reads-path", "--loci-partitioning-path")
+  )
+  var partitioningDirOpt: Option[String] = None
+
   @Args4JOption(
     name = "--partitioned-reads-path",
-    usage = "Directory from which to read an existing partition-reads RDD, with accompanying LociMap partitioning."
+    usage = "Directory from which to read an existing partition-reads RDD, with accompanying LociMap partitioning.",
+    forbids = Array("--partitioning-dir")
   )
   private var _partitionedReadsPath: String = ""
 
+  def partitionedReadsPathOpt: Option[String] = strToOpt(_partitionedReadsPath)
+
   @Args4JOption(
     name = "--loci-partitioning-path",
-    usage = "Directory path within which to save the partitioned reads and accompanying LociMap partitioning."
+    usage = "Directory path within which to save the partitioned reads and accompanying LociMap partitioning.",
+    forbids = Array("--partitioning-dir")
   )
   private var _lociPartitioningPath: String = ""
 
-  def lociPartitioningPathOpt: Option[String] =
-    if (_lociPartitioningPath.isEmpty)
-      None
-    else
-      Some(_lociPartitioningPath)
+  def lociPartitioningPathOpt: Option[String] = strToOpt(_lociPartitioningPath)
 
   @Args4JOption(name = "--loci-partitioner")
   var lociPartitionerName: String = "exact"

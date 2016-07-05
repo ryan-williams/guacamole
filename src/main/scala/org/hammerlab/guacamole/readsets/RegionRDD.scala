@@ -4,6 +4,7 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
+import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.NumPartitions
 import org.hammerlab.guacamole.loci.set.{LociSet, TakeLociIterator}
 import org.hammerlab.guacamole.reference.Position.NumLoci
 import org.hammerlab.guacamole.reference.{Contig, Position, Region}
@@ -24,8 +25,8 @@ class RegionRDD[R <: Region: ClassTag](@transient rdd: RDD[R])
     numEmptyPartitions: Int,
     numPartitionsSpanningContigs: Int,
     partitionSpans: ArrayBuffer[Long],
-    spanStats: Stats[NumLoci],
-    nonEmptySpanStats: Stats[NumLoci]
+    spanStats: Stats[NumLoci, NumPartitions],
+    nonEmptySpanStats: Stats[NumLoci, NumPartitions]
   ) = {
     val partitionBounds = rdd.partitionBounds
     var numEmpty = 0

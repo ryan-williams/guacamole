@@ -4,6 +4,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{Accumulable, SparkContext}
+import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.PartitionIndex
 import org.hammerlab.guacamole.loci.partitioning.{AllLociPartitionerArgs, LociPartitioning}
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
@@ -129,19 +130,21 @@ object PartitionedRegions {
           .setName("partitioned-regions")
 
         if (printStats) {
-          // Need to force materialization for the accumulator to have data… but that's reasonable because anything downstream
-          // is presumably going to reuse this RDD.
-          // TODO(ryan): worth adding a bypass here / pushing the printing of these statistics to later, for applications that
-          // want to save this ~extra materialization. Worth benchmarking, in any case.
+          // Need to force materialization for the accumulator to have data… but that's reasonable because anything
+          // downstream is presumably going to reuse this RDD.
+          // TODO(ryan): worth adding a bypass here / pushing the printing of these statistics to later, for
+          // applications that want to save this ~extra materialization. Worth benchmarking, in any case.
           val totalReadCopies = partitionedRegions.count
 
           val totalReads = regions.count
 
-          val regionCopies = regionCopiesHistogram.value.toArray.sortBy(_._1)
+          // Sorted array of [number of read copies "K"] -> [number of reads that were copied "K" times].
+          val regionCopies: Array[(Int, Long)] = regionCopiesHistogram.value.toArray.sortBy(_._1)
 
           val readsPlaced = regionCopies.filter(_._1 > 0).map(_._2).sum
 
-          val regionsPerPartition = partitionRegionsHistogram.value.toArray.sortBy(_._1)
+          // Sorted array: [partition index "K"] -> [number of reads assigned to partition "K"].
+          val regionsPerPartition: Array[(PartitionIndex, Long)] = partitionRegionsHistogram.value.toArray.sortBy(_._1)
 
           progress(
             s"Placed $readsPlaced of $totalReads (%.1f%%), %.1fx copies on avg; copies per read histogram:"
@@ -149,11 +152,7 @@ object PartitionedRegions {
                 100.0 * readsPlaced / totalReads,
                 totalReadCopies * 1.0 / readsPlaced
               ),
-            (for {
-              (numCopies, numReads) <- regionCopies
-            } yield
-              s"$numCopies:\t$numReads"
-              ).mkString("\n"),
+            Stats.fromHist(regionCopies).toString(),
             "",
             "Reads per partition stats:",
             Stats(regionsPerPartition.map(_._2)).toString()

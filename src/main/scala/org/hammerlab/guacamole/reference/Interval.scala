@@ -1,6 +1,6 @@
 package org.hammerlab.guacamole.reference
 
-import org.hammerlab.guacamole.reference.ReferencePosition.Locus
+import org.hammerlab.guacamole.reference.Position.Locus
 
 trait Interval {
   def start: Locus
@@ -10,7 +10,7 @@ trait Interval {
 }
 
 object Interval {
-  def orderByEnd[I <: Interval] = new Ordering[I] {
-    override def compare(x: I, y: I): Int = x.end.compare(y.end)
+  def orderByEndDesc[I <: Interval] = new Ordering[I] {
+    override def compare(x: I, y: I): Int = y.end.compare(x.end)
   }
 }

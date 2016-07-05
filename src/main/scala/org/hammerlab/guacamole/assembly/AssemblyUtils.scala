@@ -6,7 +6,7 @@ import org.hammerlab.guacamole.alignment.{AffineGapPenaltyAlignment, ReadAlignme
 import org.hammerlab.guacamole.reads.MappedRead
 import org.hammerlab.guacamole.reference.{ContigSequence, ReferenceGenome}
 import org.hammerlab.guacamole.util.CigarUtils
-import org.hammerlab.guacamole.variants.ReferenceVariant
+import org.hammerlab.guacamole.variants.Variant
 import org.hammerlab.guacamole.windowing.SlidingWindow
 
 import scala.collection.JavaConversions._
@@ -118,12 +118,12 @@ object AssemblyUtils extends Logging {
    * @param allowReferenceVariant If true, output variants where the reference and alternate are the same
    * @return Possible sequence of called variants
    */
-  def buildVariantsFromPath[T <: ReferenceVariant](path: DeBruijnGraph#Sequence,
-                                                   referenceStart: Int,
-                                                   referenceContig: ContigSequence,
-                                                   alignPath: DeBruijnGraph#Sequence => ReadAlignment,
-                                                   buildVariant: (Int, Array[Byte], Array[Byte]) => T,
-                                                   allowReferenceVariant: Boolean = false): Seq[T] = {
+  def buildVariantsFromPath[T <: Variant](path: DeBruijnGraph#Sequence,
+                                          referenceStart: Int,
+                                          referenceContig: ContigSequence,
+                                          alignPath: DeBruijnGraph#Sequence => ReadAlignment,
+                                          buildVariant: (Int, Array[Byte], Array[Byte]) => T,
+                                          allowReferenceVariant: Boolean = false): Seq[T] = {
 
     val alignment = alignPath(path)
     log.warn(s"Building variants from ${alignment.toCigarString} alignment")

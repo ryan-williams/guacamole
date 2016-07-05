@@ -1,10 +1,10 @@
 package org.hammerlab.guacamole.readsets
 
 import org.hammerlab.guacamole.loci.set.{LociIterator, LociSet}
-import org.hammerlab.guacamole.reference.ReferenceRegion
+import org.hammerlab.guacamole.reference.Region
 import org.hammerlab.magic.iterator.OptionIterator
 
-class ContigsIterator[R <: ReferenceRegion](it: BufferedIterator[R], loci: LociSet)
+class ContigsIterator[R <: Region](it: BufferedIterator[R], loci: LociSet)
   extends OptionIterator[(ContigIterator[R], LociIterator)] {
 
   var contigRegions: ContigIterator[R] = _

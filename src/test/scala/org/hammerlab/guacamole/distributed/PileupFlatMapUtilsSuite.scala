@@ -25,7 +25,7 @@ import org.hammerlab.guacamole.loci.partitioning.UniformPartitioner
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.pileup.{Pileup, PileupElement}
 import org.hammerlab.guacamole.reads.MappedRead
-import org.hammerlab.guacamole.readsets.PartitionedRegions
+import org.hammerlab.guacamole.readsets.PartitionedRegionsUtil
 import org.hammerlab.guacamole.reference.ReferenceBroadcast.MapBackedReferenceSequence
 import org.hammerlab.guacamole.util.{AssertBases, Bases, GuacFunSuite, KryoTestRegistrar, TestUtil}
 
@@ -49,7 +49,9 @@ class PileupFlatMapUtilsSuiteRegistrar extends KryoTestRegistrar {
   }
 }
 
-class PileupFlatMapUtilsSuite extends GuacFunSuite {
+class PileupFlatMapUtilsSuite
+  extends GuacFunSuite
+    with PartitionedRegionsUtil {
 
   override def registrar: String = "org.hammerlab.guacamole.distributed.PileupFlatMapUtilsSuiteRegistrar"
 
@@ -64,7 +66,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
       )
 
     val partitionedReads =
-      PartitionedRegions(
+      partitionReads(
         reads,
         new UniformPartitioner(reads.getNumPartitions).partition(LociSet("chr1:1-9"))
       )
@@ -100,7 +102,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
       )
 
     val partitionedReads =
-      PartitionedRegions(
+      partitionReads(
         reads,
         new UniformPartitioner(5).partition(LociSet("chr1:1-9"))
       )
@@ -130,7 +132,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
       )
 
     val partitionedReads =
-      PartitionedRegions(
+      partitionReads(
         reads,
         new UniformPartitioner(5).partition(LociSet("chr0:5-10,chr1:0-100,chr2:0-1000,chr2:5000-6000"))
       )
@@ -167,7 +169,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
       )
 
     val partitionedReads =
-      PartitionedRegions(
+      partitionReads(
         reads1 ++ reads2,
         new UniformPartitioner(1).partition(LociSet("chr0:0-1000,chr1:1-500,chr2:10-20"))
       )
@@ -223,7 +225,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
     val resultPlain =
       PileupFlatMapUtils.pileupFlatMapMultipleRDDs[Seq[Iterable[String]]](
         numSamples = 3,
-        PartitionedRegions(
+        partitionReads(
           reads1 ++ reads2 ++ reads3,
           new UniformPartitioner(1).partition(LociSet("chr1:1-500,chr2:10-20"))
         ),
@@ -234,7 +236,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
 
     val resultParallelized = PileupFlatMapUtils.pileupFlatMapMultipleRDDs[Seq[Iterable[String]]](
       numSamples = 3,
-      PartitionedRegions(
+      partitionReads(
         reads1 ++ reads2 ++ reads3,
         new UniformPartitioner(800).partition(LociSet("chr1:1-500,chr2:10-20"))
       ),
@@ -246,7 +248,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
     val resultWithEmpty =
       PileupFlatMapUtils.pileupFlatMapMultipleRDDs[Seq[Iterable[String]]](
         numSamples = 3,
-        PartitionedRegions(
+        partitionReads(
           reads1 ++ reads2 ++ reads3,
           new UniformPartitioner(5).partition(LociSet("chr1:1-500,chr2:10-20"))
         ),
@@ -285,7 +287,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
 
     val pileups =
       PileupFlatMapUtils.pileupFlatMap[PileupElement](
-        PartitionedRegions(
+        partitionReads(
           reads,
           new UniformPartitioner(5).partition(LociSet("chr1:1-9"))
         ),
@@ -321,7 +323,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
 
     val elements =
       PileupFlatMapUtils.pileupFlatMapTwoRDDs[PileupElement](
-        PartitionedRegions(
+        partitionReads(
           reads1 ++ reads2,
           new UniformPartitioner(1000).partition(LociSet("chr1:1-500"))
         ),
@@ -349,7 +351,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
 
     val pileups =
       PileupFlatMapUtils.pileupFlatMap[PileupElement](
-        PartitionedRegions(
+        partitionReads(
           reads,
           new UniformPartitioner(5).partition(LociSet("chr1:1-12"))
         ),

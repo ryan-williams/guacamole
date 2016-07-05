@@ -6,7 +6,7 @@ import org.hammerlab.guacamole.loci.partitioning.ApproximatePartitioner.{MicroPa
 import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.{NumPartitions, PartitionIndex}
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
-import org.hammerlab.guacamole.reference.ReferenceRegion
+import org.hammerlab.guacamole.reference.Region
 import org.kohsuke.args4j.{Option => Args4jOption}
 
 import scala.collection.Map
@@ -60,10 +60,10 @@ trait ApproximatePartitionerArgs extends UniformPartitionerArgs {
  *                                    will result in an exact calculation.
  * @return LociMap of locus -> partition assignments.
  */
-class ApproximatePartitioner[R <: ReferenceRegion: ClassTag](regions: RDD[R],
-                                                             halfWindowSize: Int,
-                                                             numPartitions: NumPartitions,
-                                                             microPartitionsPerPartition: NumMicroPartitions)
+class ApproximatePartitioner[R <: Region: ClassTag](regions: RDD[R],
+                                                    halfWindowSize: Int,
+                                                    numPartitions: NumPartitions,
+                                                    microPartitionsPerPartition: NumMicroPartitions)
   extends LociPartitioner {
 
   def partition(loci: LociSet): LociPartitioning = {
@@ -188,9 +188,9 @@ object ApproximatePartitioner {
   type MicroPartitionIndex = Long
   type NumMicroPartitions = Long
 
-  def apply[R <: ReferenceRegion : ClassTag](regions: RDD[R],
-                                             halfWindowSize: Int,
-                                             args: ApproximatePartitionerArgs): ApproximatePartitioner[R] = {
+  def apply[R <: Region : ClassTag](regions: RDD[R],
+                                    halfWindowSize: Int,
+                                    args: ApproximatePartitionerArgs): ApproximatePartitioner[R] = {
     val sc = regions.sparkContext
     val numPartitions =
       if (args.parallelism == 0)

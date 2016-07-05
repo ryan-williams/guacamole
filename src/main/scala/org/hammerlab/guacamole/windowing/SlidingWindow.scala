@@ -21,7 +21,7 @@ package org.hammerlab.guacamole.windowing
 import org.apache.spark.Logging
 import org.hammerlab.guacamole.loci.set.LociIterator
 import org.hammerlab.guacamole.readsets.PerSample
-import org.hammerlab.guacamole.reference.{Contig, ReferenceRegion}
+import org.hammerlab.guacamole.reference.{Contig, Region}
 
 import scala.collection.mutable
 
@@ -42,9 +42,9 @@ import scala.collection.mutable
  *                       regions that overlap the exact locus being considered, with no surrounding window.
  * @param rawSortedRegions Iterator of regions, sorted by the aligned start locus.
  */
-case class SlidingWindow[R <: ReferenceRegion](contig: Contig,
-                                               halfWindowSize: Long,
-                                               rawSortedRegions: Iterator[R]) extends Logging {
+case class SlidingWindow[R <: Region](contig: Contig,
+                                      halfWindowSize: Long,
+                                      rawSortedRegions: Iterator[R]) extends Logging {
   /** The locus currently under consideration. */
   var currentLocus = -1L
   /** The new regions that were added to currentRegions as a result of the most recent call to setCurrentLocus. */
@@ -59,7 +59,7 @@ case class SlidingWindow[R <: ReferenceRegion](contig: Contig,
     region
   }).buffered
 
-  private val currentRegionsPriorityQueue = new mutable.PriorityQueue[R]()(ReferenceRegion.orderByEnd)
+  private val currentRegionsPriorityQueue = new mutable.PriorityQueue[R]()(Region.orderByEnd)
 
   /** The regions that overlap the window surrounding [[currentLocus]]. */
   def currentRegions(): Vector[R] = {
@@ -140,9 +140,9 @@ object SlidingWindow {
    * @param skipEmpty whether to skip over loci for which no window has any regions
    * @return Some(locus) if there was another locus left to process, otherwise None
    */
-  def advanceMultipleWindows[R <: ReferenceRegion](windows: PerSample[SlidingWindow[R]],
-                                                   loci: LociIterator,
-                                                   skipEmpty: Boolean = true): Option[Long] = {
+  def advanceMultipleWindows[R <: Region](windows: PerSample[SlidingWindow[R]],
+                                          loci: LociIterator,
+                                          skipEmpty: Boolean = true): Option[Long] = {
     if (skipEmpty) {
       while (loci.hasNext) {
         val nextNonEmptyLocus = windows.flatMap(_.nextLocusWithRegions).reduceOption(_ min _)

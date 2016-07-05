@@ -7,7 +7,7 @@ import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.readsets.RegionRDD._
-import org.hammerlab.guacamole.reference.{Contig, ReferencePosition, ReferenceRegion}
+import org.hammerlab.guacamole.reference.{Contig, Position, Region}
 import org.hammerlab.guacamole.util.{GuacFunSuite, KryoTestRegistrar}
 import org.hammerlab.magic.rdd.CmpStats
 import org.hammerlab.magic.rdd.EqualsRDD._
@@ -26,11 +26,11 @@ class RegionRDDSuiteRegistrar extends KryoTestRegistrar {
   }
 }
 
-class RegionRDDSuite extends GuacFunSuite with Util with ContigLengthsUtil {
+class RegionRDDSuite extends GuacFunSuite with ReadsRDDUtil with ContigLengthsUtil {
 
   override def registrar = "org.hammerlab.guacamole.readsets.RegionRDDSuiteRegistrar"
 
-  def testLoci[T, U](actual: Array[(ReferencePosition, T)],
+  def testLoci[T, U](actual: Array[(Position, T)],
                      actualStrs: Array[(String, U)],
                      expected: List[(String, U)]): Unit = {
 
@@ -69,8 +69,8 @@ class RegionRDDSuite extends GuacFunSuite with Util with ContigLengthsUtil {
     testLoci(actual, actualStrs, expected)
   }
 
-  def testRDDReads[R <: ReferenceRegion](rdd: RDD[(ReferencePosition, Iterable[R])],
-                                         expected: List[(String, Iterable[(Contig, Int, Int)])]) = {
+  def testRDDReads[R <: Region](rdd: RDD[(Position, Iterable[R])],
+                                expected: List[(String, Iterable[(Contig, Int, Int)])]) = {
     val actual = rdd.map(t => t._1 -> t._2.toList).collect()
     val actualStrs: Array[(String, Iterable[(Contig, Int, Int)])] =
       for {

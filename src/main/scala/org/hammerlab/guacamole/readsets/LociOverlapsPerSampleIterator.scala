@@ -2,7 +2,7 @@ package org.hammerlab.guacamole.readsets
 
 import org.hammerlab.guacamole.readsets.LociIntervalsPerSample.SampleInterval
 import org.hammerlab.guacamole.reference.{HasLocus, Interval}
-import org.hammerlab.guacamole.reference.ReferencePosition.Locus
+import org.hammerlab.guacamole.reference.Position.Locus
 
 import scala.collection.mutable
 
@@ -17,7 +17,7 @@ class LociOverlapsPerSampleIterator[I <: SampleInterval](halfWindowSize: Int,
                                                          regions: BufferedIterator[I])
   extends SkippableLociIterator[LociIntervalsPerSample[I]] {
 
-  private val queues = Vector.fill(numSamples)(new mutable.PriorityQueue[I]()(Interval.orderByEnd[I]))
+  private val queues = Vector.fill(numSamples)(new mutable.PriorityQueue[I]()(Interval.orderByEndDesc[I]))
 
   override def _advance: Option[LociIntervalsPerSample[I]] = {
     updateQueue()

@@ -29,7 +29,7 @@ import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.reads.{MappedRead, MateAlignmentProperties, PairedRead, Read}
 import org.hammerlab.guacamole.readsets.{InputFilters, ReadLoadingConfig, ReadSets, ReadsArgs, ReadsRDD}
 import org.hammerlab.guacamole.reference.ReferenceBroadcast.MapBackedReferenceSequence
-import org.hammerlab.guacamole.reference.ReferencePosition.Locus
+import org.hammerlab.guacamole.reference.Position.Locus
 import org.hammerlab.guacamole.reference.{Contig, ContigSequence, ReferenceBroadcast}
 
 import scala.collection.mutable
@@ -215,8 +215,10 @@ object TestUtil {
                             reference: ReferenceBroadcast): (Pileup, Pileup) = {
     val contig = tumorReads(0).contig
     assume(normalReads(0).contig == contig)
-    (Pileup(tumorReads, contig, locus, reference.getContig(contig)),
-      Pileup(normalReads, contig, locus, reference.getContig(contig)))
+    (
+      Pileup(tumorReads.filter(_.overlapsLocus(locus)), contig, locus, reference.getContig(contig)),
+      Pileup(normalReads.filter(_.overlapsLocus(locus)), contig, locus, reference.getContig(contig))
+    )
   }
 
   def loadPileup(sc: SparkContext,
@@ -240,7 +242,7 @@ object TestUtil {
       localReads,
       actualContig,
       locus,
-      referenceContigSequence = reference.getContig(actualContig)
+      reference = reference.getContig(actualContig)
     )
   }
 

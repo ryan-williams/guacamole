@@ -4,7 +4,7 @@ import org.hammerlab.guacamole.commands.jointcaller.pileup_summarization.{Multip
 import org.hammerlab.guacamole.commands.jointcaller.{AlleleAtLocus, InputCollection, Parameters}
 import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.readsets.PerSample
-import org.hammerlab.guacamole.reference.{Contig, ReferenceBroadcast, ReferenceRegion}
+import org.hammerlab.guacamole.reference.{Contig, ReferenceBroadcast, Region}
 import org.hammerlab.guacamole.util.Bases
 
 /**
@@ -18,7 +18,7 @@ import org.hammerlab.guacamole.util.Bases
 case class MultiSampleMultiAlleleEvidence(contig: Contig,
                                           start: Long,
                                           singleAlleleEvidences: Seq[MultiSampleSingleAlleleEvidence])
-    extends ReferenceRegion {
+    extends Region {
 
 
   assume(singleAlleleEvidences.forall(_.allele.contig == contig))
@@ -82,7 +82,7 @@ object MultiSampleMultiAlleleEvidence {
       pileup => pileup.copy(elements = pileup.elements.filter(!_.isClipped))).toVector
     val normalPileups = inputs.normalDNA.map(input => filteredPileups(input.index))
 
-    val contig = normalPileups.head.referenceName
+    val contig = normalPileups.head.contig
     val locus = normalPileups.head.locus
 
     // We only call variants at a site if the reference base is a standard base (i.e. not N).

@@ -1,6 +1,6 @@
 package org.hammerlab.guacamole.loci.set
 
-import org.hammerlab.guacamole.reference.{ReferencePosition, Contig => ReferenceContig}
+import org.hammerlab.guacamole.reference.{Position, Contig => ReferenceContig}
 
 /**
  * An iterator over loci on a single contig. Loci from this iterator are sorted (monotonically increasing).
@@ -9,15 +9,15 @@ import org.hammerlab.guacamole.reference.{ReferencePosition, Contig => Reference
  * skipping ahead past a given locus.
  */
 class ContigIterator(val contig: ReferenceContig, val loci: LociIterator)
-  extends BufferedIterator[ReferencePosition] {
+  extends BufferedIterator[Position] {
 
-  override def head: ReferencePosition = ReferencePosition(contig, loci.head)
+  override def head: Position = Position(contig, loci.head)
 
   override def hasNext: Boolean = loci.hasNext
 
-  override def next(): ReferencePosition = ReferencePosition(contig, loci.next())
+  override def next(): Position = Position(contig, loci.next())
 
-  def skipTo(nextPos: ReferencePosition): Unit = {
+  def skipTo(nextPos: Position): Unit = {
     if (nextPos.contig == contig) {
       loci.skipTo(nextPos.locus)
     }

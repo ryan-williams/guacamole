@@ -1,6 +1,6 @@
 package org.hammerlab.guacamole.distributed
 
-import org.hammerlab.guacamole.reference.{Contig, ReferenceRegion}
+import org.hammerlab.guacamole.reference.{Contig, Region}
 
 /**
  * Using an iterator of regions sorted by (contig, start locus), this class exposes a way to get separate iterators
@@ -19,7 +19,7 @@ import org.hammerlab.guacamole.reference.{Contig, ReferenceRegion}
  *
  * @param regionIterator regions, sorted by contig and start locus.
  */
-class RegionsByContig[R <: ReferenceRegion](regionIterator: Iterator[R]) {
+class RegionsByContig[R <: Region](regionIterator: Iterator[R]) {
 
   private val buffered = regionIterator.buffered
   private var seenContigs = List.empty[Contig]

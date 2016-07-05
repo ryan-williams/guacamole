@@ -24,8 +24,12 @@ class UnionLociIterator[+T <: HasLocus](lociObjs1: BufferedIterator[T],
 
         if (locus1 < locus2)
           Some(lociObjs1.next())
-        else
+        else if (locus1 > locus2)
           Some(lociObjs2.next())
+        else {
+          lociObjs1.next()
+          Some(lociObjs2.next())
+        }
     }
   }
 }

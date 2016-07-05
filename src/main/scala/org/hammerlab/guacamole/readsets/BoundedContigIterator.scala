@@ -1,8 +1,8 @@
 package org.hammerlab.guacamole.readsets
 
-import org.hammerlab.guacamole.reference.{Contig, ReferencePosition, ReferenceRegion}
+import org.hammerlab.guacamole.reference.{Contig, Position, Region}
 
-class BoundedContigIterator[R <: ReferenceRegion] private(stopAt: Long, contigRegionsRaw: ContigIterator[R])
+class BoundedContigIterator[R <: Region] private(stopAt: Long, contigRegionsRaw: ContigIterator[R])
   extends Iterator[R] {
 
   val contigRegions = contigRegionsRaw.buffered
@@ -20,13 +20,13 @@ class BoundedContigIterator[R <: ReferenceRegion] private(stopAt: Long, contigRe
 }
 
 object BoundedContigIterator {
-  def apply[R <: ReferenceRegion](contig: Contig, stopAt: Long, regions: Iterator[R]): BoundedContigIterator[R] =
+  def apply[R <: Region](contig: Contig, stopAt: Long, regions: Iterator[R]): BoundedContigIterator[R] =
     new BoundedContigIterator(stopAt, new ContigIterator(contig, regions.buffered))
 
-  def apply[R <: ReferenceRegion](lociToTake: Long, regions: Iterator[R]): Iterator[R] = {
+  def apply[R <: Region](lociToTake: Long, regions: Iterator[R]): Iterator[R] = {
     if (regions.hasNext) {
       val buffered = regions.buffered
-      val ReferencePosition(contig, end) = buffered.head.endPos
+      val Position(contig, end) = buffered.head.endPos
       BoundedContigIterator(contig, end + lociToTake, buffered)
     } else
       Iterator()

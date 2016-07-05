@@ -102,15 +102,22 @@ object PileupFlatMapUtils {
       halfWindowSize = 0L,
       initialState = None,
       function = (maybePileups: Option[PerSample[Pileup]], windows: PerSample[SlidingWindow[MappedRead]]) => {
-        val advancedPileups = maybePileups match {
-          case Some(existingPileups) => {
-            existingPileups.zip(windows).map(
-              pileupAndWindow => initOrMovePileup(
-                Some(pileupAndWindow._1),
-                pileupAndWindow._2,
-                reference.getContig(windows(0).contig)))
-          }
-          case None => windows.map(initOrMovePileup(None, _, reference.getContig(windows(0).contig)))
+        val advancedPileups =
+          maybePileups match {
+
+            case Some(existingPileups) =>
+              existingPileups
+                .zip(windows)
+                .map(
+                  pileupAndWindow => initOrMovePileup(
+                    Some(pileupAndWindow._1),
+                    pileupAndWindow._2,
+                    reference.getContig(windows(0).contig)
+                  )
+                )
+
+            case None =>
+              windows.map(initOrMovePileup(None, _, reference.getContig(windows(0).contig)))
         }
         (Some(advancedPileups), function(advancedPileups))
       })

@@ -7,8 +7,8 @@ import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.map.LociMap
 import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.PartitionIndex
 import org.hammerlab.guacamole.loci.set.LociSet
-import org.hammerlab.guacamole.reference.ReferencePosition.Locus
-import org.hammerlab.guacamole.reference.ReferenceRegion
+import org.hammerlab.guacamole.reference.Position.Locus
+import org.hammerlab.guacamole.reference.Region
 import org.hammerlab.guacamole.util.Saveable
 import org.hammerlab.magic.util.Stats
 
@@ -35,6 +35,7 @@ case class LociPartitioning(map: LociMap[PartitionIndex]) extends Saveable {
 
   override def save(os: OutputStream): Unit = {
     map.prettyPrint(os)
+    os.close()
   }
 
   override def toString: String = map.toString
@@ -42,14 +43,12 @@ case class LociPartitioning(map: LociMap[PartitionIndex]) extends Saveable {
 
 object LociPartitioning {
 
-  def load(is: InputStream): LociPartitioning = {
-    LociPartitioning(LociMap.load(is))
-  }
+  def load(is: InputStream): LociPartitioning = LociPartitioning(LociMap.load(is))
 
-  def apply[R <: ReferenceRegion: ClassTag](regions: RDD[R],
-                                            loci: LociSet,
-                                            args: AllLociPartitionerArgs,
-                                            halfWindowSize: Int = 0): LociPartitioning = {
+  def apply[R <: Region: ClassTag](regions: RDD[R],
+                                   loci: LociSet,
+                                   args: AllLociPartitionerArgs,
+                                   halfWindowSize: Int = 0): LociPartitioning = {
     for (lociPartitioningPath <- args.lociPartitioningPathOpt) {
       val path = new Path(lociPartitioningPath)
       val fs = path.getFileSystem(regions.sparkContext.hadoopConfiguration)

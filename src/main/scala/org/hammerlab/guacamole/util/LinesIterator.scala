@@ -5,16 +5,11 @@ import java.io.{BufferedReader, IOException, InputStream, InputStreamReader}
 import org.hammerlab.magic.iterator.OptionIterator
 
 class LinesIterator(br: BufferedReader) extends OptionIterator[String] {
-  override def _advance: Option[String] = {
-    try {
+  override def _advance: Option[String] =
+    if (br.ready)
       Some(br.readLine())
-    } catch {
-      case e: IOException => {
-        br.close()
-        None
-      }
-    }
-  }
+    else
+      None
 }
 
 object LinesIterator {

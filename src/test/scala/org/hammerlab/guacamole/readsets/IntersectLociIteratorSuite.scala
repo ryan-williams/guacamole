@@ -1,10 +1,10 @@
 package org.hammerlab.guacamole.readsets
 
 import org.hammerlab.guacamole.loci.set.LociSet
-import org.hammerlab.guacamole.reference.{ReferencePosition, TestInterval}
-import org.hammerlab.guacamole.util.GuacFunSuite
+import org.hammerlab.guacamole.reference.Position
+import org.scalatest.FunSuite
 
-class IntersectLociIteratorSuite extends GuacFunSuite with Util {
+class IntersectLociIteratorSuite extends FunSuite with ReadsUtil {
 
   def checkReads(
     halfWindowSize: Int,
@@ -30,7 +30,7 @@ class IntersectLociIteratorSuite extends GuacFunSuite with Util {
       for {
         LociIntervals(locus, reads) <- it
       } yield
-        ReferencePosition(contig, locus) -> reads,
+        Position(contig, locus) -> reads,
       (for {
         (locus, str) <- expected
       } yield

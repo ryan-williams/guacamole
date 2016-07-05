@@ -5,7 +5,7 @@ import java.lang.{Long => JLong}
 import com.google.common.collect.{Range => JRange}
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
-import org.hammerlab.guacamole.reference.ReferencePosition
+import org.hammerlab.guacamole.reference.Position
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -28,14 +28,14 @@ class TakeLociIterator(it: BufferedIterator[PositionCoverage],
     // Outer loop iterates over contigs.
     while (it.hasNext && takingLoci) {
 
-      var (ReferencePosition(curContig, _), _) = it.head
+      var (Position(curContig, _), _) = it.head
       var continuingContig = true
       var start: Long = -1L
       var end: Long = -1L
 
       // Inner loop accumulates loci only within the current contig.
       while (it.hasNext && takingLoci && continuingContig) {
-        val (ReferencePosition(nextContig, nextLocus), Coverage(depth, starts, _)) = it.head
+        val (Position(nextContig, nextLocus), Coverage(depth, starts, _)) = it.head
         if (curContig == nextContig) {
 
           // When starting a new range, we inherit not just the reads that start at our current locus, but all reads

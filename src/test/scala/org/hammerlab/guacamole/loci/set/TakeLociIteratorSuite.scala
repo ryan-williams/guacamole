@@ -2,7 +2,7 @@ package org.hammerlab.guacamole.loci.set
 
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
-import org.hammerlab.guacamole.reference.ReferencePosition
+import org.hammerlab.guacamole.reference.Position
 import org.scalatest.{FunSuite, Matchers}
 
 class TakeLociIteratorSuite extends FunSuite with Matchers {
@@ -12,7 +12,7 @@ class TakeLociIteratorSuite extends FunSuite with Matchers {
       for {
         ((contig, locus), (depth, starts, ends)) <- input
       } yield
-        ReferencePosition(contig, locus) -> Coverage(depth, starts, ends)
+        Position(contig, locus) -> Coverage(depth, starts, ends)
 
     val expected = expectedStrs.map(LociSet.apply)
 

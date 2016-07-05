@@ -216,7 +216,7 @@ case class PileupElement(
    */
   @tailrec
   final def advanceToLocus(newLocus: Long): PileupElement = {
-    assume(newLocus >= locus, "Can't rewind to locus %d from %d. Pileups only advance.".format(newLocus, locus))
+    assume(newLocus >= locus, s"Can't rewind to locus $newLocus from $locus. Pileups only advance. $read")
     assume(newLocus < read.end, "This read stops at position %d. Can't advance to %d".format(read.end, newLocus))
     if (currentCigarElementContainsLocus(newLocus)) {
       // Aside: the current cigar element must consume reference bases if we've gotten here.

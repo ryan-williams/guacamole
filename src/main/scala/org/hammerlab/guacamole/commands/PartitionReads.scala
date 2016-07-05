@@ -2,7 +2,6 @@ package org.hammerlab.guacamole.commands
 
 import org.apache.spark.SparkContext
 import org.hammerlab.guacamole.loci.partitioning.AllLociPartitionerArgs
-import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.readsets.{PartitionedRegions, ReadSets}
 import org.kohsuke.args4j.{Option => Args4jOption}
 
@@ -20,13 +19,12 @@ object PartitionReads extends SparkCommand[PartitionReadsArgs] {
 
   override def run(args: PartitionReadsArgs, sc: SparkContext): Unit = {
 
-    println(args.partitioningDirOpt)
-//    val readsets = ReadSets(sc, args.pathsAndSampleNames)
-//    val mappedReads = readsets.mappedReadsRDDs
-//    val ReadSets(_, sequenceDictionary, contigLengths) = readsets
-//
-//    val loci = args.parseLoci(sc.hadoopConfiguration).result(contigLengths)
-//
-//    PartitionedRegions(readsets.allMappedReads, loci, args, args.halfWindow)
+    val readsets = ReadSets(sc, args.pathsAndSampleNames)
+    val mappedReads = readsets.mappedReadsRDDs
+    val ReadSets(_, sequenceDictionary, contigLengths) = readsets
+
+    val loci = args.parseLoci(sc.hadoopConfiguration).result(contigLengths)
+
+    PartitionedRegions(readsets.allMappedReads, loci, args, args.halfWindow)
   }
 }

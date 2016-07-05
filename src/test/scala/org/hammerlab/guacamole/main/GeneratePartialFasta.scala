@@ -27,7 +27,12 @@ class GeneratePartialFastaArguments
   @Args4jOption(name = "--padding", required = false, usage = "Number of bases to pad the reference around the loci")
   var padding: Int = 0
 
-  @Argument(required = true, multiValued = true, usage = "Reads to write out overlapping fasta sequence for")
+  @Argument(
+    required = false,
+    multiValued = true,
+    metaVar = "bams",
+    usage = "Reads to write out overlapping fasta sequence for"
+  )
   var bams: Array[String] = Array.empty
 }
 

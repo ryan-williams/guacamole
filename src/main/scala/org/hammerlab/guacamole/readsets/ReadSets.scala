@@ -41,13 +41,13 @@ case class ReadSets(readsRDDs: PerSample[ReadsRDD],
 
   def sc = readsRDDs.head.reads.sparkContext
 
-  val (mappedReadsRDDs, sourceFiles) = readsRDDs.map(readsRDD => (readsRDD.mappedReads, readsRDD.sourceFile)).unzip
+  lazy val (mappedReadsRDDs, sourceFiles) = readsRDDs.map(readsRDD => (readsRDD.mappedReads, readsRDD.sourceFile)).unzip
 
-  val allMappedReads = sc.union(mappedReadsRDDs).setName("unioned reads")
+  lazy val allMappedReads = sc.union(mappedReadsRDDs).setName("unioned reads")
 
   lazy val countStats = allMappedReads.countStats
 
-  implicit val contigLengthsBroadcast = sc.broadcast(contigLengths)
+  implicit lazy val contigLengthsBroadcast = sc.broadcast(contigLengths)
 
   @transient lazy val allLoci = LociSet.all(contigLengths)
   @transient lazy val allLociBroadcast = sc.broadcast(allLoci)

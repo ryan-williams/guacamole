@@ -18,14 +18,14 @@
 
 package org.hammerlab.guacamole.variants
 
-import org.bdgenomics.formats.avro.{Contig, DatabaseVariantAnnotation, Variant}
-import org.hammerlab.guacamole.reference.{ReferenceRegion, Contig => ReferenceContig}
+import org.bdgenomics.formats.avro.{Contig, DatabaseVariantAnnotation, Variant => BDGVariant}
+import org.hammerlab.guacamole.reference.{Region, Contig => ReferenceContig}
 import org.hammerlab.guacamole.util.Bases
 
 /**
  * Base properties of a genomic change in a sequence sample from a reference genome
  */
-trait ReferenceVariant extends ReferenceRegion {
+trait Variant extends Region {
 
   val sampleName: String
 
@@ -40,7 +40,7 @@ trait ReferenceVariant extends ReferenceRegion {
   val length: Int
 
   /** Conversion to ADAMVariant */
-  def adamVariant = Variant.newBuilder
+  def adamVariant = BDGVariant.newBuilder
     .setStart(start)
     .setEnd(end)
     .setReferenceAllele(Bases.basesToString(allele.refBases))

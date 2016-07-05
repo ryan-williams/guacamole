@@ -5,7 +5,7 @@ import java.lang.{Long => JLong}
 
 import com.google.common.collect.{RangeSet, TreeRangeSet, Range => JRange}
 import org.hammerlab.guacamole.loci.SimpleRange
-import org.hammerlab.guacamole.reference.ReferencePosition.Locus
+import org.hammerlab.guacamole.reference.Position.Locus
 import org.hammerlab.guacamole.reference.{Contig => ReferenceContig}
 import org.hammerlab.guacamole.strings.TruncatedToString
 

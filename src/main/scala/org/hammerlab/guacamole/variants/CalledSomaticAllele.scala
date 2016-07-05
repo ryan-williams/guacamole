@@ -43,7 +43,7 @@ case class CalledSomaticAllele(sampleName: String,
                                tumorVariantEvidence: AlleleEvidence,
                                normalReferenceEvidence: AlleleEvidence,
                                rsID: Option[Int] = None,
-                               length: Int = 1) extends ReferenceVariant {
+                               length: Int = 1) extends Variant {
   val end: Long = start + 1L
 
   // P ( variant in tumor AND no variant in normal) = P(variant in tumor) * P(reference in normal)

@@ -1,8 +1,8 @@
 package org.hammerlab.guacamole.readsets
 
-import org.hammerlab.guacamole.reference.{Contig, ReferenceRegion}
+import org.hammerlab.guacamole.reference.{Contig, Region}
 
-case class ContigIterator[+R <: ReferenceRegion](contig: Contig, regions: BufferedIterator[R])
+case class ContigIterator[+R <: Region](contig: Contig, regions: BufferedIterator[R])
   extends BufferedIterator[R] {
 
   override def head: R =
@@ -23,7 +23,7 @@ case class ContigIterator[+R <: ReferenceRegion](contig: Contig, regions: Buffer
 }
 
 object ContigIterator {
-  def apply[R <: ReferenceRegion](regions: BufferedIterator[R]): ContigIterator[R] = {
+  def apply[R <: Region](regions: BufferedIterator[R]): ContigIterator[R] = {
     ContigIterator(regions.head.contig, regions)
   }
 }

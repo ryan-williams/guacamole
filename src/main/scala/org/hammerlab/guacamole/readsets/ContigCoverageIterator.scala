@@ -3,7 +3,7 @@ package org.hammerlab.guacamole.readsets
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
 import org.hammerlab.guacamole.loci.set.LociIterator
-import org.hammerlab.guacamole.reference.{Contig, Interval, ReferencePosition, ReferenceRegion}
+import org.hammerlab.guacamole.reference.{Contig, Interval, Position, Region}
 
 import scala.collection.mutable
 
@@ -71,13 +71,13 @@ class ContigCoverageIterator private(halfWindowSize: Int,
 
     _next = null
 
-    ReferencePosition(contig, curPos) -> r
+    Position(contig, curPos) -> r
   }
 }
 
 object ContigCoverageIterator {
   def apply(halfWindowSize: Int,
-            regions: ContigIterator[ReferenceRegion],
+            regions: ContigIterator[Region],
             loci: LociIterator): ContigCoverageIterator =
     new ContigCoverageIterator(halfWindowSize, regions.contig, regions.buffered, loci)
 }

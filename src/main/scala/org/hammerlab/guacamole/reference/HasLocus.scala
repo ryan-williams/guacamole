@@ -1,6 +1,6 @@
 package org.hammerlab.guacamole.reference
 
-import org.hammerlab.guacamole.reference.ReferencePosition.Locus
+import org.hammerlab.guacamole.reference.Position.Locus
 
 trait HasLocus {
   def locus: Locus

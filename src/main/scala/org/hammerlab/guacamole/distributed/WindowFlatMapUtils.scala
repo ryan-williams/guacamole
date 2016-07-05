@@ -3,7 +3,7 @@ package org.hammerlab.guacamole.distributed
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.set.{Contig, LociSet}
 import org.hammerlab.guacamole.readsets.{HasSampleId, NumSamples, PartitionedRegions, PerSample}
-import org.hammerlab.guacamole.reference.ReferenceRegion
+import org.hammerlab.guacamole.reference.Region
 import org.hammerlab.guacamole.windowing.{SlidingWindow, SplitIterator}
 
 import scala.reflect.ClassTag
@@ -33,12 +33,12 @@ object WindowFlatMapUtils {
     * @tparam S state type
     * @return RDD[T] of flatmap results
     */
-  def windowFlatMapWithState[R <: ReferenceRegion with HasSampleId: ClassTag, T: ClassTag, S](numSamples: NumSamples,
-                                                                                              partitionedReads: PartitionedRegions[R],
-                                                                                              skipEmpty: Boolean,
-                                                                                              halfWindowSize: Long,
-                                                                                              initialState: S,
-                                                                                              function: (S, PerSample[SlidingWindow[R]]) => (S, Iterator[T])): RDD[T] = {
+  def windowFlatMapWithState[R <: Region with HasSampleId: ClassTag, T: ClassTag, S](numSamples: NumSamples,
+                                                                                     partitionedReads: PartitionedRegions[R],
+                                                                                     skipEmpty: Boolean,
+                                                                                     halfWindowSize: Long,
+                                                                                     initialState: S,
+                                                                                     function: (S, PerSample[SlidingWindow[R]]) => (S, Iterator[T])): RDD[T] = {
     windowTaskFlatMapMultipleRDDs(
       numSamples,
       partitionedReads,
@@ -75,12 +75,12 @@ object WindowFlatMapUtils {
     * @tparam T Type of the aggregation value
     * @return Iterator[T], the aggregate values collected over contigs
     */
-  def windowFoldLoci[R <: ReferenceRegion with HasSampleId: ClassTag, T: ClassTag](numSamples: NumSamples,
-                                                                                   partitionedReads: PartitionedRegions[R],
-                                                                                   skipEmpty: Boolean,
-                                                                                   halfWindowSize: Long,
-                                                                                   initialValue: T,
-                                                                                   aggFunction: (T, PerSample[SlidingWindow[R]]) => T): RDD[T] = {
+  def windowFoldLoci[R <: Region with HasSampleId: ClassTag, T: ClassTag](numSamples: NumSamples,
+                                                                          partitionedReads: PartitionedRegions[R],
+                                                                          skipEmpty: Boolean,
+                                                                          halfWindowSize: Long,
+                                                                          initialValue: T,
+                                                                          aggFunction: (T, PerSample[SlidingWindow[R]]) => T): RDD[T] = {
     windowTaskFlatMapMultipleRDDs(
       numSamples,
       partitionedReads,
@@ -122,7 +122,7 @@ object WindowFlatMapUtils {
    * @tparam T type of value returned by function
    * @return flatMap results, RDD[T]
    */
-  private[distributed] def windowTaskFlatMapMultipleRDDs[R <: ReferenceRegion with HasSampleId: ClassTag, T: ClassTag](
+  private[distributed] def windowTaskFlatMapMultipleRDDs[R <: Region with HasSampleId: ClassTag, T: ClassTag](
     numSamples: NumSamples,
     partitionedReads: PartitionedRegions[R],
     function: (Long, LociSet, PerSample[Iterator[R]]) => Iterator[T]): RDD[T] = {
@@ -152,7 +152,7 @@ object WindowFlatMapUtils {
    * @tparam T result data type
    * @return Iterator[T] collected from each contig
    */
-  def collectByContig[R <: ReferenceRegion: ClassTag, T: ClassTag](
+  def collectByContig[R <: Region: ClassTag, T: ClassTag](
     taskRegionsPerSample: PerSample[Iterator[R]],
     taskLoci: LociSet,
     halfWindowSize: Long,

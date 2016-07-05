@@ -37,7 +37,7 @@ case class CalledAllele(sampleName: String,
                         allele: Allele,
                         evidence: AlleleEvidence,
                         rsID: Option[Int] = None,
-                        length: Int = 1) extends ReferenceVariant {
+                        length: Int = 1) extends Variant {
   val end: Long = start + 1L
 
 }

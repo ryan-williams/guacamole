@@ -20,26 +20,28 @@ package org.hammerlab.guacamole.pileup
 
 import org.hammerlab.guacamole.reads.MappedRead
 import org.hammerlab.guacamole.readsets.{NumSamples, PerSample, SampleId}
-import org.hammerlab.guacamole.reference.{Contig, ContigSequence}
+import org.hammerlab.guacamole.reference.Position.Locus
+import org.hammerlab.guacamole.reference.{Contig, ContigSequence, Position, PositionI}
 import org.hammerlab.guacamole.variants.Allele
 
 import scala.collection.mutable.ArrayBuffer
+import scala.math.PartiallyOrdered
 
 /**
  * A [[Pileup]] at a locus contains a sequence of [[PileupElement]] instances, one for every read that overlaps that
  * locus. Each [[PileupElement]] specifies the base read at the given locus in a particular read. It also keeps track
  * of the read itself and the offset of the base in the read.
  *
- * @param referenceName The contig name for all elements in this pileup.
+ * @param contig The contig name for all elements in this pileup.
  * @param locus The locus on the reference genome
  * @param referenceContigSequence The reference for this contig
  * @param elements Sequence of [[PileupElement]] instances giving the sequenced bases that align to a particular
  *                 reference locus, in arbitrary order.
  */
-case class Pileup(referenceName: Contig,
-                  locus: Long,
+case class Pileup(contig: Contig,
+                  locus: Locus,
                   referenceContigSequence: ContigSequence,
-                  elements: Iterable[PileupElement]) {
+                  elements: Iterable[PileupElement]) extends PositionI {
 
   val referenceBase: Byte = referenceContigSequence(locus.toInt)
 
@@ -49,9 +51,9 @@ case class Pileup(referenceName: Contig,
     elements.head
   }
 
-  assume(elements.forall(_.read.contig == referenceName),
+  assume(elements.forall(_.read.contig == contig),
     "Pileup reference name '%s' does not match read reference name(s): %s".format(
-      referenceName, elements.map(_.read.contig).filter(_ != referenceName).mkString(",")))
+      contig, elements.map(_.read.contig).filter(_ != contig).mkString(",")))
   assume(elements.forall(_.locus == locus), "Reads in pileup have mismatching loci")
 
   lazy val distinctAlleles: Seq[Allele] = elements.map(_.allele).toVector.distinct.sorted
@@ -69,11 +71,11 @@ case class Pileup(referenceName: Contig,
     } {
       elementBuffers(element.read.sampleId) += element
     }
-    elementBuffers.map(Pileup(referenceName, locus, referenceContigSequence, _))
+    elementBuffers.map(Pileup(contig, locus, referenceContigSequence, _))
   }
 
   lazy val bySampleMap: Map[SampleId, Pileup] =
-    elements.groupBy(_.read.sampleId).mapValues(Pileup(referenceName, locus, referenceContigSequence, _))
+    elements.groupBy(_.read.sampleId).mapValues(Pileup(contig, locus, referenceContigSequence, _))
 
   /**
    * Depth of pileup - number of reads at locus
@@ -110,7 +112,7 @@ case class Pileup(referenceName: Contig,
     if (elements.isEmpty && newReads.isEmpty) {
       // Optimization for common case.
       // If there are no reads, we won't know what the reference base is
-      Pileup(referenceName, newLocus, referenceContigSequence, Vector.empty[PileupElement])
+      Pileup(contig, newLocus, referenceContigSequence, Vector.empty[PileupElement])
     } else {
       // This code gets called many times. We are using while loops for performance.
       val builder = Vector.newBuilder[PileupElement]
@@ -131,7 +133,7 @@ case class Pileup(referenceName: Contig,
       }
 
       val newPileupElements = builder.result
-      Pileup(referenceName, newLocus, referenceContigSequence, newPileupElements)
+      Pileup(contig, newLocus, referenceContigSequence, newPileupElements)
     }
   }
 
@@ -156,12 +158,12 @@ object Pileup {
    *
    * @param reads Sequence of reads, in any order, that may or may not overlap the locus.
    * @param locus The locus to return a [[Pileup]] at.
-   * @param referenceContigSequence The reference for this pileup's contig
+   * @param reference The reference for this pileup's contig
    * @return A [[Pileup]] at the given locus.
    */
-  def apply(reads: Iterable[MappedRead], referenceName: String, locus: Long, referenceContigSequence: ContigSequence): Pileup = {
+  def apply(reads: Iterable[MappedRead], contig: Contig, locus: Locus, reference: ContigSequence): Pileup = {
     //TODO: Is this call to overlaps locus necessary?
-    val elements = reads.filter(_.overlapsLocus(locus)).map(PileupElement(_, locus, referenceContigSequence))
-    Pileup(referenceName, locus, referenceContigSequence, elements.toIndexedSeq)
+    val elements = reads/*.toVector.filter(_.overlapsLocus(locus))*/.map(PileupElement(_, locus, reference))
+    Pileup(contig, locus, reference, elements)
   }
 }

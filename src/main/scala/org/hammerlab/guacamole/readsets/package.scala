@@ -2,7 +2,7 @@ package org.hammerlab.guacamole
 
 import org.hammerlab.guacamole.reads.MappedRead
 import org.hammerlab.guacamole.reference.Contig
-import org.hammerlab.guacamole.reference.ReferencePosition.NumLoci
+import org.hammerlab.guacamole.reference.Position.NumLoci
 
 /**
  * Guacamole is a framework for writing variant callers on the Apache Spark platform. Several variant callers are

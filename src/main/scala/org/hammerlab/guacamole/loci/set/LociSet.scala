@@ -27,7 +27,7 @@ import org.apache.commons.io.IOUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.hammerlab.guacamole.readsets.ContigLengths
-import org.hammerlab.guacamole.reference.{ReferenceRegion, Contig => ReferenceContig}
+import org.hammerlab.guacamole.reference.{Region, Contig => ReferenceContig}
 import org.hammerlab.guacamole.strings.TruncatedToString
 
 import scala.collection.JavaConversions._
@@ -83,7 +83,7 @@ case class LociSet private(private val map: SortedMap[ReferenceContig, Contig]) 
   /** Build a truncate-able toString() out of underlying contig pieces. */
   def stringPieces: Iterator[String] = contigs.iterator.flatMap(_.stringPieces)
 
-  def intersects(region: ReferenceRegion): Boolean =
+  def intersects(region: Region): Boolean =
     onContig(region.contig).intersects(region.start, region.end)
 
   //def iterator: Iterator[ReferencePosition] = contigs.iterator.flatMap(contig => contig.iterator)

@@ -23,7 +23,7 @@ import org.apache.spark.rdd.RDD
 import org.bdgenomics.adam.rdd.ADAMContext
 import org.bdgenomics.formats.avro.Variant
 import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMap
-import org.hammerlab.guacamole.loci.partitioning.{UniformPartitioner, UniformPartitionerArgs}
+import org.hammerlab.guacamole.loci.partitioning.{AllLociPartitionerArgs, UniformPartitioner, UniformPartitionerArgs}
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.reads.MappedRead
@@ -34,7 +34,10 @@ import org.kohsuke.args4j.{Option => Args4jOption}
 
 object VariantSupport {
 
-  protected class Arguments extends UniformPartitionerArgs with ReadLoadingConfigArgs with ReadSets.Arguments {
+  protected class Arguments
+    extends AllLociPartitionerArgs
+      with ReadLoadingConfigArgs
+      with ReadSets.Arguments {
     @Args4jOption(name = "--input-variant", required = true, aliases = Array("-v"),
       usage = "")
     var variants: String = ""
@@ -88,9 +91,13 @@ object VariantSupport {
             .collect()
         )
 
-      val lociPartitioning = UniformPartitioner(args).partition(loci)
-
-      val partitionedReads = PartitionedRegions(readsets.allMappedReads, lociPartitioning)
+      val partitionedReads =
+        PartitionedRegions(
+          readsets.allMappedReads,
+          loci,
+          args,
+          halfWindowSize = 0
+        )
 
       val alleleCounts =
         pileupFlatMap[AlleleCount](
@@ -116,7 +123,7 @@ object VariantSupport {
       } yield
         AlleleCount(
           pileup.sampleName,
-          pileup.referenceName,
+          pileup.contig,
           pileup.locus,
           Bases.basesToString(allele.refBases),
           Bases.basesToString(allele.altBases),

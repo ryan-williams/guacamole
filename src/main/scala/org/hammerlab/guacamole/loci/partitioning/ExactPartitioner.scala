@@ -7,7 +7,7 @@ import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.readsets.RegionRDD
 import org.hammerlab.guacamole.readsets.RegionRDD._
-import org.hammerlab.guacamole.reference.{Contig, ReferenceRegion}
+import org.hammerlab.guacamole.reference.{Contig, Region}
 import org.hammerlab.guacamole.util.KeyOrdering
 import org.hammerlab.magic.iterator.GroupRunsIterator
 import org.kohsuke.args4j.{Option => Args4jOption}
@@ -22,32 +22,34 @@ trait ExactPartitionerArgs extends LociPartitionerArgs {
   var maxReadsPerPartition: Int = 500000
 }
 
-class ExactPartitioner[R <: ReferenceRegion: ClassTag](regions: RDD[R],
-                                                       halfWindowSize: Int,
-                                                       maxRegionsPerPartition: Int)
+class ExactPartitioner[R <: Region: ClassTag](regions: RDD[R],
+                                              halfWindowSize: Int,
+                                              maxRegionsPerPartition: Int,
+                                              printStats: Boolean)
   extends LociPartitioner {
 
   def partition(loci: LociSet): LociPartitioning = {
     val lociSetsRDD = regions.makeCappedLociSets(halfWindowSize, loci, maxRegionsPerPartition)
 
-    val depthRunsRDD = regions.partitionDepths(halfWindowSize, loci, maxRegionsPerPartition)
-    val (validLoci, invalidLoci) = RegionRDD.validLociCounts(depthRunsRDD)
+    if (printStats) {
+      val depthRunsRDD = regions.partitionDepths(halfWindowSize, loci, maxRegionsPerPartition)
+      val (validLoci, invalidLoci) = RegionRDD.validLociCounts(depthRunsRDD)
 
-    val totalLoci = validLoci + invalidLoci
+      val totalLoci = validLoci + invalidLoci
 
-    val numDepthRuns = depthRunsRDD.count
-    val numDepthRunsToTake = 1000
-    val depthRuns =
-      if (numDepthRuns <= numDepthRunsToTake)
-        depthRunsRDD.collect()
-      else
-        depthRunsRDD.take(numDepthRunsToTake)
+      val numDepthRuns = depthRunsRDD.count
+      val numDepthRunsToTake = 1000
+      val depthRuns =
+        if (numDepthRuns <= numDepthRunsToTake)
+          depthRunsRDD.collect()
+        else
+          depthRunsRDD.take(numDepthRunsToTake)
 
-    val avgRunLength =
-      (for { (_, num) <- depthRuns } yield (num * num).toLong).sum.toDouble / validLoci
+      val avgRunLength =
+        (for {(_, num) <- depthRuns} yield num.toLong * num).sum.toDouble / validLoci
 
-    val depthRunsByContig =
-      depthRuns
+      val depthRunsByContig =
+        depthRuns
         .groupBy(_._1._1)
         .mapValues(_.map {
           case ((_, valid), num) => num -> valid
@@ -55,41 +57,42 @@ class ExactPartitioner[R <: ReferenceRegion: ClassTag](regions: RDD[R],
         .toArray
         .sorted(new KeyOrdering[Contig, Array[(Int, Boolean)]](Contig.ordering))
 
-    val overflowMsg =
-      if (numDepthRuns > numDepthRunsToTake)
-        s". First $numDepthRunsToTake runs:"
-      else
-        ":"
+      val overflowMsg =
+        if (numDepthRuns > numDepthRunsToTake)
+          s". First $numDepthRunsToTake runs:"
+        else
+          ":"
 
-    def runsStr(runsIter: Iterator[(Int, Boolean)]): String = {
-      val runs = runsIter.toVector
-      val rs =
-        (for ((num, valid) <- runs) yield {
-          s"$num${if (valid) "\uD83D\uDC4D\uD83C\uDFFC" else "\uD83D\uDC4E\uD83C\uDFFC"}"
-        }).mkString(" ")
-      if (runs.length == 1)
-        s"$rs"
-      else {
-        val total = runs.map(_._1.toLong).sum
-        s"${runs.length} runs, $total loci (avg %.1f): $rs".format(total.toDouble / runs.length)
+      def runsStr(runsIter: Iterator[(Int, Boolean)]): String = {
+        val runs = runsIter.toVector
+        val rs =
+          (for ((num, valid) <- runs) yield {
+            s"$num${if (valid) "↓" else "↑"}"
+          }).mkString(" ")
+        if (runs.length == 1)
+          s"$rs"
+        else {
+          val total = runs.map(_._1.toLong).sum
+          s"${runs.length} runs, $total loci (avg %.1f): $rs".format(total.toDouble / runs.length)
+        }
       }
-    }
 
-    progress(
-      s"$validLoci (%.1f%%) valid loci, $invalidLoci invalid ($totalLoci total of ${loci.count} eligible)${overflowMsg}"
+      progress(
+        s"$validLoci (%.1f%%) valid loci, $invalidLoci invalid ($totalLoci total of ${loci.count} eligible)${overflowMsg}"
         .format(100.0 * validLoci / totalLoci),
-      (for {
-        (contig, runs) <- depthRunsByContig
-      } yield {
+        (for {
+          (contig, runs) <- depthRunsByContig
+        } yield {
 
-        val str =
-          GroupRunsIterator[(Int, Boolean)](runs, _._1 < avgRunLength)
+          val str =
+            GroupRunsIterator[(Int, Boolean)](runs, _._1 < avgRunLength)
             .map(runsStr)
             .mkString("\t\n")
 
-        s"$contig:\t$str"
-      }).mkString("\n")
-    )
+          s"$contig:\t$str"
+        }).mkString("\n")
+      )
+    }
 
     val lociSets = lociSetsRDD.collect()
 

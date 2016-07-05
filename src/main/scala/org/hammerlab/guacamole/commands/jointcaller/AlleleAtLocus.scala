@@ -4,7 +4,7 @@ import org.hammerlab.guacamole.commands.jointcaller.pileup_summarization.ReadSub
 import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.readsets.PerSample
 import org.hammerlab.guacamole.reference.Contig
-import org.hammerlab.guacamole.reference.ReferencePosition.Locus
+import org.hammerlab.guacamole.reference.Position.Locus
 import org.hammerlab.guacamole.util.Bases
 
 /**
@@ -91,11 +91,11 @@ object AlleleAtLocus {
                      onlyStandardBases: Boolean = true): Vector[AlleleAtLocus] = {
 
     assume(pileups.forall(_.locus == pileups.head.locus))
-    assume(pileups.forall(_.referenceName == pileups.head.referenceName))
+    assume(pileups.forall(_.contig == pileups.head.contig))
     assume(pileups.nonEmpty)
     val referenceContigSequence = pileups.head.referenceContigSequence
 
-    val contig = pileups.head.referenceName
+    val contig = pileups.head.contig
     val variantStart = pileups.head.locus + 1
     val alleleRequiredReadsActualReads = pileups.flatMap(pileup => {
       val requiredReads = math.max(

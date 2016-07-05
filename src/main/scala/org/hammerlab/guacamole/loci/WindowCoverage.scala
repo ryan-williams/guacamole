@@ -1,6 +1,6 @@
 package org.hammerlab.guacamole.loci
 
-import org.hammerlab.guacamole.reference.ReferencePosition
+import org.hammerlab.guacamole.reference.Position
 
 case class WindowCoverage(depth: Int = 0,
                           nextStarts: Int = 0,
@@ -36,5 +36,5 @@ case class Coverage(depth: Int = 0, starts: Int = 0, ends: Int = 0) {
 }
 
 object Coverage {
-  type PositionCoverage = (ReferencePosition, Coverage)
+  type PositionCoverage = (Position, Coverage)
 }

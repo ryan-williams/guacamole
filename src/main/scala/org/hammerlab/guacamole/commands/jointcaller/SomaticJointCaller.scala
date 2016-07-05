@@ -8,8 +8,9 @@ import org.hammerlab.guacamole.commands.jointcaller.evidence.{MultiSampleMultiAl
 import org.hammerlab.guacamole.loci.partitioning.AllLociPartitionerArgs
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
-import org.hammerlab.guacamole.pileup.{Pileup, PileupsRDD}
+import org.hammerlab.guacamole.pileup.{Pileup, PileupArgs, PileupsRDD}
 import PileupsRDD._
+import org.hammerlab.guacamole.distributed.PileupFlatMapUtils
 import org.hammerlab.guacamole.readsets.{PartitionedRegions, PerSample, ReadSets}
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.kohsuke.args4j.spi.StringArrayOptionHandler
@@ -19,7 +20,8 @@ object SomaticJoint {
   class Arguments
     extends AllLociPartitionerArgs
       with Parameters.CommandlineArguments
-      with InputCollection.Arguments {
+      with InputCollection.Arguments
+      with PileupArgs {
 
     @Args4jOption(name = "--out", usage = "Output path for all variants in VCF. Default: no output")
     var out: String = ""
@@ -45,9 +47,6 @@ object SomaticJoint {
 
     @Args4jOption(name = "--include-filtered", usage = "Include filtered calls")
     var includeFiltered: Boolean = false
-
-    @Args4jOption(name = "-q", usage = "Quiet: less stdout")
-    var quiet: Boolean = false
 
     // For example:
     //  --header-metadata kind=tuning_test version=4
@@ -161,7 +160,7 @@ object SomaticJoint {
                 forceCallLoci: LociSet = LociSet(),
                 onlySomatic: Boolean = false,
                 includeFiltered: Boolean = false,
-                args: AllLociPartitionerArgs = new AllLociPartitionerArgs {}): RDD[MultiSampleMultiAlleleEvidence] = {
+                args: Arguments = new Arguments {}): RDD[MultiSampleMultiAlleleEvidence] = {
 
     assume(loci.nonEmpty)
 
@@ -169,26 +168,17 @@ object SomaticJoint {
       PartitionedRegions(
         readsets.allMappedReads,
         lociSetMinusOne(loci),
-        args
+        args,
+        halfWindowSize = 0
       )
-
-    val perSamplePileupsRDD: RDD[PerSample[Pileup]] =
-      partitionedReads.perSamplePileups(
-        readsets.numSamples,
-        halfWindowSize = 0,
-        reference,
-        forceCallLoci
-      )
-
-    progress(s"Partitioned reads")
 
     val broadcastForceCallLoci = sc.broadcast(forceCallLoci)
 
-    perSamplePileupsRDD.flatMap(pileups => {
+    def pileupsCall(pileups: PerSample[Pileup]): Iterator[MultiSampleMultiAlleleEvidence] = {
       val forceCall =
         broadcastForceCallLoci
           .value
-          .onContig(pileups.head.referenceName)
+          .onContig(pileups.head.contig)
           .contains(pileups.head.locus + 1)
 
       MultiSampleMultiAlleleEvidence.make(
@@ -200,7 +190,33 @@ object SomaticJoint {
         onlySomatic,
         includeFiltered
       ).toIterator
-    })
+    }
+
+    args.pileupStrategy match {
+      case "windows" =>
+        PileupFlatMapUtils.pileupFlatMapMultipleRDDs(
+          readsets.numSamples,
+          partitionedReads,
+          skipEmpty = true,
+          pileupsCall,
+          reference
+        )
+      case "iterator" =>
+        val perSamplePileupsRDD: RDD[PerSample[Pileup]] =
+          partitionedReads.perSamplePileups(
+            readsets.numSamples,
+            reference,
+            forceCallLoci
+          )
+
+        progress(s"Partitioned reads")
+
+        perSamplePileupsRDD.flatMap(pileupsCall)
+
+      case s =>
+        throw new Exception(s"Invalid pileup-construction strategy: $s; valid options: windows, iterator.")
+    }
+
   }
 
   def writeCalls(calls: Seq[MultiSampleMultiAlleleEvidence],

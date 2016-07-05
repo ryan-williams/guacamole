@@ -70,6 +70,25 @@
               </includes>
             </relocation>
           </relocations>
+          <filters>
+            <filter>
+              <artifact>*:*</artifact>
+              <excludes>
+                <exclude>META-INF/*.SF</exclude>
+                <exclude>META-INF/*.DSA</exclude>
+                <exclude>META-INF/*.RSA</exclude>
+                <exclude>META-INF/LICENSE</exclude>
+                <exclude>META-INF/license</exclude>
+              </excludes>
+            </filter>
+          </filters>
+          <artifactSet>
+            <excludes>
+              <exclude>org.eclipse.jdt:*</exclude>
+              <exclude>org.scalatest:*</exclude>
+              <exclude>org.apache.maven:lib:tests</exclude>
+            </excludes>
+          </artifactSet>
         </configuration>
       </plugin>
       <plugin>
@@ -373,7 +392,8 @@
 
   <profiles>
     <profile>
-      <id>default</id>
+      <!-- Default profile: build Guacamole jar with shaded Guava. -->
+      <id>guac</id>
       <activation>
         <activeByDefault>true</activeByDefault>
       </activation>
@@ -382,36 +402,29 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-shade-plugin</artifactId>
-            <version>${shade.plugin.version}</version>
             <executions>
               <execution>
-                <id>full</id>
+                <id>default</id>
                 <phase>package</phase>
                 <goals>
                   <goal>shade</goal>
                 </goals>
                 <configuration>
-                  <finalName>guacamole-with-dependencies-${project.version}</finalName>
-                  <shadedArtifactAttached>true</shadedArtifactAttached>
-                  <shadedClassifierName>shaded</shadedClassifierName>
-                  <filters>
-                    <filter>
-                      <artifact>*:*</artifact>
-                      <excludes>
-                        <exclude>META-INF/*.SF</exclude>
-                        <exclude>META-INF/*.DSA</exclude>
-                        <exclude>META-INF/*.RSA</exclude>
-                        <exclude>META-INF/LICENSE</exclude>
-                        <exclude>META-INF/license</exclude>
-                      </excludes>
-                    </filter>
-                  </filters>
+                  <finalName>guacamole-${project.version}</finalName>
+                  <relocations>
+                    <relocation>
+                      <pattern>com.google.common</pattern>
+                      <shadedPattern>org.hammerlab.guavarelocated</shadedPattern>
+                      <includes>
+                        <include>com.google.common.**</include>
+                      </includes>
+                    </relocation>
+                  </relocations>
                   <artifactSet>
-                    <excludes>
-                      <exclude>org.eclipse.jdt:*</exclude>
-                      <exclude>org.scalatest:*</exclude>
-                      <exclude>org.apache.maven:lib:tests</exclude>
-                    </excludes>
+                    <includes>
+                      <include>org.hammerlab.guacamole:*</include>
+                      <include>com.google.guava:*</include>
+                    </includes>
                   </artifactSet>
                 </configuration>
               </execution>
@@ -523,56 +536,13 @@
       </build>
     </profile>
     <profile>
-      <id>thin</id>
+      <!-- "uber" profile: build a JAR with Guacamole and all transitive dependencies shaded, and Guava relocated. -->
+      <id>uber</id>
       <build>
         <plugins>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-shade-plugin</artifactId>
-            <version>${shade.plugin.version}</version>
-            <executions>
-              <execution>
-                <id>guava</id>
-                <phase>package</phase>
-                <goals>
-                  <goal>shade</goal>
-                </goals>
-                <configuration>
-                  <finalName>guacamole-${project.version}</finalName>
-                  <shadedArtifactAttached>false</shadedArtifactAttached>
-                  <filters>
-                    <filter>
-                      <artifact>*:*</artifact>
-                      <excludes>
-                        <exclude>META-INF/*.SF</exclude>
-                        <exclude>META-INF/*.DSA</exclude>
-                        <exclude>META-INF/*.RSA</exclude>
-                        <exclude>META-INF/LICENSE</exclude>
-                        <exclude>META-INF/license</exclude>
-                      </excludes>
-                    </filter>
-                  </filters>
-                  <artifactSet>
-                    <includes>
-                      <include>org.hammerlab.guacamole:*</include>
-                      <include>com.google.guava:*</include>
-                    </includes>
-                  </artifactSet>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-    <profile>
-      <id>deps</id>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-shade-plugin</artifactId>
-            <version>${shade.plugin.version}</version>
             <executions>
               <execution>
                 <id>deps</id>
@@ -581,24 +551,42 @@
                   <goal>shade</goal>
                 </goals>
                 <configuration>
-                  <finalName>guacamole-deps-only-${project.version}</finalName>
-                  <filters>
-                    <filter>
-                      <artifact>*:*</artifact>
-                      <excludes>
-                        <exclude>META-INF/*.SF</exclude>
-                        <exclude>META-INF/*.DSA</exclude>
-                        <exclude>META-INF/*.RSA</exclude>
-                        <exclude>META-INF/LICENSE</exclude>
-                        <exclude>META-INF/license</exclude>
-                      </excludes>
-                    </filter>
-                  </filters>
+                  <finalName>guacamole-with-deps-${project.version}</finalName>
+                  <relocations>
+                    <relocation>
+                      <pattern>com.google.common</pattern>
+                      <shadedPattern>org.hammerlab.guavarelocated</shadedPattern>
+                      <includes>
+                        <include>com.google.common.**</include>
+                      </includes>
+                    </relocation>
+                  </relocations>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <!-- "deps" profile: build a JAR with just Guacamole's transitive dependencies. -->
+      <id>deps</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-shade-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>deps</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>shade</goal>
+                </goals>
+                <configuration>
+                  <finalName>guacamole-deps-${project.version}</finalName>
                   <artifactSet>
                     <excludes>
-                      <exclude>org.eclipse.jdt:*</exclude>
-                      <exclude>org.scalatest:*</exclude>
-                      <exclude>org.apache.maven:lib:tests</exclude>
                       <exclude>org.hammerlab.guacamole:*</exclude>
                     </excludes>
                   </artifactSet>

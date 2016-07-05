@@ -115,7 +115,8 @@ object VAFHistogram {
         PartitionedRegions(
           readsets.allMappedReads,
           loci.result(contigLengths),
-          args
+          args,
+          halfWindowSize = 0
         )
 
       val reference = ReferenceBroadcast(args.referenceFastaPath, sc)

@@ -5,8 +5,8 @@ import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
 import org.hammerlab.guacamole.loci.set.{LociSet, TakeLociIterator}
-import org.hammerlab.guacamole.reference.ReferencePosition.NumLoci
-import org.hammerlab.guacamole.reference.{Contig, ReferencePosition, ReferenceRegion}
+import org.hammerlab.guacamole.reference.Position.NumLoci
+import org.hammerlab.guacamole.reference.{Contig, Position, Region}
 import org.hammerlab.magic.rdd.RDDStats._
 import org.hammerlab.magic.rdd.RunLengthRDD._
 import org.hammerlab.magic.util.Stats
@@ -15,7 +15,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
 
-class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R])
+class RegionRDD[R <: Region: ClassTag](@transient rdd: RDD[R])
   extends Serializable {
 
   @transient val sc = rdd.sparkContext
@@ -58,15 +58,15 @@ class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R])
         val lowerBound = math.max(0, r.start - halfWindowSize)
         val upperBound = math.min(length, r.end + halfWindowSize)
 
-        val outs = ArrayBuffer[(ReferencePosition, Coverage)]()
+        val outs = ArrayBuffer[(Position, Coverage)]()
         for {
           l <- lowerBound until upperBound
         } {
-          outs += ReferencePosition(c, l) -> Coverage(depth = 1)
+          outs += Position(c, l) -> Coverage(depth = 1)
         }
 
-        outs += ReferencePosition(c, lowerBound) -> Coverage(starts = 1)
-        outs += ReferencePosition(c, upperBound) -> Coverage(ends = 1)
+        outs += Position(c, lowerBound) -> Coverage(starts = 1)
+        outs += Position(c, upperBound) -> Coverage(ends = 1)
 
         outs.iterator
       })
@@ -96,22 +96,22 @@ class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R])
       }
     )
 
-  @transient val depths_ = mutable.Map[(Int, LociSet), RDD[(Int, ReferencePosition)]]()
-  def depths(halfWindowSize: Int, loci: LociSet): RDD[(Int, ReferencePosition)] =
+  @transient val depths_ = mutable.Map[(Int, LociSet), RDD[(Int, Position)]]()
+  def depths(halfWindowSize: Int, loci: LociSet): RDD[(Int, Position)] =
     depths_.getOrElseUpdate(
       halfWindowSize -> loci,
       coverage(halfWindowSize, loci).map(t => t._2.depth -> t._1).sortByKey(ascending = false)
     )
 
-  @transient val starts_ = mutable.Map[(Int, LociSet), RDD[(Int, ReferencePosition)]]()
-  def starts(halfWindowSize: Int, loci: LociSet): RDD[(Int, ReferencePosition)] =
+  @transient val starts_ = mutable.Map[(Int, LociSet), RDD[(Int, Position)]]()
+  def starts(halfWindowSize: Int, loci: LociSet): RDD[(Int, Position)] =
     starts_.getOrElseUpdate(
       halfWindowSize -> loci,
       coverage(halfWindowSize, loci).map(t => t._2.starts -> t._1).sortByKey(ascending = false)
     )
 
-  @transient val ends_ = mutable.Map[(Int, LociSet), RDD[(Int, ReferencePosition)]]()
-  def ends(halfWindowSize: Int, loci: LociSet): RDD[(Int, ReferencePosition)] =
+  @transient val ends_ = mutable.Map[(Int, LociSet), RDD[(Int, Position)]]()
+  def ends(halfWindowSize: Int, loci: LociSet): RDD[(Int, Position)] =
     ends_.getOrElseUpdate(
       halfWindowSize -> loci,
       coverage(halfWindowSize, loci).map(t => t._2.ends -> t._1).sortByKey(ascending = false)
@@ -119,7 +119,7 @@ class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R])
 
   def partitionDepths(halfWindowSize: Int, loci: LociSet, depthCutoff: Int): RDD[((Contig, Boolean), Int)] = {
     (for {
-      (ReferencePosition(contig, _), Coverage(depth, _, _)) <- coverage(halfWindowSize, loci)
+      (Position(contig, _), Coverage(depth, _, _)) <- coverage(halfWindowSize, loci)
     } yield
       contig -> (depth <= depthCutoff)
     ).runLengthEncode
@@ -135,7 +135,7 @@ class RegionRDD[R <: ReferenceRegion: ClassTag](@transient rdd: RDD[R])
 
 object RegionRDD {
   private val rddMap = mutable.Map[Int, RegionRDD[_]]()
-  implicit def rddToRegionRDD[R <: ReferenceRegion: ClassTag](rdd: RDD[R]): RegionRDD[R] =
+  implicit def rddToRegionRDD[R <: Region: ClassTag](rdd: RDD[R]): RegionRDD[R] =
     rddMap.getOrElseUpdate(
       rdd.id,
       new RegionRDD[R](rdd)

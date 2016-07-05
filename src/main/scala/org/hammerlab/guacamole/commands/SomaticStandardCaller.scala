@@ -30,6 +30,7 @@ import org.hammerlab.guacamole.likelihood.Likelihood
 import org.hammerlab.guacamole.logging.DelayedMessages
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.pileup.Pileup
+import org.hammerlab.guacamole.reads.MappedRead
 import org.hammerlab.guacamole.readsets.{InputFilters, PartitionedRegions, ReadSets, SomaticCallerArgs}
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.hammerlab.guacamole.variants.{Allele, AlleleConversions, AlleleEvidence, CalledSomaticAllele, GenotypeOutputArgs, VariantUtils}
@@ -97,7 +98,8 @@ object SomaticStandard {
         PartitionedRegions(
           tumorReads.mappedReads ++ normalReads.mappedReads,
           loci.result(contigLengths),
-          args
+          args,
+          halfWindowSize = 0
         )
 
       var potentialGenotypes: RDD[CalledSomaticAllele] =
@@ -228,7 +230,7 @@ object SomaticStandard {
         } yield {
           CalledSomaticAllele(
             tumorPileup.sampleName,
-            tumorPileup.referenceName,
+            tumorPileup.contig,
             tumorPileup.locus,
             allele,
             math.log(somaticOdds),

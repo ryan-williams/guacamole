@@ -40,7 +40,8 @@ object Main extends Logging {
     VariantSupport.Caller,
     VAFHistogram.Caller,
     SomaticJoint.Caller,
-    PartitionReads
+    PartitionReads,
+    CountPileups
   )
 
   private def printUsage() = {

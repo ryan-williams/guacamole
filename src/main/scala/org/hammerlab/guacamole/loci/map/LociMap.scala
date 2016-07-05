@@ -22,7 +22,7 @@ import java.io.{InputStream, OutputStream, PrintStream}
 
 import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.PartitionIndex
 import org.hammerlab.guacamole.loci.set.{LociSet, Builder => LociSetBuilder}
-import org.hammerlab.guacamole.reference.{ReferenceRegion, Contig => ReferenceContig}
+import org.hammerlab.guacamole.reference.{Region, Contig => ReferenceContig}
 import org.hammerlab.guacamole.strings.TruncatedToString
 import org.hammerlab.guacamole.util.LinesIterator
 
@@ -61,7 +61,7 @@ case class LociMap[T] private(@transient private val map: SortedMap[ReferenceCon
     mapOfBuilders.mapValues(_.result).toMap
   }
 
-  def getAll(r: ReferenceRegion, halfWindowSize: Int = 0): Set[T] =
+  def getAll(r: Region, halfWindowSize: Int = 0): Set[T] =
     onContig(r.contig).getAll(r.start - halfWindowSize, r.end + halfWindowSize)
 
   /**

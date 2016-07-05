@@ -1,12 +1,12 @@
 package org.hammerlab.guacamole.commands.jointcaller
 
 import org.hammerlab.guacamole.loci.set.{LociParser, LociSet}
-import org.hammerlab.guacamole.readsets.{InputFilters, ReadSets, Util}
+import org.hammerlab.guacamole.readsets.ReadsRDDUtil
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.hammerlab.guacamole.reference.ReferenceBroadcast.MapBackedReferenceSequence
 import org.hammerlab.guacamole.util.{GuacFunSuite, TestUtil}
 
-class SomaticJointCallerSuite extends GuacFunSuite with Util {
+class SomaticJointCallerSuite extends GuacFunSuite with ReadsRDDUtil {
   val cancerWGS1Bams = Vector("normal.bam", "primary.bam", "recurrence.bam").map(
     name => TestUtil.testDataPath("cancer-wgs1/" + name))
 

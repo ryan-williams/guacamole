@@ -1,6 +1,6 @@
 package org.hammerlab.guacamole.reference
 
-import org.hammerlab.guacamole.reference.ReferencePosition.Locus
+import org.hammerlab.guacamole.reference.Position.Locus
 
 case class ContigPosition(locus: Locus) extends HasLocus {
   override def equals(o: Any): Boolean =

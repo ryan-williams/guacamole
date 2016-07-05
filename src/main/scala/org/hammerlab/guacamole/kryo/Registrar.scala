@@ -31,10 +31,10 @@ import org.hammerlab.guacamole.loci.partitioning.LociPartitioning
 import org.hammerlab.guacamole.loci.set.{LociSet, Contig => LociSetContig, ContigSerializer => LociSetContigSerializer, Serializer => LociSetSerializer}
 import org.hammerlab.guacamole.reads.{MappedRead, MappedReadSerializer, MateAlignmentProperties, PairedRead, Read, UnmappedRead, UnmappedReadSerializer}
 import org.hammerlab.guacamole.readsets.ContigLengths
-import org.hammerlab.guacamole.reference.{Contig, ReferencePosition}
+import org.hammerlab.guacamole.reference.{Contig, Position}
 import org.hammerlab.guacamole.variants.{Allele, AlleleEvidence, AlleleSerializer, CalledAllele}
 import org.hammerlab.magic.accumulables.{HashMap => MagicHashMap}
-import org.hammerlab.magic.rdd.RunLengthRDD
+import org.hammerlab.magic.kryo.{Registrar => MagicRDDRegistrar}
 
 class Registrar extends KryoRegistrator {
   override def registerClasses(kryo: Kryo) {
@@ -42,7 +42,8 @@ class Registrar extends KryoRegistrator {
     // Register ADAM serializers.
     new ADAMKryoRegistrator().registerClasses(kryo)
 
-    RunLengthRDD.registerKryo(kryo)
+    new MagicRDDRegistrar().registerClasses(kryo)
+    //RunLengthRDD.registerKryo(kryo)
 
     // Register Joint-Caller serializers.
     new JointCallerRegistrar().registerClasses(kryo)
@@ -72,8 +73,8 @@ class Registrar extends KryoRegistrator {
     kryo.register(classOf[LociSetContig], new LociSetContigSerializer)
     kryo.register(classOf[Array[LociSetContig]])
 
-    kryo.register(classOf[Array[ReferencePosition]])
-    kryo.register(classOf[ReferencePosition])
+    kryo.register(classOf[Array[Position]])
+    kryo.register(classOf[Position])
     kryo.register(classOf[Coverage])
 
     // LociMap is serialized when broadcast in LociPartitionUtils.partitionLociByApproximateDepth.

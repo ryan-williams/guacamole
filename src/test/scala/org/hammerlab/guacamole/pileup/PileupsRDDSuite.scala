@@ -6,10 +6,10 @@ import org.hammerlab.guacamole.loci.partitioning.AllLociPartitionerArgs
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.pileup.PileupsRDD._
 import org.hammerlab.guacamole.reads.{MappedRead, Read}
-import org.hammerlab.guacamole.readsets.{ContigLengths, ContigLengthsUtil, PartitionedReads, PartitionedRegions, PerSample, ReadSets, ReadsRDD, Util}
-import org.hammerlab.guacamole.readsets.Util.{TestPileup, simplifyPileup}
+import org.hammerlab.guacamole.readsets.{ContigLengths, ContigLengthsUtil, PartitionedReads, PartitionedRegions, PerSample, ReadSets, ReadsRDD, ReadsRDDUtil}
+import org.hammerlab.guacamole.readsets.ReadsRDDUtil.{TestPileup, simplifyPileup}
 import org.hammerlab.guacamole.reference.ReferenceBroadcast.MapBackedReferenceSequence
-import org.hammerlab.guacamole.reference.ReferencePosition.Locus
+import org.hammerlab.guacamole.reference.Position.Locus
 import org.hammerlab.guacamole.reference.{Contig, ReferenceBroadcast}
 import org.hammerlab.guacamole.util.{Bases, GuacFunSuite, KryoTestRegistrar, TestUtil}
 
@@ -21,7 +21,7 @@ class PileupsRDDSuiteRegistrar extends KryoTestRegistrar {
   }
 }
 
-class PileupsRDDSuite extends GuacFunSuite with Util with ContigLengthsUtil {
+class PileupsRDDSuite extends GuacFunSuite with ReadsRDDUtil with ContigLengthsUtil {
   type TestRead = (String, Int, Int, Int)
   type TestReads = Seq[TestRead]
   type TestPos = (String, Int)
@@ -148,30 +148,28 @@ class PileupsRDDSuite extends GuacFunSuite with Util with ContigLengthsUtil {
     )
   }
 
-  def testPileups(halfWindowSize: Int,
-                  maxRegionsPerPartition: Int,
+  def testPileups(maxRegionsPerPartition: Int,
                   numPartitions: Iterable[Int],
                   reads: TestReads,
                   expected: Iterable[ExpectedPosReads]): Unit =
     for {
       numPartitions <- numPartitions
     } {
-      testPileups(halfWindowSize, maxRegionsPerPartition, numPartitions, reads, expected)
+      testPileups(maxRegionsPerPartition, numPartitions, reads, expected)
     }
 
-  def testPileups(halfWindowSize: Int,
-                  maxRegionsPerPartition: Int,
+  def testPileups(maxRegionsPerPartition: Int,
                   numPartitions: Int,
                   reads: TestReads,
                   expected: Iterable[ExpectedPosReads]): Unit = {
 
     val (readsets, mappedReads) = makeReadSets(reads, numPartitions)
 
-    val partitionedReads = makePartitionedReads(readsets, halfWindowSize, maxRegionsPerPartition, numPartitions)
+    val partitionedReads = makePartitionedReads(readsets, halfWindowSize = 0, maxRegionsPerPartition, numPartitions)
 
     val pileups =
       partitionedReads
-        .pileups(halfWindowSize, reference)
+        .pileups(reference)
         .map(simplifyPileup)
         .collect()
 
@@ -202,33 +200,24 @@ class PileupsRDDSuite extends GuacFunSuite with Util with ContigLengthsUtil {
 
     val pileups =
       List(
-        ("chr1",  99) -> "",
         ("chr1", 100) -> "[100,105)",
         ("chr1", 101) -> "[100,105), [101,106)",
         ("chr1", 102) -> "[100,105), [101,106)",
         ("chr1", 103) -> "[100,105), [101,106)",
         ("chr1", 104) -> "[100,105), [101,106)",
         ("chr1", 105) -> "[101,106)",
-        ("chr1", 106) -> "",
-        ("chr2",   7) -> "",
         ("chr2",   8) -> "[8,9)",
         ("chr2",   9) -> "[9,11)",
         ("chr2",  10) -> "[9,11)",
-        ("chr2",  11) -> "",
-        ("chr2", 101) -> "",
         ("chr2", 102) -> "[102,105)",
         ("chr2", 103) -> "[102,105), [103,106)*10",
         ("chr2", 104) -> "[102,105), [103,106)*10",
         ("chr2", 105) -> "[103,106)*10",
-        ("chr2", 106) -> "",
-        ("chr5",  89) -> "",
-        ("chr5",  90) -> "[90,91)*10",
-        ("chr5",  91) -> ""
+        ("chr5",  90) -> "[90,91)*10"
       )
 
     test("pileups: small") {
       testPileups(
-        halfWindowSize = 1,
         maxRegionsPerPartition = 10,
         numPartitions = 1 to 2,
         reads.slice(0, 2),
@@ -241,7 +230,6 @@ class PileupsRDDSuite extends GuacFunSuite with Util with ContigLengthsUtil {
 
     test("pileups: large") {
       testPileups(
-        halfWindowSize = 1,
         maxRegionsPerPartition = 11,
         numPartitions = 1 to 4,
         reads,
@@ -251,38 +239,30 @@ class PileupsRDDSuite extends GuacFunSuite with Util with ContigLengthsUtil {
 
     test("pileups: drop deepest loci") {
       testPileups(
-        halfWindowSize = 1,
         maxRegionsPerPartition = 10,
         numPartitions = 1 to 4,
         reads = reads,
         expected = pileups.filter {
-          // Loci [102,105] have ≥ 10 depth and get dropped here.
-          case (("chr2", locus), _) if 102 <= locus && locus <= 105 => false
+          // Loci [103,104] have ≥ 10 depth and get dropped here.
+          case (("chr2", locus), _) if 103 <= locus && locus <= 104 => false
           case _ => true
         }
       )
     }
   }
 
-  def testPerSamplePileups(halfWindowSize: Int,
-                           maxRegionsPerPartition: Int,
+  def testPerSamplePileups(maxRegionsPerPartition: Int,
                            numPartitions: Int,
                            reads: PerSample[TestReads],
                            expected: Iterable[ExpectedPosPerSample]): Unit = {
     val (readsets, mappedReads) = makeReadSets(reads, numPartitions)
 
-    val partitionedReads = makePartitionedReads(readsets, halfWindowSize, maxRegionsPerPartition, numPartitions)
+    val partitionedReads = makePartitionedReads(readsets, halfWindowSize = 0, maxRegionsPerPartition, numPartitions)
 
     val pileups: Array[PerSample[(Contig, Locus, ExpectedReads)]] =
       partitionedReads
-        .perSamplePileups(
-          reads.length,
-          halfWindowSize,
-          reference
-        )
-        .map(
-          _.map(simplifyPileup)
-        )
+        .perSamplePileups(reads.length, reference)
+        .map(_.map(simplifyPileup))
         .collect()
 
     withClue(s"numPartitions: $numPartitions\n") {
@@ -334,45 +314,23 @@ class PileupsRDDSuite extends GuacFunSuite with Util with ContigLengthsUtil {
 
     val pileups: Iterable[ExpectedPosPerSample] =
       List[ExpectedPosPerSample](
-        "chr1" ->  98 -> ("", "", ""),
-        "chr1" ->  99 -> ("", "", ""),
         "chr1" -> 100 -> ("[100,103)*2", "", ""),
         "chr1" -> 101 -> ("[100,103)*2", "", "[101,102)"),
         "chr1" -> 102 -> ("[100,103)*2, [102,104)*2", "", "[102,103)*5"),
         "chr1" -> 103 -> ("[102,104)*2", "", ""),
         "chr1" -> 104 -> ("", "", "[104,105)*3"),
-        "chr1" -> 105 -> ("", "", ""),
         "chr1" -> 106 -> ("[106,107)", "", ""),
-        "chr1" -> 107 -> ("", "", ""),
-        "chr1" -> 108 -> ("", "", ""),
-        "chr2" ->   6 -> ("", "", ""),
-        "chr2" ->   7 -> ("", "", ""),
         "chr2" ->   8 -> ("[8,9)*5", "[8,9)*5", "[8,9)*5"),
-        "chr2" ->   9 -> ("", "", ""),
-        "chr2" ->  10 -> ("", "", ""),
-        "chr2" ->  18 -> ("", "", ""),
-        "chr2" ->  19 -> ("", "", ""),
         "chr2" ->  20 -> ("[20,22)*3", "", ""),
         "chr2" ->  21 -> ("[20,22)*3", "", ""),
-        "chr2" ->  22 -> ("", "", ""),
-        "chr2" ->  23 -> ("", "", ""),
-        "chr2" ->  28 -> ("", "", ""),
-        "chr2" ->  29 -> ("", "", ""),
         "chr2" ->  30 -> ("", "[30,32)*3", ""),
         "chr2" ->  31 -> ("", "[30,32)*3", ""),
-        "chr2" ->  32 -> ("", "", ""),
-        "chr2" ->  33 -> ("", "", ""),
-        "chr2" ->  38 -> ("", "", ""),
-        "chr2" ->  39 -> ("", "", ""),
         "chr2" ->  40 -> ("", "", "[40,42)*3"),
-        "chr2" ->  41 -> ("", "", "[40,42)*3"),
-        "chr2" ->  42 -> ("", "", ""),
-        "chr2" ->  43 -> ("", "", "")
+        "chr2" ->  41 -> ("", "", "[40,42)*3")
       )
 
     test("per-sample pileups") {
       testPerSamplePileups(
-        halfWindowSize = 2,
         maxRegionsPerPartition = 20,
         numPartitions = 1,
         reads = Vector(sample1Reads, sample2Reads, sample3Reads),
@@ -380,56 +338,4 @@ class PileupsRDDSuite extends GuacFunSuite with Util with ContigLengthsUtil {
       )
     }
   }
-
-  {
-    val depthMultiplier = 160000
-
-    val sample1Reads =
-      List(
-        ("chr1", 100, 103, 2 * depthMultiplier),
-        ("chr1", 102, 104, 2 * depthMultiplier),
-        ("chr1", 106, 107, 1 * depthMultiplier)/*,
-        ("chr2",   8,   9, 5),
-        ("chr2",  20,  22, 3)*/
-      )
-
-    val sample2Reads =
-      List(
-        //        ("chr2",   8,   9, 5),
-        //        ("chr2",  30,  32, 3)
-      )
-
-    val sample3Reads =
-      List(
-        ("chr1", 101, 102, 1 * depthMultiplier),
-        ("chr1", 102, 103, 5 * depthMultiplier),
-        ("chr1", 104, 105, 3 * depthMultiplier)/*,
-        ("chr2",   8,   9, 5),
-        ("chr2",  40,  42, 3)*/
-      )
-
-    val pileups: Iterable[ExpectedPosPerSample] =
-      List[ExpectedPosPerSample](
-        "chr1" ->  99 -> ("", "", ""),
-        "chr1" -> 100 -> (s"[100,103)*${2 * depthMultiplier}", "", ""),
-        "chr1" -> 101 -> (s"[100,103)*${2 * depthMultiplier}", "", s"[101,102)*$depthMultiplier"),
-        "chr1" -> 102 -> (s"[100,103)*${2 * depthMultiplier}, [102,104)*${2 * depthMultiplier}", "", s"[102,103)*${5 * depthMultiplier}"),
-        "chr1" -> 103 -> (s"[102,104)*${2 * depthMultiplier}", "", ""),
-        "chr1" -> 104 -> ("", "", s"[104,105)*${3 * depthMultiplier}"),
-        "chr1" -> 105 -> ("", "", ""),
-        "chr1" -> 106 -> (s"[106,107)*$depthMultiplier", "", ""),
-        "chr1" -> 107 -> ("", "", "")
-      )
-
-//    test("high depth") {
-//      testPerSamplePileups(
-//        halfWindowSize = 1,
-//        maxRegionsPerPartition = 20 * depthMultiplier,
-//        numPartitions = 1,
-//        reads = Vector(sample1Reads, sample2Reads, sample3Reads),
-//        expected = pileups
-//      )
-//    }
-  }
-
 }

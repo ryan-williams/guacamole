@@ -2,7 +2,7 @@ package org.hammerlab.guacamole.readsets
 
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.loci.set.{LociParser, LociSet}
-import org.hammerlab.guacamole.reference.ReferencePosition
+import org.hammerlab.guacamole.reference.Position
 import org.scalatest.{FunSuite, Matchers}
 
 class ContigCoverageIteratorSuite extends FunSuite with Matchers with ContigLengthsUtil {
@@ -35,7 +35,7 @@ class ContigCoverageIteratorSuite extends FunSuite with Matchers with ContigLeng
       for {
         ((contig, locus), (depth, starts, ends)) <- expectedStrs
       } yield
-        ReferencePosition(contig, locus) -> Coverage(depth, starts, ends)
+        Position(contig, locus) -> Coverage(depth, starts, ends)
 
     ContigCoverageIterator(halfWindowSize, ContigIterator(reads), loci).toList should be(expected)
   }

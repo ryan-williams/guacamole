@@ -20,20 +20,20 @@ package org.hammerlab.guacamole.reference
 
 /**
  * Trait for objects that are associated with an interval on the genome. The most prominent example is a
- * [[org.hammerlab.guacamole.reads.MappedRead]], but there's also [[org.hammerlab.guacamole.variants.ReferenceVariant]].
+ * [[org.hammerlab.guacamole.reads.MappedRead]], but there's also [[org.hammerlab.guacamole.variants.Variant]].
  */
-trait ReferenceRegion extends Interval {
+trait Region extends Interval {
 
   /** Name of the reference contig */
   def contig: Contig
 
   /** Start position on the genome, inclusive. Must be non-negative. */
   def start: Long
-  def startPos = ReferencePosition(contig, start)
+  def startPos = Position(contig, start)
 
   /** The end position on the genome, *exclusive*. Must be non-negative. */
   def end: Long
-  def endPos = ReferencePosition(contig, end)
+  def endPos = Position(contig, end)
 
   /**
    * Does the region overlap the given locus, with halfWindowSize padding?
@@ -48,27 +48,27 @@ trait ReferenceRegion extends Interval {
    * @param other another region on the genome
    * @return True if the the regions overlap
    */
-  def overlaps(other: ReferenceRegion): Boolean = {
+  def overlaps(other: Region): Boolean = {
     other.contig == contig && (overlapsLocus(other.start) || other.overlapsLocus(start))
   }
 
   def regionStr: String = s"${contig}:[$start-$end)"
 }
 
-object ReferenceRegion {
+object Region {
   // Order regions by start locus, increasing.
-  def orderByStart[R <: ReferenceRegion] =
+  def orderByStart[R <: Region] =
     new Ordering[R] {
       def compare(first: R, second: R) = second.start.compare(first.start)
     }
 
   // Order regions by end locus, increasing.
-  def orderByEnd[R <: ReferenceRegion] =
+  def orderByEnd[R <: Region] =
     new Ordering[R] {
       def compare(first: R, second: R) = second.end.compare(first.end)
     }
 
-  implicit def intraContigPartialOrdering[R <: ReferenceRegion] =
+  implicit def intraContigPartialOrdering[R <: Region] =
     new PartialOrdering[R] {
       override def tryCompare(x: R, y: R): Option[Int] = {
         if (x.contig == y.contig)
@@ -83,4 +83,4 @@ object ReferenceRegion {
     }
 }
 
-case class Region(contig: Contig, start: Long, end: Long) extends ReferenceRegion
+case class RegionImpl(contig: Contig, start: Long, end: Long) extends Region

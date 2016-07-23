@@ -1,6 +1,7 @@
 package org.hammerlab.guacamole.commands.jointcaller
 
 import org.hammerlab.guacamole.commands.jointcaller.Input.{ Analyte, TissueType }
+import org.hammerlab.guacamole.readsets.loading.{Input => RSInput}
 
 /**
  * An input BAM to the joint variant caller.
@@ -14,7 +15,13 @@ import org.hammerlab.guacamole.commands.jointcaller.Input.{ Analyte, TissueType 
  * @param tissueType tumor or normal
  * @param analyte rna or dna
  */
-case class Input(index: Int, sampleName: String, path: String, tissueType: TissueType.Value, analyte: Analyte.Value) {
+case class Input(index: Int,
+                 override val sampleName: String,
+                 override val path: String,
+                 tissueType: TissueType.Value,
+                 analyte: Analyte.Value)
+  extends RSInput(index, sampleName, path) {
+
   override def toString: String = {
     "<Input #%d '%s' of %s %s at %s >".format(index, sampleName, tissueType, analyte, path)
   }

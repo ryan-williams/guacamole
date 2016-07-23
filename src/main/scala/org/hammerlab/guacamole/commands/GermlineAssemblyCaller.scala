@@ -4,16 +4,19 @@ import breeze.linalg.DenseVector
 import breeze.stats.{mean, median}
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
+import org.bdgenomics.utils.cli.Args4jBase
 import org.hammerlab.guacamole.alignment.AffineGapPenaltyAlignment
 import org.hammerlab.guacamole.assembly.{AssemblyArgs, AssemblyUtils}
-import org.hammerlab.guacamole.distributed.LociPartitionUtils.{LociPartitioning, partitionLociAccordingToArgs}
 import org.hammerlab.guacamole.distributed.WindowFlatMapUtils.windowFlatMapWithState
 import org.hammerlab.guacamole.likelihood.Likelihood
 import org.hammerlab.guacamole.logging.DelayedMessages
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.reads.MappedRead
-import org.hammerlab.guacamole.readsets.{GermlineCallerArgs, InputFilters, ReadSets}
+import org.hammerlab.guacamole.readsets.args.GermlineCallerArgs
+import org.hammerlab.guacamole.readsets.loading.InputFilters
+import org.hammerlab.guacamole.readsets.rdd.PartitionedRegions
+import org.hammerlab.guacamole.readsets.{PartitionedReads, ReadSets}
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.hammerlab.guacamole.variants.{Allele, AlleleConversions, AlleleEvidence, CalledAllele, VariantUtils}
 import org.kohsuke.args4j.{Option => Args4jOption}
@@ -30,7 +33,7 @@ import org.kohsuke.args4j.{Option => Args4jOption}
  */
 object GermlineAssemblyCaller {
 
-  class Arguments extends AssemblyArgs with GermlineCallerArgs {
+  class Arguments extends Args4jBase with AssemblyArgs with GermlineCallerArgs {
 
     @Args4jOption(name = "--min-average-base-quality", usage = "Minimum average of base qualities in the read")
     var minAverageBaseQuality: Int = 20
@@ -39,7 +42,7 @@ object GermlineAssemblyCaller {
     var minAlignmentQuality: Int = 30
 
     @Args4jOption(name = "--reference-fasta", required = true, usage = "Local path to a reference FASTA file")
-    var referenceFastaPath: String = null
+    var referenceFastaPath: String = _
 
     @Args4jOption(name = "--min-likelihood", usage = "Minimum Phred-scaled likelihood. Default: 0 (off)")
     var minLikelihood: Int = 0
@@ -67,23 +70,26 @@ object GermlineAssemblyCaller {
       val minAlignmentQuality = args.minAlignmentQuality
       val qualityReads = mappedReads.filter(_.alignmentQuality > minAlignmentQuality)
 
-      val lociPartitions = partitionLociAccordingToArgs(
-        args,
-        loci.result(contigLengths),
-        mappedReads
-      )
+      val partitionedReads =
+        PartitionedRegions(
+          qualityReads,
+          loci.result(contigLengths),
+          args,
+          args.assemblyWindowRange
+        )
 
-      val genotypes: RDD[CalledAllele] = discoverGermlineVariants(
-        qualityReads,
-        kmerSize = args.kmerSize,
-        assemblyWindowRange = args.assemblyWindowRange,
-        minOccurrence = args.minOccurrence,
-        minAreaVaf = args.minAreaVaf / 100.0f,
-        reference = reference,
-        lociPartitions = lociPartitions,
-        minMeanKmerQuality = args.minMeanKmerQuality,
-        minPhredScaledLikelihood = args.minLikelihood,
-        shortcutAssembly = args.shortcutAssembly)
+      val genotypes: RDD[CalledAllele] =
+        discoverGermlineVariants(
+          partitionedReads,
+          kmerSize = args.kmerSize,
+          assemblyWindowRange = args.assemblyWindowRange,
+          minOccurrence = args.minOccurrence,
+          minAreaVaf = args.minAreaVaf / 100.0f,
+          reference = reference,
+          minMeanKmerQuality = args.minMeanKmerQuality,
+          minPhredScaledLikelihood = args.minLikelihood,
+          shortcutAssembly = args.shortcutAssembly
+        )
 
       genotypes.persist()
 
@@ -96,13 +102,12 @@ object GermlineAssemblyCaller {
       DelayedMessages.default.print()
     }
 
-    def discoverGermlineVariants(reads: RDD[MappedRead],
+    def discoverGermlineVariants(partitionedReads: PartitionedReads,
                                  kmerSize: Int,
                                  assemblyWindowRange: Int,
                                  minOccurrence: Int,
                                  minAreaVaf: Float,
                                  reference: ReferenceBroadcast,
-                                 lociPartitions: LociPartitioning,
                                  minMeanKmerQuality: Int,
                                  minAltReads: Int = 2,
                                  minPhredScaledLikelihood: Int = 0,
@@ -110,8 +115,8 @@ object GermlineAssemblyCaller {
 
       val genotypes: RDD[CalledAllele] =
         windowFlatMapWithState[MappedRead, CalledAllele, Option[Long]](
-          Vector(reads),
-          lociPartitions,
+          numSamples = 1,
+          partitionedReads,
           skipEmpty = true,
           halfWindowSize = assemblyWindowRange,
           initialState = None,
@@ -141,7 +146,7 @@ object GermlineAssemblyCaller {
             val pileup = Pileup(currentLocusReads, referenceName, window.currentLocus, referenceContig)
 
             // Compute the number reads with variant bases from the reads overlapping the currentLocus
-            val pileupAltReads = (pileup.depth - pileup.referenceDepth)
+            val pileupAltReads = pileup.depth - pileup.referenceDepth
             if (currentLocusReads.isEmpty || pileupAltReads < minAltReads) {
               (lastCalledLocus, Iterator.empty)
             } else if (shortcutAssembly && !AssemblyUtils.isActiveRegion(currentLocusReads, referenceContig, minAreaVaf)) {

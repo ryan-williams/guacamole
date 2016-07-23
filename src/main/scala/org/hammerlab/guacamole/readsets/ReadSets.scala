@@ -6,13 +6,21 @@ import htsjdk.samtools.{QueryInterval, SAMRecordIterator, SamReaderFactory, Vali
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.LongWritable
 import org.apache.spark.SparkContext
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.bdgenomics.adam.models.SequenceDictionary
 import org.bdgenomics.adam.rdd.{ADAMContext, ADAMSpecificRecordSequenceDictionaryRDDAggregator}
 import org.bdgenomics.formats.avro.AlignmentRecord
+import org.hammerlab.guacamole.loci.Coverage.PositionCoverage
+import org.hammerlab.guacamole.loci.set.{LociParser, LociSet}
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.reads.{MappedRead, Read}
+import org.hammerlab.guacamole.readsets.args.{Arguments, SingleSampleArgs, TumorNormalReadsArgs}
+import org.hammerlab.guacamole.readsets.loading.{BamReaderAPI, Input, InputFilters, ReadLoadingConfig}
+import org.hammerlab.guacamole.readsets.rdd.ReadsRDD
+import org.hammerlab.guacamole.readsets.rdd.RegionRDD._
 import org.hammerlab.guacamole.reference.{ContigName, Locus}
+import org.hammerlab.magic.rdd.RDDStats._
 import org.seqdoop.hadoop_bam.util.SAMHeaderReader
 import org.seqdoop.hadoop_bam.{AnySAMInputFormat, SAMRecordWritable}
 
@@ -24,11 +32,39 @@ import scala.collection.JavaConversions
  */
 case class ReadSets(readsRDDs: PerSample[ReadsRDD],
                     sequenceDictionary: SequenceDictionary,
-                    contigLengths: ContigLengths) extends PerSample[ReadsRDD] {
-  override def length: Int = readsRDDs.length
-  override def apply(idx: Int): ReadsRDD = readsRDDs(idx)
+                    contigLengths: ContigLengths)
+  extends PerSample[ReadsRDD] {
 
-  val mappedReads = readsRDDs.map(_.mappedReads)
+  def numSamples: NumSamples = length
+  override def length: NumSamples = readsRDDs.length
+  override def apply(sampleId: SampleId): ReadsRDD = readsRDDs(sampleId)
+
+  def sc = readsRDDs.head.reads.sparkContext
+
+  lazy val (mappedReadsRDDs, sourceFiles) = readsRDDs.map(readsRDD => (readsRDD.mappedReads, readsRDD.input.path)).unzip
+
+  lazy val allMappedReads = sc.union(mappedReadsRDDs).setName("unioned reads")
+
+  lazy val countStats = allMappedReads.countStats
+
+  implicit lazy val contigLengthsBroadcast = sc.broadcast(contigLengths)
+
+  @transient lazy val allLoci = LociSet.all(contigLengths)
+  @transient lazy val allLociBroadcast = sc.broadcast(allLoci)
+
+  def coveragePerSample(halfWindowSize: Int,
+                        lociBroadcast: Broadcast[LociSet] = allLociBroadcast): PerSample[RDD[PositionCoverage]] =
+    mappedReadsRDDs.map(_.coverage(halfWindowSize, lociBroadcast))
+
+  def totaledCoverage(halfWindowSize: Int): RDD[PositionCoverage] =
+    sc
+      .union(coveragePerSample(halfWindowSize))
+      .reduceByKey(_ + _)
+      .sortByKey()
+
+  def coverage(halfWindowSize: Int, lociBroadcast: Broadcast[LociSet] = allLociBroadcast): RDD[PositionCoverage] =
+    allMappedReads.coverage(halfWindowSize, lociBroadcast)
+
 }
 
 object ReadSets {
@@ -36,14 +72,14 @@ object ReadSets {
   /**
    * Load one read-set from an input file.
    */
-  def loadReads(args: ReadsArgs,
+  def loadReads(args: SingleSampleArgs,
                 sc: SparkContext,
                 filters: InputFilters): (ReadsRDD, ContigLengths) = {
 
     val ReadSets(reads, _, contigLengths) =
       ReadSets(
         sc,
-        Seq(args.reads),
+        args.inputs,
         filters,
         contigLengthsFromDictionary = !args.noSequenceDictionary,
         config = ReadLoadingConfig(args)
@@ -55,7 +91,7 @@ object ReadSets {
   /**
    * Load just the mapped reads from an input ReadSet.
    */
-  def loadMappedReads(args: ReadsArgs,
+  def loadMappedReads(args: SingleSampleArgs,
                       sc: SparkContext,
                       filters: InputFilters): (RDD[MappedRead], ContigLengths) = {
     val (reads, contigLengths) = loadReads(args, sc, filters)
@@ -76,7 +112,7 @@ object ReadSets {
     val ReadSets(readsets, _, contigLengths) =
       ReadSets(
         sc,
-        Seq(args.tumorReads, args.normalReads),
+        args.inputs,
         filters,
         !args.noSequenceDictionary,
         ReadLoadingConfig(args)
@@ -86,57 +122,86 @@ object ReadSets {
   }
 
   /**
+   * Load ReadSet instances from user-specified BAMs (specified as an InputCollection).
+   */
+  def apply(sc: SparkContext,
+            inputs: PerSample[Input],
+            loci: LociParser,
+            contigLengthsFromDictionary: Boolean): ReadSets = {
+    ReadSets(
+      sc,
+      inputs,
+      InputFilters(overlapsLoci = loci),
+      contigLengthsFromDictionary = contigLengthsFromDictionary
+    )
+  }
+
+  def apply(sc: SparkContext, args: Arguments): (ReadSets, LociSet) = {
+    val loci = args.parseLoci(sc.hadoopConfiguration)
+
+    val readsets = apply(sc, args.inputs, loci, !args.noSequenceDictionary)
+
+    (readsets, loci.result(readsets.contigLengths))
+  }
+
+  /**
     * Load reads from multiple files, merging their sequence dictionaries and verifying that they are consistent.
     */
   def apply(sc: SparkContext,
-            filenames: Seq[String],
+            inputs: PerSample[Input],
             filters: InputFilters = InputFilters.empty,
             contigLengthsFromDictionary: Boolean = true,
             config: ReadLoadingConfig = ReadLoadingConfig.default): ReadSets = {
-    apply(sc, filenames.map((_, filters)), contigLengthsFromDictionary, config)
+    apply(sc, inputs.map((_, filters)), contigLengthsFromDictionary, config)
   }
 
   /**
    * Load reads from multiple files, allowing different filters to be applied to each file.
    */
   def apply(sc: SparkContext,
-            inputs: Seq[(String, InputFilters)],
+            inputsAndFilters: PerSample[(Input, InputFilters)],
             contigLengthsFromDictionary: Boolean,
             config: ReadLoadingConfig): ReadSets = {
 
-    val (filenames, filters) = inputs.unzip
+    val (inputs, _) = inputsAndFilters.unzip
 
-    val (readRDDs, sequenceDictionaries) =
+    val (readsRDDs, sequenceDictionaries) =
       (for {
-        (filename, filters) <- inputs
+        (Input(sampleId, sampleName, filename), filters) <- inputsAndFilters
       } yield
-        load(filename, sc, filters, config)
+        load(filename, sc, sampleId, filters, config)
       ).unzip
 
-    val sequenceDictionary = mergeSequenceDictionaries(filenames, sequenceDictionaries)
+    val sequenceDictionary = mergeSequenceDictionaries(inputs, sequenceDictionaries)
 
-    val contigLengths: ContigLengths = {
-      if (contigLengthsFromDictionary) {
+    val contigLengths: ContigLengths =
+      if (contigLengthsFromDictionary)
         getContigLengthsFromSequenceDictionary(sequenceDictionary)
-      } else {
-        sc.union(readRDDs)
+      else
+        sc.union(readsRDDs)
           .flatMap(_.asMappedRead)
           .map(read => read.contigName -> read.end)
           .reduceByKey(math.max)
           .collectAsMap()
           .toMap
-      }
-    }
 
     ReadSets(
-      readRDDs
-        .zip(filenames)
-        .map(ReadsRDD(_))
-        .toVector,
+      (for {
+        (reads, input) <- readsRDDs.zip(inputs)
+      } yield
+       ReadsRDD(reads, input)
+      ).toVector,
       sequenceDictionary,
       contigLengths
     )
   }
+
+  def apply(readsRDDs: PerSample[ReadsRDD], sequenceDictionary: SequenceDictionary): ReadSets =
+    ReadSets(
+      readsRDDs,
+      sequenceDictionary,
+      contigLengths(sequenceDictionary)
+    )
 
   /**
    * Given a filename and a spark context, return a pair (RDD, SequenceDictionary), where the first element is an RDD
@@ -149,14 +214,15 @@ object ReadSets {
    */
   private[readsets] def load(filename: String,
                              sc: SparkContext,
+                             sampleId: Int,
                              filters: InputFilters = InputFilters.empty,
                              config: ReadLoadingConfig = ReadLoadingConfig.default): (RDD[Read], SequenceDictionary) = {
 
     val (allReads, sequenceDictionary) =
       if (filename.endsWith(".bam") || filename.endsWith(".sam"))
-        loadFromBAM(filename, sc, filters, config)
+        loadFromBAM(filename, sc, sampleId, filters, config)
       else
-        loadFromADAM(filename, sc, filters, config)
+        loadFromADAM(filename, sc, sampleId, filters, config)
 
     val reads = filterRDD(allReads, filters, sequenceDictionary)
 
@@ -166,6 +232,7 @@ object ReadSets {
   /** Returns an RDD of Reads and SequenceDictionary from reads in BAM format **/
   private def loadFromBAM(filename: String,
                           sc: SparkContext,
+                          sampleId: Int,
                           filters: InputFilters,
                           config: ReadLoadingConfig): (RDD[Read], SequenceDictionary) = {
 
@@ -229,7 +296,7 @@ object ReadSets {
             (filters.isPaired && !record.getReadPairedFlag)) {
             None
           } else {
-            val read = Read(record)
+            val read = Read(record, sampleId)
             assert(filters.overlapsLoci.isEmpty || read.isMapped)
             Some(read)
           }
@@ -242,11 +309,17 @@ object ReadSets {
       val samHeader = SAMHeaderReader.readSAMHeaderFrom(path, sc.hadoopConfiguration)
       val sequenceDictionary = SequenceDictionary.fromSAMHeader(samHeader)
 
+      val basename = new File(filename).getName
+      val shortName = basename.substring(0, math.min(basename.length, 100))
+
       val reads: RDD[Read] =
         sc
           .newAPIHadoopFile[LongWritable, SAMRecordWritable, AnySAMInputFormat](filename)
+          .setName(s"Hadoop file: $shortName")
           .values
-          .map(r => Read(r.get))
+          .setName(s"Hadoop reads: $shortName")
+          .map(r => Read(r.get, sampleId))
+          .setName(s"Guac reads: $shortName")
 
       (reads, sequenceDictionary)
     }
@@ -255,6 +328,7 @@ object ReadSets {
   /** Returns an RDD of Reads and SequenceDictionary from reads in ADAM format **/
   private def loadFromADAM(filename: String,
                            sc: SparkContext,
+                           sampleId: Int,
                            filters: InputFilters,
                            config: ReadLoadingConfig): (RDD[Read], SequenceDictionary) = {
 
@@ -268,7 +342,7 @@ object ReadSets {
     val sequenceDictionary =
       new ADAMSpecificRecordSequenceDictionaryRDDAggregator(adamRecords).adamGetSequenceDictionary()
 
-    (adamRecords.map(Read(_)), sequenceDictionary)
+    (adamRecords.map(Read(_, sampleId)), sequenceDictionary)
   }
 
 
@@ -290,33 +364,33 @@ object ReadSets {
    *
    * This function performs all of the above.
    *
-   * @param filenames Files, each representing a set of reads.
+   * @param inputs Input files, each containing a set of reads.
    * @param dicts SequenceDictionaries that have been parsed from @filenames.
    * @return a SequenceDictionary that has been merged and validated from the inputs.
    */
-  private[readsets] def mergeSequenceDictionaries(filenames: Seq[String],
+  private[readsets] def mergeSequenceDictionaries(inputs: Seq[Input],
                                                   dicts: Seq[SequenceDictionary]): SequenceDictionary = {
     val records =
       (for {
-        (filename, dict) <- filenames.zip(dicts)
+        (input, dict) <- inputs.zip(dicts)
         record <- dict.records
       } yield {
-        filename -> record
+        input -> record
       })
       .groupBy(_._2.name)
       .values
       .map(values => {
-        val (filename, record) = values.head
+        val (input, record) = values.head
 
         // Verify that all records for a given contig are equal.
         values.tail.toList.filter(_._2 != record) match {
-          case Nil => {}
+          case Nil =>
           case mismatched =>
             throw new IllegalArgumentException(
               (
                 s"Conflicting sequence records for ${record.name}:" ::
-                s"$filename: $record" ::
-                mismatched.map { case (otherFile, otherRecord) => s"${otherFile}: $otherRecord" }
+                s"${input.path}: $record" ::
+                mismatched.map { case (otherFile, otherRecord) => s"$otherFile: $otherRecord" }
               ).mkString("\n\t")
             )
         }

@@ -1,4 +1,4 @@
-package org.hammerlab.guacamole.readsets
+package org.hammerlab.guacamole.readsets.rdd
 
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.reads.{MappedRead, PairedRead, Read}

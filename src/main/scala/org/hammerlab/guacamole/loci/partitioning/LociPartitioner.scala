@@ -5,6 +5,7 @@ import org.hammerlab.guacamole.loci.LociArgs
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.reference.ReferenceRegion
 import org.hammerlab.magic.args4j.StringOptionHandler
+import org.kohsuke.args4j.spi.BooleanOptionHandler
 import org.kohsuke.args4j.{Option => Args4JOption}
 
 import scala.reflect.ClassTag
@@ -45,6 +46,14 @@ trait LociPartitionerArgs
         throw new IllegalArgumentException(s"Unrecognized --loci-partitioner: $lociPartitionerName")
     }
   }
+
+  @Args4JOption(
+    name = "--quiet",
+    aliases = Array("-q"),
+    usage = "Whether to compute additional statistics about the partitioned reads (default: false).",
+    handler = classOf[BooleanOptionHandler]
+  )
+  var quiet: Boolean = false
 }
 
 trait LociPartitioner {

@@ -2,11 +2,13 @@ package org.hammerlab.guacamole.readsets.rdd
 
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.reads.{MappedRead, PairedRead, Read}
+import org.hammerlab.guacamole.readsets.loading.Input
 
 /**
  * A thin wrapper around an RDD[Read], with helpers to filter to mapped and paired-mapped reads.
  */
-case class ReadsRDD(reads: RDD[Read], sourceFile: String) {
+case class ReadsRDD(reads: RDD[Read], input: Input) {
+
   lazy val mappedReads =
     reads.flatMap {
       case r: MappedRead                   => Some(r)
@@ -19,8 +21,4 @@ case class ReadsRDD(reads: RDD[Read], sourceFile: String) {
       case rp: PairedRead[_] if rp.isMapped => Some(rp.asInstanceOf[PairedRead[MappedRead]])
       case _                                => None
     }
-}
-
-object ReadsRDD {
-  def apply(pair: (RDD[Read], String)): ReadsRDD = ReadsRDD(pair._1, pair._2)
 }

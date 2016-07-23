@@ -6,11 +6,8 @@ import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.commands.SparkCommand
 import org.hammerlab.guacamole.commands.jointcaller.evidence.{MultiSampleMultiAlleleEvidence, MultiSampleSingleAlleleEvidence}
 import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMapMultipleRDDs
-import org.hammerlab.guacamole.loci.partitioning.LociPartitionerArgs
-import org.hammerlab.guacamole.loci.set.{LociParser, LociSet}
+import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
-import org.hammerlab.guacamole.readsets.args.NoSequenceDictionaryArgs
-import org.hammerlab.guacamole.readsets.loading.InputFilters
 import org.hammerlab.guacamole.readsets.{PerSample, ReadSets}
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.kohsuke.args4j.spi.StringArrayOptionHandler
@@ -19,8 +16,6 @@ import org.kohsuke.args4j.{Option => Args4jOption}
 object SomaticJoint {
   class Arguments
     extends Parameters.CommandlineArguments
-      with LociPartitionerArgs
-      with NoSequenceDictionaryArgs
       with InputCollection.Arguments {
 
     @Args4jOption(name = "--out", usage = "Output path for all variants in VCF. Default: no output")
@@ -48,30 +43,12 @@ object SomaticJoint {
     @Args4jOption(name = "--include-filtered", usage = "Include filtered calls")
     var includeFiltered: Boolean = false
 
-    @Args4jOption(name = "-q", usage = "Quiet: less stdout")
-    var quiet: Boolean = false
-
     // For example:
     //  --header-metadata kind=tuning_test version=4
     @Args4jOption(name = "--header-metadata",
       usage = "Extra header metadata for VCF output in format KEY=VALUE KEY=VALUE ...",
       handler = classOf[StringArrayOptionHandler])
     var headerMetadata: Array[String] = Array.empty
-  }
-
-  /**
-   * Load ReadSet instances from user-specified BAMs (specified as an InputCollection).
-   */
-  def inputsToReadSets(sc: SparkContext,
-                       inputs: InputCollection,
-                       loci: LociParser,
-                       contigLengthsFromDictionary: Boolean = true): ReadSets = {
-    ReadSets(
-      sc,
-      inputs.items.map(_.path),
-      InputFilters(overlapsLoci = loci),
-      contigLengthsFromDictionary = contigLengthsFromDictionary
-    )
   }
 
   object Caller extends SparkCommand[Arguments] {
@@ -81,16 +58,12 @@ object SomaticJoint {
     override def run(args: Arguments, sc: SparkContext): Unit = {
       val inputs = InputCollection(args)
 
+      val (readsets, loci) = ReadSets(sc, args)
+
       if (!args.quiet) {
-        println("Running on %d inputs:".format(inputs.items.length))
-        inputs.items.foreach(input => println(input))
+        println(s"Running on ${inputs.items.length} inputs:")
+        inputs.items.foreach(println)
       }
-
-      val reference = ReferenceBroadcast(args.referenceFastaPath, sc, partialFasta = args.referenceFastaIsPartial)
-
-      val loci = args.parseLoci(sc.hadoopConfiguration)
-
-      val readsets = inputsToReadSets(sc, inputs, loci, !args.noSequenceDictionary)
 
       val forceCallLoci =
         if (args.forceCallLoci.nonEmpty || args.forceCallLociFromFile.nonEmpty) {
@@ -111,17 +84,19 @@ object SomaticJoint {
 
       val parameters = Parameters(args)
 
+      val reference = ReferenceBroadcast(args.referenceFastaPath, sc, partialFasta = args.referenceFastaIsPartial)
+
       val calls = makeCalls(
         sc,
         inputs,
         readsets,
         parameters,
         reference,
-        loci.result(readsets.contigLengths),
-        forceCallLoci,
-        args.onlySomatic,
-        args.includeFiltered,
-        args
+        loci,
+        forceCallLoci = forceCallLoci,
+        onlySomatic = args.onlySomatic,
+        includeFiltered = args.includeFiltered,
+        args = args
       )
 
       calls.cache()
@@ -180,13 +155,13 @@ object SomaticJoint {
                 forceCallLoci: LociSet = LociSet(),
                 onlySomatic: Boolean = false,
                 includeFiltered: Boolean = false,
-                args: LociPartitionerArgs = new LociPartitionerArgs {}): RDD[MultiSampleMultiAlleleEvidence] = {
+                args: Arguments = new Arguments {}): RDD[MultiSampleMultiAlleleEvidence] = {
 
     assume(loci.nonEmpty)
 
     val broadcastForceCallLoci = sc.broadcast(forceCallLoci)
 
-    val mappedReadRDDs = readsets.mappedReads
+    val mappedReadRDDs = readsets.mappedReadsRDDs
 
     val lociPartitions =
       args

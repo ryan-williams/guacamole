@@ -78,6 +78,7 @@ object GermlineAssemblyCaller {
       val genotypes: RDD[CalledAllele] =
         discoverGermlineVariants(
           qualityReads,
+          args.sampleName,
           kmerSize = args.kmerSize,
           assemblyWindowRange = args.assemblyWindowRange,
           minOccurrence = args.minOccurrence,
@@ -101,6 +102,7 @@ object GermlineAssemblyCaller {
     }
 
     def discoverGermlineVariants(reads: RDD[MappedRead],
+                                 sampleName: String,
                                  kmerSize: Int,
                                  assemblyWindowRange: Int,
                                  minOccurrence: Int,
@@ -161,8 +163,6 @@ object GermlineAssemblyCaller {
               )
 
               if (paths.nonEmpty) {
-                val sampleName = currentLocusReads.head.sampleName
-
                 def buildVariant(variantLocus: Int,
                                  referenceBases: Array[Byte],
                                  alternateBases: Array[Byte]) = {

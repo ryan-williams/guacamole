@@ -22,10 +22,10 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.bdgenomics.adam.rdd.ADAMContext
 import org.bdgenomics.formats.avro.Variant
-import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMap
+import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMapMultipleRDDs
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.pileup.Pileup
-import org.hammerlab.guacamole.readsets.ReadSets
+import org.hammerlab.guacamole.readsets.{PerSample, ReadSets}
 import org.hammerlab.guacamole.readsets.args.{Arguments => ReadSetsArguments}
 import org.hammerlab.guacamole.readsets.loading.{InputFilters, ReadLoadingConfig}
 import org.hammerlab.guacamole.reference.{ContigName, Locus, ReferenceBroadcast}
@@ -93,15 +93,13 @@ object VariantSupport {
           .partition(loci)
 
       val alleleCounts =
-        readsets.mappedReadsRDDs.map(sampleReads =>
-          pileupFlatMap[AlleleCount](
-            sampleReads,
-            lociPartitions,
-            skipEmpty = true,
-            pileupToAlleleCounts,
-            reference = reference
-          )
-        ).reduce(_ ++ _)
+        pileupFlatMapMultipleRDDs[AlleleCount](
+          readsets.mappedReadsRDDs,
+          lociPartitions,
+          skipEmpty = true,
+          pileupToAlleleCounts,
+          reference
+        )
 
       alleleCounts.saveAsTextFile(args.output)
     }
@@ -109,11 +107,12 @@ object VariantSupport {
     /**
      * Count alleles in a pileup
      *
-     * @param pileup Pileup of reads a given locus.
+     * @param pileups Per-sample pileups of reads a given locus.
      * @return Iterator of AlleleCount which contains pair of reference and alternate with a count.
      */
-    def pileupToAlleleCounts(pileup: Pileup): Iterator[AlleleCount] =
+    def pileupToAlleleCounts(pileups: PerSample[Pileup]): Iterator[AlleleCount] =
       (for {
+        pileup <- pileups
         (allele, elements) <- pileup.elements.groupBy(_.allele)
       } yield
         AlleleCount(

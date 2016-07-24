@@ -43,7 +43,7 @@ object WindowFlatMapUtils {
     regionRDDs: PerSample[RDD[R]],
     lociPartitions: LociPartitioning,
     skipEmpty: Boolean,
-    halfWindowSize: Long,
+    halfWindowSize: Int,
     initialState: S,
     function: (S, PerSample[SlidingWindow[R]]) => (S, Iterator[T])): RDD[T] = {
 
@@ -90,7 +90,7 @@ object WindowFlatMapUtils {
     regionRDDs: PerSample[RDD[R]],
     lociPartitions: LociPartitioning,
     skipEmpty: Boolean,
-    halfWindowSize: Long,
+    halfWindowSize: Int,
     initialValue: T,
     aggFunction: (T, PerSample[SlidingWindow[R]]) => T): RDD[T] = {
 
@@ -144,7 +144,7 @@ object WindowFlatMapUtils {
   private[distributed] def windowTaskFlatMapMultipleRDDs[R <: ReferenceRegion: ClassTag, T: ClassTag](
     regionRDDs: PerSample[RDD[R]],
     lociPartitions: LociPartitioning,
-    halfWindowSize: Long,
+    halfWindowSize: Int,
     function: (Long, LociSet, PerSample[Iterator[R]]) => Iterator[T]): RDD[T] = {
 
     val numRDDs = regionRDDs.length
@@ -244,7 +244,7 @@ object WindowFlatMapUtils {
   def collectByContig[R <: ReferenceRegion: ClassTag, T: ClassTag](
     taskRegionsPerSample: PerSample[Iterator[R]],
     taskLoci: LociSet,
-    halfWindowSize: Long,
+    halfWindowSize: Int,
     generateFromWindows: (Contig, PerSample[SlidingWindow[R]]) => Iterator[T]): Iterator[T] = {
 
     val regionsSplitByContigPerSample: PerSample[RegionsByContig[R]] = taskRegionsPerSample.map(new RegionsByContig(_))

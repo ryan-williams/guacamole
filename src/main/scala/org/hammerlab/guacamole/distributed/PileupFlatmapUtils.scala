@@ -78,7 +78,7 @@ object PileupFlatMapUtils {
       Vector(reads1, reads2),
       lociPartitions,
       skipEmpty,
-      halfWindowSize = 0L,
+      halfWindowSize = 0,
       initialState = None,
       function = (maybePileups: Option[(Pileup, Pileup)], windows: PerSample[SlidingWindow[MappedRead]]) => {
         assert(windows.length == 2)
@@ -103,7 +103,7 @@ object PileupFlatMapUtils {
       readsRDDs,
       lociPartitions,
       skipEmpty,
-      halfWindowSize = 0L,
+      halfWindowSize = 0,
       initialState = None,
       function = (maybePileups: Option[PerSample[Pileup]], windows: PerSample[SlidingWindow[MappedRead]]) => {
         val advancedPileups =

@@ -25,6 +25,7 @@ import org.hammerlab.guacamole.loci.partitioning.UniformPartitioner
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.pileup.{Pileup, PileupElement}
 import org.hammerlab.guacamole.reads.MappedRead
+import org.hammerlab.guacamole.readsets.PerSample
 import org.hammerlab.guacamole.reference.ReferenceBroadcast.MapBackedReferenceSequence
 import org.hammerlab.guacamole.util.{AssertBases, Bases, GuacFunSuite, KryoTestRegistrar, TestUtil}
 
@@ -36,6 +37,8 @@ class PileupFlatMapUtilsSuiteRegistrar extends KryoTestRegistrar {
 
     kryo.register(classOf[PileupElement])
     kryo.register(classOf[Array[PileupElement]])
+
+    kryo.register(classOf[Array[PerSample[_]]])
 
     // Closed over by PileupElement
     kryo.register(classOf[MapBackedReferenceSequence])
@@ -193,7 +196,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
       )
 
     val resultPlain =
-      PileupFlatMapUtils.pileupFlatMapMultipleRDDs[Seq[Seq[String]]](
+      PileupFlatMapUtils.pileupFlatMapMultipleRDDs[PerSample[Iterable[String]]](
         Vector(reads1, reads2, reads3),
         new UniformPartitioner(1).partition(LociSet("chr1:1-500,chr2:10-20")),
         skipEmpty = true,
@@ -201,7 +204,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
         reference = TestUtil.makeReference(sc, Seq(("chr1", 0, "ATCGATCGA")))
       ).collect.map(_.toList)
 
-    val resultParallelized = PileupFlatMapUtils.pileupFlatMapMultipleRDDs[Seq[Seq[String]]](
+    val resultParallelized = PileupFlatMapUtils.pileupFlatMapMultipleRDDs[PerSample[Iterable[String]]](
       Vector(reads1, reads2, reads3),
       new UniformPartitioner(800).partition(LociSet("chr0:0-100,chr1:1-500,chr2:10-20")),
       skipEmpty = true,
@@ -210,7 +213,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
     ).collect.map(_.toList)
 
     val resultWithEmpty =
-      PileupFlatMapUtils.pileupFlatMapMultipleRDDs[Seq[Seq[String]]](
+      PileupFlatMapUtils.pileupFlatMapMultipleRDDs[PerSample[Iterable[String]]](
         Vector(reads1, reads2, reads3),
         new UniformPartitioner(5).partition(LociSet("chr1:1-500,chr2:10-20")),
         skipEmpty = false,

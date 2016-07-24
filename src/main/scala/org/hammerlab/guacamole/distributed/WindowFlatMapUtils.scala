@@ -7,6 +7,7 @@ import org.hammerlab.guacamole.loci.partitioning.LociPartitioning
 import org.hammerlab.guacamole.loci.set.{Contig, LociSet}
 import org.hammerlab.guacamole.logging.DelayedMessages
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
+import org.hammerlab.guacamole.reads.HasSampleId
 import org.hammerlab.guacamole.readsets.PerSample
 import org.hammerlab.guacamole.reference.ReferenceRegion
 import org.hammerlab.guacamole.windowing.{SlidingWindow, SplitIterator}
@@ -39,7 +40,7 @@ object WindowFlatMapUtils {
    * @tparam S state type
    * @return RDD[T] of flatmap results
    */
-  def windowFlatMapWithState[R <: ReferenceRegion: ClassTag, T: ClassTag, S](
+  def windowFlatMapWithState[R <: ReferenceRegion with HasSampleId: ClassTag, T: ClassTag, S](
     regionRDDs: PerSample[RDD[R]],
     lociPartitions: LociPartitioning,
     skipEmpty: Boolean,
@@ -86,7 +87,7 @@ object WindowFlatMapUtils {
    * @tparam T Type of the aggregation value
    * @return Iterator[T], the aggregate values collected over contigs
    */
-  def windowFoldLoci[R <: ReferenceRegion: ClassTag, T: ClassTag](
+  def windowFoldLoci[R <: ReferenceRegion with HasSampleId: ClassTag, T: ClassTag](
     regionRDDs: PerSample[RDD[R]],
     lociPartitions: LociPartitioning,
     skipEmpty: Boolean,
@@ -118,7 +119,7 @@ object WindowFlatMapUtils {
   private[distributed] def partitionRegions[R <: ReferenceRegion: ClassTag](
     regionRDDs: PerSample[RDD[R]],
     lociPartitionsBoxed: Broadcast[LociPartitioning],
-    halfWindowSize: Int): RDD[(Int, R)] = {
+    halfWindowSize: Int): RDD[R] = {
 
     val sc = regionRDDs(0).sparkContext
 
@@ -182,12 +183,12 @@ object WindowFlatMapUtils {
     sc
       .union(
         for {
-          (keyedRegionsRDD, rddIndex) <- taskNumberRegionPairsRDDs.zipWithIndex
+          keyedRegionsRDD <- taskNumberRegionPairsRDDs
         } yield {
           for {
             (taskPosition, read) <- keyedRegionsRDD
           } yield
-            taskPosition -> (rddIndex, read)
+            taskPosition -> read
         }
       )
       .repartitionAndSortWithinPartitions(KeyPartitioner(numTasks))
@@ -220,7 +221,7 @@ object WindowFlatMapUtils {
    * @tparam T type of value returned by function
    * @return flatMap results, RDD[T]
    */
-  private[distributed] def windowTaskFlatMapMultipleRDDs[R <: ReferenceRegion: ClassTag, T: ClassTag](
+  private[distributed] def windowTaskFlatMapMultipleRDDs[R <: ReferenceRegion with HasSampleId: ClassTag, T: ClassTag](
     regionRDDs: PerSample[RDD[R]],
     lociPartitions: LociPartitioning,
     halfWindowSize: Int,
@@ -239,8 +240,8 @@ object WindowFlatMapUtils {
     val lociAccumulator = sc.accumulator[Long](0, "NumLoci")
 
     partitionedRegions
-      .mapPartitionsWithIndex((partitionIdx, keyedReads) => {
-        val iterators = SplitIterator.split(numRDDs, keyedReads)
+      .mapPartitionsWithIndex((partitionIdx, reads) => {
+        val iterators = SplitIterator.split[R](numRDDs, reads, _.sampleId)
         val taskLoci = lociPartitionsBoxed.value.inverse(partitionIdx)
         lociAccumulator += taskLoci.count
         function(partitionIdx, taskLoci, iterators)

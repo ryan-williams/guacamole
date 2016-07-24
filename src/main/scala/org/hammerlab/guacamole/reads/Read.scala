@@ -26,7 +26,7 @@ import org.hammerlab.guacamole.util.Bases
 /**
  * The fields in the Read trait are common to any read, whether mapped (aligned) or not.
  */
-trait Read {
+trait Read extends HasSampleId {
 
   /* The template name. A read, its mate, and any alternate alignments have the same name. */
   def name: String
@@ -44,8 +44,6 @@ trait Read {
   def isMapped: Boolean
 
   def asMappedRead: Option[MappedRead]
-
-  def sampleId: Int
 
   /** The sample (e.g. "tumor" or "patient3636") name. */
   def sampleName: String

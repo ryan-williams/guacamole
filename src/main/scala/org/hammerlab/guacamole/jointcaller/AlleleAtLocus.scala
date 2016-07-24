@@ -105,7 +105,7 @@ object AlleleAtLocus {
         ReadSubsequence.nextAlts(pileup.elements)
           .filter(subsequence => !onlyStandardBases || subsequence.sequenceIsAllStandardBases)
           .groupBy(x => (x.endLocus, x.sequence))
-          .map(pair => (pair._2.head -> pair._2.length))
+          .map(pair => (pair._2.head -> pair._2.size))
           .toVector
           .sortBy(-1 * _._2)
 
@@ -119,7 +119,7 @@ object AlleleAtLocus {
 
     val result =
       alleleRequiredReadsActualReads
-        .filter(tpl => tpl._3 >= tpl._2)
+        .filter(tpl => (tpl._3 >= tpl._2))
         .map(_._1)
         .distinct  // Reduce to distinct alleles
         .toVector

@@ -4,12 +4,11 @@ import java.io.{BufferedWriter, File, FileWriter}
 
 import org.apache.spark.SparkContext
 import org.hammerlab.guacamole.commands.SparkCommand
-import org.hammerlab.guacamole.loci.SimpleRange
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.readsets.ReadSets
 import org.hammerlab.guacamole.readsets.args.{Arguments => ReadSetsArguments}
 import org.hammerlab.guacamole.readsets.loading.{InputFilters, ReadLoadingConfig}
-import org.hammerlab.guacamole.reference.{ContigNotFound, ReferenceArgs, ReferenceBroadcast}
+import org.hammerlab.guacamole.reference.{ContigNotFound, Interval, ReferenceArgs, ReferenceBroadcast}
 import org.hammerlab.guacamole.util.Bases
 import org.kohsuke.args4j.{Option => Args4jOption}
 
@@ -85,7 +84,7 @@ object GeneratePartialFasta extends SparkCommand[GeneratePartialFastaArguments] 
     val padding = args.padding
     for {
       contig <- loci.contigs
-      SimpleRange(start, end) <- contig.ranges
+      Interval(start, end) <- contig.ranges
     } {
       try {
         val paddedStart = start.toInt - padding

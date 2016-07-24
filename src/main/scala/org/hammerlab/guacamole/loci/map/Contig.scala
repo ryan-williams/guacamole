@@ -3,9 +3,8 @@ package org.hammerlab.guacamole.loci.map
 import java.lang.{Long => JLong}
 
 import com.google.common.collect.{RangeMap, TreeRangeMap, Range => JRange}
-import org.hammerlab.guacamole.loci.SimpleRange
 import org.hammerlab.guacamole.loci.set.{Contig => LociSetContig}
-import org.hammerlab.guacamole.reference.ContigName
+import org.hammerlab.guacamole.reference.{ContigName, Interval}
 import org.hammerlab.guacamole.strings.TruncatedToString
 
 import scala.collection.JavaConversions._
@@ -38,12 +37,12 @@ case class Contig[T](name: ContigName, private val rangeMap: RangeMap[JLong, T])
   }
 
   /** This map as a regular scala immutable map from exclusive numeric ranges to values. */
-  lazy val asMap: SortedMap[SimpleRange, T] = {
+  lazy val asMap: SortedMap[Interval, T] = {
     TreeMap(
       (for {
         (range, value) <- rangeMap.asMapOfRanges.toSeq
       } yield {
-        SimpleRange(range) -> value
+        Interval(range) -> value
       }): _*
     )
   }
@@ -71,7 +70,7 @@ case class Contig[T](name: ContigName, private val rangeMap: RangeMap[JLong, T])
    */
   def stringPieces = {
     for {
-      (SimpleRange(start, end), value) <- asMap.iterator
+      (Interval(start, end), value) <- asMap.iterator
     } yield {
       "%s:%d-%d=%s".format(name, start, end, value)
     }

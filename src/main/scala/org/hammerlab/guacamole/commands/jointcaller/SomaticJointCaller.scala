@@ -8,6 +8,7 @@ import org.hammerlab.guacamole.commands.jointcaller.evidence.{MultiSampleMultiAl
 import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMapMultipleRDDs
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
+import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.readsets.{PerSample, ReadSets}
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.kohsuke.args4j.spi.StringArrayOptionHandler
@@ -159,8 +160,6 @@ object SomaticJoint {
 
     assume(loci.nonEmpty)
 
-    val broadcastForceCallLoci = sc.broadcast(forceCallLoci)
-
     val mappedReadRDDs = readsets.mappedReadsRDDs
 
     val lociPartitions =
@@ -170,24 +169,31 @@ object SomaticJoint {
         // specified loci.
         .partition(lociSetMinusOne(loci))
 
+    val broadcastForceCallLoci = sc.broadcast(forceCallLoci)
+
+    def callPileups(pileups: PerSample[Pileup]): Iterator[MultiSampleMultiAlleleEvidence] = {
+      val forceCall =
+        broadcastForceCallLoci
+          .value
+          .onContig(pileups.head.contigName)
+          .contains(pileups.head.locus + 1)
+
+      MultiSampleMultiAlleleEvidence.make(
+        pileups,
+        inputs,
+        parameters,
+        reference,
+        forceCall,
+        onlySomatic,
+        includeFiltered
+      ).toIterator
+    }
+
     pileupFlatMapMultipleRDDs(
       mappedReadRDDs,
       lociPartitions,
       skipEmpty = true,  // TODO: shouldn't skip empty positions if we might force call them. Need an efficient way to handle this.
-      rawPileups => {
-        val forceCall =
-          broadcastForceCallLoci.value.onContig(rawPileups.head.contigName)
-            .contains(rawPileups.head.locus + 1)
-
-        MultiSampleMultiAlleleEvidence.make(
-          rawPileups,
-          inputs,
-          parameters,
-          reference,
-          forceCall = forceCall,
-          onlySomatic = onlySomatic,
-          includeFiltered = includeFiltered).toIterator
-      },
+      callPileups,
       reference = reference
     )
   }

@@ -47,3 +47,18 @@ trait ReferenceRegion extends Interval {
   def regionStr: String = s"$contigName:[$start-$end)"
 }
 
+object ReferenceRegion {
+  implicit def intraContigPartialOrdering[R <: ReferenceRegion] =
+    new PartialOrdering[R] {
+      override def tryCompare(x: R, y: R): Option[Int] = {
+        if (x.contigName == y.contigName)
+          Some(x.start.compare(y.start))
+        else
+          None
+      }
+
+      override def lteq(x: R, y: R): Boolean = {
+        x.contigName == y.contigName && x.start <= y.start
+      }
+    }
+}

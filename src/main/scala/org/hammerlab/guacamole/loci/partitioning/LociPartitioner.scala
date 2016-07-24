@@ -12,8 +12,9 @@ import scala.reflect.ClassTag
 
 trait LociPartitionerArgs
   extends LociArgs
-  with ApproximatePartitionerArgs
-  with UniformPartitionerArgs {
+    with ApproximatePartitionerArgs
+    with ExactPartitionerArgs
+    with UniformPartitionerArgs {
 
   @Args4JOption(
     name = "--loci-partitioning",
@@ -25,9 +26,9 @@ trait LociPartitionerArgs
 
   @Args4JOption(
     name = "--loci-partitioner",
-    usage = "Loci partitioner to use: 'approximate' or 'uniform' (default: 'approximate')."
+    usage = "Loci partitioner to use: 'exact', 'approximate', or 'uniform' (default: 'exact')."
   )
-  var lociPartitionerName: String = "approximate"
+  var lociPartitionerName: String = "exact"
 
   def getPartitioner[R <: ReferenceRegion: ClassTag](regions: RDD[R], halfWindowSize: Int = 0): LociPartitioner = {
     val sc = regions.sparkContext
@@ -38,6 +39,8 @@ trait LociPartitionerArgs
         parallelism
 
     lociPartitionerName match {
+      case "exact" =>
+        new ExactPartitioner(regions, halfWindowSize, maxReadsPerPartition, printStats = !quiet)
       case "approximate" =>
         new ApproximatePartitioner(regions, halfWindowSize, numPartitions, partitioningAccuracy)
       case "uniform" =>

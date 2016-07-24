@@ -124,8 +124,6 @@ object VAFHistogram {
 
       val ReadSets(_, _, contigLengths) = readsets
 
-      val mappedReadsRDDs = readsets.mappedReadsRDDs
-
       val partitionedReads =
         PartitionedRegions(
           readsets.allMappedReads,
@@ -190,7 +188,11 @@ object VAFHistogram {
       }
 
       if (args.cluster) {
-        val variantsPerSample = variantLoci.keyBy(_.sampleId).splitByKey(numVariantsPerSample)
+        val variantsPerSample =
+          variantLoci
+            .keyBy(_.sampleId)
+            .splitByKey(numVariantsPerSample)
+
         for {
           (sampleId, variants) <- variantsPerSample
         } {
@@ -203,9 +205,10 @@ object VAFHistogram {
   /**
    * Generates a count of loci in each variant allele frequency bins
    *
-   * @param variantAlleleFrequencies RDD of loci with variant allele frequency > 0
-   * @param bins Number of bins to group the VAFs into
-   * @return Map of rounded variant allele frequency to number of loci with that value
+   * @param variantAlleleFrequencies RDD of loci with variant allele frequency > 0.
+   * @param bins Number of bins to group the VAFs into.
+   * @return Map from sample name to per-sample sorted [[Vector]] of tuples containing a [rounded variant allele
+   *         frequency] and [the number of loci with that VAF].
    */
   def generateVAFHistograms(variantAlleleFrequencies: RDD[VariantLocus],
                             bins: Int): Map[SampleId, Vector[(Int, Long)]] = {
@@ -355,4 +358,3 @@ object VAFHistogram {
     model
   }
 }
-

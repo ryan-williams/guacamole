@@ -56,7 +56,7 @@ private object Util {
   // This helper function is in its own object here to avoid serializing `PileupFlatMapUtilsSuite`, which is not
   // serializable due to mixing in `Matchers`.
   def pileupToElementStrings(pileups: PerSample[Pileup]): Iterator[PerSample[Iterable[String]]] =
-  Iterator(pileups.map(_.elements.map(p => Bases.basesToString(p.sequencedBases))))
+    Iterator(pileups.map(_.elements.map(p => Bases.basesToString(p.sequencedBases))))
 }
 
 class PileupFlatMapUtilsSuite extends GuacFunSuite {
@@ -99,7 +99,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
     firstPileup.elements.forall(_.readPosition == 0L) should be(true)
     firstPileup.elements.forall(_.isMatch) should be(true)
 
-    pileups.forall(_.head.isMatch) should be(true)
+    pileups.forall(_.elements.head.isMatch) should be(true)
 
   }
 
@@ -125,7 +125,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
     firstPileup.locus should be(1L)
     firstPileup.referenceBase should be(Bases.T)
 
-    pileups.forall(_.head.isMatch) should be(true)
+    pileups.forall(_.elements.head.isMatch) should be(true)
   }
 
   test("test pileup flatmap parallelism 5; skip empty pileups") {

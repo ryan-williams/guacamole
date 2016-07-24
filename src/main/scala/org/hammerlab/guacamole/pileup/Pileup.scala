@@ -19,7 +19,7 @@
 package org.hammerlab.guacamole.pileup
 
 import org.hammerlab.guacamole.reads.MappedRead
-import org.hammerlab.guacamole.reference.{ContigName, ContigSequence, Locus}
+import org.hammerlab.guacamole.reference.{ContigName, ContigSequence, Locus, Position}
 import org.hammerlab.guacamole.variants.Allele
 
 /**
@@ -36,15 +36,8 @@ import org.hammerlab.guacamole.variants.Allele
 case class Pileup(contigName: ContigName,
                   locus: Locus,
                   contigSequence: ContigSequence,
-                  elements: Iterable[PileupElement]) {
-
-  val referenceBase: Byte = contigSequence(locus.toInt)
-
-  /** The first element in the pileup. */
-  lazy val head = {
-    assume(elements.nonEmpty, "Empty pileup")
-    elements.head
-  }
+                  elements: Iterable[PileupElement])
+  extends Position {
 
   assume(elements.forall(_.read.contigName == contigName),
     "Pileup reference name '%s' does not match read reference name(s): %s".format(
@@ -54,6 +47,8 @@ case class Pileup(contigName: ContigName,
   lazy val distinctAlleles: Seq[Allele] = elements.map(_.allele).toVector.distinct.sorted
 
   lazy val sampleName = elements.head.read.sampleName
+
+  lazy val referenceBase: Byte = contigSequence(locus.toInt)
 
   /**
    * Depth of pileup - number of reads at locus
@@ -84,7 +79,7 @@ case class Pileup(contigName: ContigName,
    * @param newReads The *new* reads, i.e. those that overlap the new locus, but not the current locus.
    * @return A new [[Pileup]] at the given locus.
    */
-  def atGreaterLocus(newLocus: Long, newReads: Iterator[MappedRead]) = {
+  def atGreaterLocus(newLocus: Locus, newReads: Iterator[MappedRead]) = {
     assume(elements.isEmpty || newLocus > locus,
       "New locus (%d) not greater than current locus (%d)".format(newLocus, locus))
     if (elements.isEmpty && newReads.isEmpty) {

@@ -1,6 +1,7 @@
 package org.hammerlab.guacamole.jointcaller.pileup_summarization
 
 import org.apache.spark.Logging
+import org.hammerlab.guacamole.pileup.Pileup.PileupElements
 import org.hammerlab.guacamole.pileup.PileupElement
 import org.hammerlab.guacamole.reads.MappedRead
 import org.hammerlab.guacamole.reference.{ContigSequence, Locus}
@@ -141,7 +142,7 @@ object ReadSubsequence {
    * @param elements pileup element instances, should all be positioned at same locus
    * @return ReadSubsequence instances giving the non-reference sequenced alleles at this position
    */
-  def nextAlts(elements: Seq[PileupElement]): Seq[ReadSubsequence] = {
+  def nextAlts(elements: PileupElements): Iterable[ReadSubsequence] = {
     val startLocus = elements.headOption.map(_.locus)
     assume(elements.forall(_.locus == startLocus.get))
     elements.flatMap(element => ofNextAltAllele(element))

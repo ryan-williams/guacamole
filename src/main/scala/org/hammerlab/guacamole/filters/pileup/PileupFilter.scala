@@ -1,8 +1,9 @@
 package org.hammerlab.guacamole.filters.pileup
 
 import org.hammerlab.guacamole.logging.DebugLogArgs
-import org.hammerlab.guacamole.pileup.{ Pileup, PileupElement }
-import org.kohsuke.args4j.{ Option => Args4jOption }
+import org.hammerlab.guacamole.pileup.Pileup
+import org.hammerlab.guacamole.pileup.Pileup.PileupElements
+import org.kohsuke.args4j.{Option => Args4jOption}
 
 object PileupFilter {
 
@@ -32,7 +33,7 @@ object PileupFilter {
             minAlignmentQuality: Int,
             minEdgeDistance: Int): Pileup = {
 
-    var elements: Seq[PileupElement] = pileup.elements
+    var elements: PileupElements = pileup.elements
 
     if (filterMultiAllelic) {
       elements = MultiAllelicPileupFilter(elements)

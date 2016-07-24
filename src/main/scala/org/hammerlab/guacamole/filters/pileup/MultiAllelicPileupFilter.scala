@@ -1,6 +1,6 @@
 package org.hammerlab.guacamole.filters.pileup
 
-import org.hammerlab.guacamole.pileup.PileupElement
+import org.hammerlab.guacamole.pileup.Pileup.PileupElements
 
 /**
  * Filter to remove pileups which may produce multi-allelic variant calls.
@@ -13,7 +13,7 @@ object MultiAllelicPileupFilter {
    * @param maxPloidy number of alleles to expect (> maxPloidy would mean multiple possible alternates) default: 2
    * @return Empty sequence if there are > maxPloidy possible allelee, otherwise original set of elements
    */
-  def apply(elements: Seq[PileupElement], maxPloidy: Int = 2): Seq[PileupElement] =
+  def apply(elements: PileupElements, maxPloidy: Int = 2): PileupElements =
     if (elements.map(_.allele).toSet.size > maxPloidy)
       Seq.empty
     else

@@ -3,9 +3,10 @@ package org.hammerlab.guacamole.likelihood
 import cern.colt.matrix.impl.DenseDoubleMatrix2D
 import cern.jet.math.Functions
 import org.bdgenomics.adam.util.PhredUtils
+import org.hammerlab.guacamole.pileup.Pileup.PileupElements
 import org.hammerlab.guacamole.pileup.{Pileup, PileupElement}
 import org.hammerlab.guacamole.util.Bases
-import org.hammerlab.guacamole.variants.{Allele, Genotype}
+import org.hammerlab.guacamole.variants.Genotype
 
 /**
  * Functions for calculating the likelihood of a genotype given some read evidence (pileup elements).
@@ -51,7 +52,7 @@ object Likelihood {
    * @return The likelihood for the given genotype.
    */
   def likelihoodOfGenotype(
-    elements: Seq[PileupElement],
+    elements: PileupElements,
     genotype: Genotype,
     probabilityCorrect: PileupElement => Double = probabilityCorrectIgnoringAlignment,
     prior: Genotype => Double = uniformPrior,
@@ -128,7 +129,7 @@ object Likelihood {
    * @param normalize if true, the probabilities returned are normalized to sum to 1.
    * @return A sequence of probabilities corresponding to each genotype in the genotypes argument
    */
-  def likelihoodsOfGenotypes(elements: Seq[PileupElement],
+  def likelihoodsOfGenotypes(elements: PileupElements,
                              genotypes: Seq[Genotype],
                              probabilityCorrect: PileupElement => Double = probabilityCorrectIgnoringAlignment,
                              prior: Genotype => Double = uniformPrior,

@@ -45,6 +45,8 @@ trait Read {
 
   def asMappedRead: Option[MappedRead]
 
+  def sampleId: Int
+
   /** The sample (e.g. "tumor" or "patient3636") name. */
   def sampleName: String
 
@@ -82,7 +84,7 @@ object Read extends Logging {
    * @param record
    * @return
    */
-  def apply(record: SAMRecord): Read = {
+  def apply(record: SAMRecord, sampleId: Int): Read = {
 
     val isMapped =
       !record.getReadUnmappedFlag &&
@@ -106,6 +108,7 @@ object Read extends Logging {
             record.getReadString.getBytes,
             record.getBaseQualities,
             record.getDuplicateReadFlag,
+            sampleId,
             sampleName.intern,
             record.getReferenceName.intern,
             record.getMappingQuality,
@@ -131,6 +134,7 @@ object Read extends Logging {
           record.getReadString.getBytes,
           record.getBaseQualities,
           record.getDuplicateReadFlag,
+          sampleId,
           sampleName,
           record.getReadFailsVendorQualityCheckFlag,
           record.getReadPairedFlag
@@ -153,7 +157,7 @@ object Read extends Logging {
    * @param alignmentRecord ADAM Alignment Record (an aligned or unaligned read)
    * @return Mapped or Unmapped Read
    */
-  def apply(alignmentRecord: AlignmentRecord): Read = {
+  def apply(alignmentRecord: AlignmentRecord, sampleId: Int): Read = {
 
     val sequence = Bases.stringToBases(alignmentRecord.getSequence)
     val baseQualities = baseQualityStringToArray(alignmentRecord.getQual, sequence.length)
@@ -168,6 +172,7 @@ object Read extends Logging {
           sequence = sequence,
           baseQualities = baseQualities,
           isDuplicate = alignmentRecord.getDuplicateRead,
+          sampleId = sampleId,
           sampleName = alignmentRecord.getRecordGroupSample.intern(),
           contigName = referenceContig,
           alignmentQuality = alignmentRecord.getMapq,
@@ -183,6 +188,7 @@ object Read extends Logging {
           sequence = sequence,
           baseQualities = baseQualities,
           isDuplicate = alignmentRecord.getDuplicateRead,
+          sampleId = sampleId,
           sampleName = alignmentRecord.getRecordGroupSample.intern(),
           failedVendorQualityChecks = alignmentRecord.getFailedVendorQualityChecks,
           alignmentRecord.getReadPaired

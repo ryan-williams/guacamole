@@ -83,6 +83,7 @@ object TestUtil {
                    name: String,
                    baseQualities: String = "",
                    isDuplicate: Boolean = false,
+                   sampleId: Int = 0,
                    sampleName: String = "",
                    contigName: ContigName = "",
                    alignmentQuality: Int = -1,
@@ -101,6 +102,7 @@ object TestUtil {
       sequenceArray,
       qualityScoresArray,
       isDuplicate,
+      sampleId,
       sampleName.intern,
       contigName,
       alignmentQuality,
@@ -117,7 +119,8 @@ object TestUtil {
                start: Locus = 1,
                chr: ContigName = "chr1",
                qualityScores: Option[Seq[Int]] = None,
-               alignmentQuality: Int = 30): MappedRead = {
+               alignmentQuality: Int = 30,
+               sampleId: Int = 0): MappedRead = {
 
     val qualityScoreString = if (qualityScores.isDefined) {
       qualityScores.get.map(q => q + 33).map(_.toChar).mkString
@@ -130,6 +133,7 @@ object TestUtil {
       name = "read1",
       cigarString = cigar,
       start = start,
+      sampleId = sampleId,
       contigName = chr,
       baseQualities = qualityScoreString,
       alignmentQuality = alignmentQuality

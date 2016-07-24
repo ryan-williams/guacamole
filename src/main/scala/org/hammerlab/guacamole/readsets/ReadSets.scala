@@ -31,11 +31,11 @@ case class ReadSets(readsRDDs: PerSample[ReadsRDD],
                     contigLengths: ContigLengths)
   extends PerSample[ReadsRDD] {
 
-  def numSamples: Int = length
+  def numSamples: NumSamples = length
   def sampleNames: PerSample[String] = readsRDDs.map(_.input.sampleName)
 
-  override def length: Int = readsRDDs.length
-  override def apply(sampleId: Int): ReadsRDD = readsRDDs(sampleId)
+  override def length: NumSamples = readsRDDs.length
+  override def apply(sampleId: SampleId): ReadsRDD = readsRDDs(sampleId)
 
   def sc = readsRDDs.head.reads.sparkContext
 
@@ -144,9 +144,9 @@ object ReadSets {
 
     val (readsRDDs, sequenceDictionaries) =
       (for {
-        (Input(sampleName, filename), filters) <- inputsAndFilters
+        (Input(sampleId, sampleName, filename), filters) <- inputsAndFilters
       } yield
-        load(filename, sc, filters, config)
+        load(filename, sc, sampleId, filters, config)
       ).unzip
 
     val sequenceDictionary = mergeSequenceDictionaries(inputs, sequenceDictionaries)
@@ -191,14 +191,15 @@ object ReadSets {
    */
   private[readsets] def load(filename: String,
                              sc: SparkContext,
+                             sampleId: Int,
                              filters: InputFilters = InputFilters.empty,
                              config: ReadLoadingConfig = ReadLoadingConfig.default): (RDD[Read], SequenceDictionary) = {
 
     val (allReads, sequenceDictionary) =
       if (filename.endsWith(".bam") || filename.endsWith(".sam"))
-        loadFromBAM(filename, sc, filters, config)
+        loadFromBAM(filename, sc, sampleId, filters, config)
       else
-        loadFromADAM(filename, sc, filters, config)
+        loadFromADAM(filename, sc, sampleId, filters, config)
 
     val reads = filterRDD(allReads, filters, sequenceDictionary)
 
@@ -208,6 +209,7 @@ object ReadSets {
   /** Returns an RDD of Reads and SequenceDictionary from reads in BAM format **/
   private def loadFromBAM(filename: String,
                           sc: SparkContext,
+                          sampleId: Int,
                           filters: InputFilters,
                           config: ReadLoadingConfig): (RDD[Read], SequenceDictionary) = {
 
@@ -271,7 +273,7 @@ object ReadSets {
             (filters.isPaired && !record.getReadPairedFlag)) {
             None
           } else {
-            val read = Read(record)
+            val read = Read(record, sampleId)
             assert(filters.overlapsLoci.isEmpty || read.isMapped)
             Some(read)
           }
@@ -293,7 +295,7 @@ object ReadSets {
           .setName(s"Hadoop file: $shortName")
           .values
           .setName(s"Hadoop reads: $shortName")
-          .map(r => Read(r.get))
+          .map(r => Read(r.get, sampleId))
           .setName(s"Guac reads: $shortName")
 
       (reads, sequenceDictionary)
@@ -303,6 +305,7 @@ object ReadSets {
   /** Returns an RDD of Reads and SequenceDictionary from reads in ADAM format **/
   private def loadFromADAM(filename: String,
                            sc: SparkContext,
+                           sampleId: Int,
                            filters: InputFilters,
                            config: ReadLoadingConfig): (RDD[Read], SequenceDictionary) = {
 
@@ -316,7 +319,7 @@ object ReadSets {
     val sequenceDictionary =
       new ADAMSpecificRecordSequenceDictionaryRDDAggregator(adamRecords).adamGetSequenceDictionary()
 
-    (adamRecords.map(Read(_)), sequenceDictionary)
+    (adamRecords.map(Read(_, sampleId)), sequenceDictionary)
   }
 
 

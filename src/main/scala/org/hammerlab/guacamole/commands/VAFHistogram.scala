@@ -154,7 +154,7 @@ object VAFHistogram {
 
       val histogramOutput =
         (for {
-          Input(sampleName, filename) <- args.inputs
+          Input(_, sampleName, filename) <- args.inputs
           histogram = variantAlleleHistograms(sampleName)
         } yield {
           histogram

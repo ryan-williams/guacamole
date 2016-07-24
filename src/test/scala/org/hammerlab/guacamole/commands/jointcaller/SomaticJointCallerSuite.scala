@@ -7,6 +7,7 @@ import org.hammerlab.guacamole.reference.ReferenceBroadcast.MapBackedReferenceSe
 import org.hammerlab.guacamole.util.{GuacFunSuite, TestUtil}
 
 class SomaticJointCallerSuite extends GuacFunSuite with ReadsRDDUtil {
+
   val cancerWGS1Bams = Vector("normal.bam", "primary.bam", "recurrence.bam").map(
     name => TestUtil.testDataPath("cancer-wgs1/" + name))
 

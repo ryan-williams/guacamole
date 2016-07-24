@@ -102,6 +102,7 @@ object SomaticStandard {
 
       var potentialGenotypes: RDD[CalledSomaticAllele] =
         pileupFlatMapTwoRDDs[CalledSomaticAllele](
+          (args.sampleNames(0), args.sampleNames(1)),
           tumorReads.mappedReads,
           normalReads.mappedReads,
           lociPartitions,

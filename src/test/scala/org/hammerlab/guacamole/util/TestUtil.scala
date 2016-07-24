@@ -221,8 +221,8 @@ object TestUtil {
     val contig = tumorReads(0).contigName
     assume(normalReads(0).contigName == contig)
     (
-      Pileup(contig, locus, reference.getContig(contig), tumorReads),
-      Pileup(contig, locus, reference.getContig(contig), normalReads)
+      Pileup("tumor", contig, locus, reference.getContig(contig), tumorReads),
+      Pileup("normal", contig, locus, reference.getContig(contig), normalReads)
     )
   }
 
@@ -245,6 +245,7 @@ object TestUtil {
     val actualContig = maybeContig.getOrElse(localReads(0).contigName)
 
     Pileup(
+      "test",
       actualContig,
       locus,
       reference.getContig(actualContig),

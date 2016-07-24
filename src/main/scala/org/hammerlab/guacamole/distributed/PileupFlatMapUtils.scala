@@ -20,16 +20,18 @@ object PileupFlatMapUtils {
    *  If an existing Pileup is provided, then its locus must be <= the new locus.
    */
   private def initOrMovePileup(existing: Option[Pileup],
+                               sampleName: String,
                                window: SlidingWindow[MappedRead],
                                referenceContigSequence: ContigSequence): Pileup = {
     assume(window.halfWindowSize == 0)
     existing match {
       case None =>
         Pileup(
-          window.currentRegions(),
+          sampleName,
           window.contigName,
           window.currentLocus,
-          referenceContigSequence
+          referenceContigSequence,
+          window.currentRegions()
         )
       case Some(pileup) =>
         pileup.atGreaterLocus(window.currentLocus, window.newRegions.iterator)
@@ -47,7 +49,8 @@ object PileupFlatMapUtils {
    * @see the windowTaskFlatMapMultipleRDDs function for other argument descriptions
    *
    */
-  def pileupFlatMap[T: ClassTag](reads: RDD[MappedRead],
+  def pileupFlatMap[T: ClassTag](sampleName: String,
+                                 reads: RDD[MappedRead],
                                  lociPartitions: LociPartitioning,
                                  skipEmpty: Boolean,
                                  function: Pileup => Iterator[T],
@@ -60,7 +63,7 @@ object PileupFlatMapUtils {
       initialState = None,
       (maybePileup: Option[Pileup], windows: PerSample[SlidingWindow[MappedRead]]) => {
         assert(windows.length == 1)
-        val pileup = initOrMovePileup(maybePileup, windows(0), reference.getContig(windows(0).contigName))
+        val pileup = initOrMovePileup(maybePileup, sampleName, windows(0), reference.getContig(windows(0).contigName))
         (Some(pileup), function(pileup))
       }
     )
@@ -74,7 +77,8 @@ object PileupFlatMapUtils {
    * @see the windowTaskFlatMapMultipleRDDs function for other argument descriptions.
    *
    */
-  def pileupFlatMapTwoRDDs[T: ClassTag](reads1: RDD[MappedRead],
+  def pileupFlatMapTwoRDDs[T: ClassTag](sampleNames: (String, String),
+                                        reads1: RDD[MappedRead],
                                         reads2: RDD[MappedRead],
                                         lociPartitions: LociPartitioning,
                                         skipEmpty: Boolean,
@@ -89,8 +93,8 @@ object PileupFlatMapUtils {
       function = (maybePileups: Option[(Pileup, Pileup)], windows: PerSample[SlidingWindow[MappedRead]]) => {
         assert(windows.length == 2)
         val contigSequence = reference.getContig(windows(0).contigName)
-        val pileup1 = initOrMovePileup(maybePileups.map(_._1), windows(0), contigSequence)
-        val pileup2 = initOrMovePileup(maybePileups.map(_._2), windows(1), contigSequence)
+        val pileup1 = initOrMovePileup(maybePileups.map(_._1), sampleNames._1, windows(0), contigSequence)
+        val pileup2 = initOrMovePileup(maybePileups.map(_._2), sampleNames._2, windows(1), contigSequence)
         (Some((pileup1, pileup2)), function(pileup1, pileup2))
       })
   }
@@ -100,7 +104,8 @@ object PileupFlatMapUtils {
    *
    * @see the windowTaskFlatMapMultipleRDDs function for other argument descriptions.
    */
-  def pileupFlatMapMultipleRDDs[T: ClassTag](readsRDDs: PerSample[RDD[MappedRead]],
+  def pileupFlatMapMultipleRDDs[T: ClassTag](sampleNames: PerSample[String],
+                                             readsRDDs: PerSample[RDD[MappedRead]],
                                              lociPartitions: LociPartitioning,
                                              skipEmpty: Boolean,
                                              function: PerSample[Pileup] => Iterator[T],
@@ -123,13 +128,15 @@ object PileupFlatMapUtils {
 
             case None =>
               for {
-                window <- windows
+                (window, sampleIdx) <- windows.zipWithIndex
+                sampleName = sampleNames(sampleIdx)
               } yield
                 Pileup(
-                  window.currentRegions(),
+                  sampleName,
                   window.contigName,
                   window.currentLocus,
-                  reference.getContig(windows(0).contigName)
+                  reference.getContig(windows(0).contigName),
+                  window.currentRegions()
                 )
         }
         (Some(advancedPileups), function(advancedPileups))

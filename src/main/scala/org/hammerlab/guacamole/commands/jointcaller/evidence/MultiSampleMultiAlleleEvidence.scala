@@ -86,6 +86,7 @@ object MultiSampleMultiAlleleEvidence {
       pileups.map(
         pileup =>
           new Pileup(
+            pileup.sampleName,
             pileup.contigName,
             pileup.locus,
             pileup.contigSequence,

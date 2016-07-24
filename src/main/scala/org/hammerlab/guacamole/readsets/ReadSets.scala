@@ -31,8 +31,11 @@ case class ReadSets(readsRDDs: PerSample[ReadsRDD],
                     contigLengths: ContigLengths)
   extends PerSample[ReadsRDD] {
 
+  def numSamples: Int = length
+  def sampleNames: PerSample[String] = readsRDDs.map(_.input.sampleName)
+
   override def length: Int = readsRDDs.length
-  override def apply(idx: Int): ReadsRDD = readsRDDs(idx)
+  override def apply(sampleId: Int): ReadsRDD = readsRDDs(sampleId)
 
   def sc = readsRDDs.head.reads.sparkContext
 

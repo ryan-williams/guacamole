@@ -84,6 +84,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
 
     val pileups =
       pileupFlatMap[Pileup](
+        "sample",
         reads,
         new UniformPartitioner(reads.getNumPartitions).partition(LociSet("chr1:1-9")),
         skipEmpty = false,
@@ -114,6 +115,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
 
     val pileups =
       pileupFlatMap[Pileup](
+        "sample",
         reads,
         new UniformPartitioner(5).partition(LociSet("chr1:1-9")),
         skipEmpty = false,
@@ -138,6 +140,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
 
     val loci =
       pileupFlatMap[Long](
+        "test",
         reads,
         new UniformPartitioner(5).partition(LociSet("chr0:5-10,chr1:0-100,chr2:0-1000,chr2:5000-6000")),
         skipEmpty = true,
@@ -168,6 +171,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
 
     val loci =
       pileupFlatMapTwoRDDs[Long](
+        ("normal", "tumor"),
         reads1,
         reads2,
         new UniformPartitioner(1).partition(LociSet("chr0:0-1000,chr1:1-500,chr2:10-20")),
@@ -211,6 +215,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
 
     val resultPlain =
       pileupFlatMapMultipleRDDs[PerSample[Iterable[String]]](
+        sampleNames = Array("1", "2", "3"),
         reads,
         new UniformPartitioner(1).partition(loci),
         skipEmpty = true,
@@ -220,6 +225,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
 
     val resultParallelized =
       pileupFlatMapMultipleRDDs[PerSample[Iterable[String]]](
+        sampleNames = Array("1", "2", "3"),
         reads,
         new UniformPartitioner(800).partition(loci),
         skipEmpty = true,
@@ -229,6 +235,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
 
     val resultWithEmpty =
       pileupFlatMapMultipleRDDs[PerSample[Iterable[String]]](
+        sampleNames = Array("1", "2", "3"),
         reads,
         new UniformPartitioner(5).partition(loci),
         skipEmpty = false,
@@ -265,6 +272,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
 
     val pileups =
       pileupFlatMap[PileupElement](
+        "sample",
         reads,
         new UniformPartitioner(5).partition(LociSet("chr1:1-9")),
         skipEmpty = false,
@@ -297,6 +305,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
 
     val elements =
       pileupFlatMapTwoRDDs[PileupElement](
+        ("normal", "tumor"),
         reads1,
         reads2,
         new UniformPartitioner(1000).partition(LociSet("chr1:1-500")),
@@ -323,6 +332,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
 
     val pileups =
       pileupFlatMap[PileupElement](
+        "sample",
         reads,
         new UniformPartitioner(5).partition(LociSet("chr1:1-12")),
         skipEmpty = false,

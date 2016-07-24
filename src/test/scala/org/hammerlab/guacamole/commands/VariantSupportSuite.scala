@@ -30,6 +30,7 @@ class VariantSupportSuite extends GuacFunSuite with TableDrivenPropertyChecks wi
 
         val pileup =
           Pileup(
+            "test",
             contig,
             locus,
             grch37Reference.getContig(contig),

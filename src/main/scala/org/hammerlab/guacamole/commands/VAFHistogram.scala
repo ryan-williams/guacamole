@@ -132,6 +132,7 @@ object VAFHistogram {
 
       val variantLoci =
         variantLociFromReads(
+          readsets.sampleNames,
           readsets.mappedReadsRDDs,
           reference,
           lociPartitions,
@@ -227,7 +228,8 @@ object VAFHistogram {
    * @param printStats Print descriptive statistics for the variant allele frequency distribution
    * @return RDD of VariantLocus, which contain the locus and non-zero variant allele frequency
    */
-  def variantLociFromReads(readsRDDs: PerSample[RDD[MappedRead]],
+  def variantLociFromReads(sampleNames: PerSample[String],
+                           readsRDDs: PerSample[RDD[MappedRead]],
                            reference: ReferenceGenome,
                            lociPartitions: LociPartitioning,
                            samplePercent: Int = 100,
@@ -236,6 +238,7 @@ object VAFHistogram {
                            printStats: Boolean = false): RDD[VariantLocus] = {
     val variantLoci =
       pileupFlatMapMultipleRDDs[VariantLocus](
+        sampleNames,
         readsRDDs,
         lociPartitions,
         skipEmpty = true,

@@ -146,10 +146,11 @@ object GermlineAssemblyCaller {
 
             val pileup =
               Pileup(
-                currentLocusReads,
+                sampleName,
                 contigName,
                 window.currentLocus,
-                referenceContig
+                referenceContig,
+                currentLocusReads
               )
 
             // Compute the number reads with variant bases from the reads overlapping the currentLocus
@@ -266,7 +267,7 @@ object GermlineAssemblyCaller {
           .filter(_.altBases.nonEmpty)
           .map(allele => {
             CalledAllele(
-              pileup.elements.head.read.sampleName,
+              pileup.sampleName,
               pileup.contigName,
               pileup.locus,
               allele,

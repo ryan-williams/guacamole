@@ -30,10 +30,10 @@ class VariantSupportSuite extends GuacFunSuite with TableDrivenPropertyChecks wi
 
         val pileup =
           Pileup(
-            window.currentRegions(),
             contig,
             locus,
-            grch37Reference.getContig(contig)
+            grch37Reference.getContig(contig),
+            window.currentRegions()
           )
 
         assertAlleleCounts(pileup, alleleCounts: _*)

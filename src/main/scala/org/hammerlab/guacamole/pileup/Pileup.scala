@@ -33,10 +33,10 @@ import org.hammerlab.guacamole.variants.Allele
  * @param elements Sequence of [[PileupElement]] instances giving the sequenced bases that align to a particular
  *                 reference locus, in arbitrary order.
  */
-case class Pileup(contigName: ContigName,
-                  locus: Locus,
-                  contigSequence: ContigSequence,
-                  elements: Iterable[PileupElement])
+class Pileup(val contigName: ContigName,
+             val locus: Locus,
+             val contigSequence: ContigSequence,
+             val elements: Iterable[PileupElement])
   extends Position {
 
   assume(elements.forall(_.read.contigName == contigName),
@@ -85,7 +85,7 @@ case class Pileup(contigName: ContigName,
     if (elements.isEmpty && newReads.isEmpty) {
       // Optimization for common case.
       // If there are no reads, we won't know what the reference base is
-      Pileup(contigName, newLocus, contigSequence, Vector.empty[PileupElement])
+      new Pileup(contigName, newLocus, contigSequence, Vector.empty[PileupElement])
     } else {
       // This code gets called many times. We are using while loops for performance.
       val builder = Vector.newBuilder[PileupElement]
@@ -106,7 +106,7 @@ case class Pileup(contigName: ContigName,
       }
 
       val newPileupElements = builder.result
-      Pileup(contigName, newLocus, contigSequence, newPileupElements)
+      new Pileup(contigName, newLocus, contigSequence, newPileupElements)
     }
   }
 
@@ -135,12 +135,12 @@ object Pileup {
    * @param contigSequence The reference for this pileup's contig
    * @return A [[Pileup]] at the given locus.
    */
-  def apply(reads: Iterable[MappedRead],
-            contigName: ContigName,
+  def apply(contigName: ContigName,
             locus: Locus,
-            contigSequence: ContigSequence): Pileup = {
+            contigSequence: ContigSequence,
+            reads: Iterable[MappedRead]): Pileup = {
     //TODO: Is this call to overlaps locus necessary?
     val elements = reads.filter(_.overlapsLocus(locus)).map(PileupElement(_, locus, contigSequence))
-    Pileup(contigName, locus, contigSequence, elements)
+    new Pileup(contigName, locus, contigSequence, elements)
   }
 }

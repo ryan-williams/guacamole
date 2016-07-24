@@ -220,8 +220,10 @@ object TestUtil {
                             reference: ReferenceBroadcast): (Pileup, Pileup) = {
     val contig = tumorReads(0).contigName
     assume(normalReads(0).contigName == contig)
-    (Pileup(tumorReads, contig, locus, reference.getContig(contig)),
-      Pileup(normalReads, contig, locus, reference.getContig(contig)))
+    (
+      Pileup(contig, locus, reference.getContig(contig), tumorReads),
+      Pileup(contig, locus, reference.getContig(contig), normalReads)
+    )
   }
 
   def loadPileup(sc: SparkContext,
@@ -243,10 +245,10 @@ object TestUtil {
     val actualContig = maybeContig.getOrElse(localReads(0).contigName)
 
     Pileup(
-      localReads,
       actualContig,
       locus,
-      reference.getContig(actualContig)
+      reference.getContig(actualContig),
+      localReads
     )
   }
 

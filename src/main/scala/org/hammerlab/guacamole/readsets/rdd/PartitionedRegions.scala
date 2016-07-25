@@ -1,85 +1,92 @@
 package org.hammerlab.guacamole.readsets.rdd
 
-import org.apache.commons.math3
+import org.apache.spark.Accumulable
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
-import org.hammerlab.guacamole.distributed.{HashMapAccumulatorParam, KeyPartitioner, TaskPosition}
+import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.PartitionIndex
 import org.hammerlab.guacamole.loci.partitioning.LociPartitioning
-import org.hammerlab.guacamole.logging.DelayedMessages
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.reference.ReferenceRegion
+import org.hammerlab.magic.accumulables.{HistogramParam, HashMap => MagicHashMap}
+import org.hammerlab.magic.rdd.KeyPartitioner
+import org.hammerlab.magic.util.Stats
 
-import scala.collection.mutable.{HashMap => MutableHashMap}
 import scala.reflect.ClassTag
 
 object PartitionedRegions {
+
+  type IntHist = MagicHashMap[Int, Long]
+
+  def IntHist(): IntHist = MagicHashMap[Int, Long]()
+
   def apply[R <: ReferenceRegion: ClassTag](regions: RDD[R],
-                                            lociPartitionsBoxed: Broadcast[LociPartitioning],
-                                            halfWindowSize: Int): RDD[R] = {
+                                            partitioningBroadcast: Broadcast[LociPartitioning],
+                                            halfWindowSize: Int,
+                                            printStats: Boolean = true): RDD[R] = {
 
     val sc = regions.sparkContext
 
-    val lociPartitions = lociPartitionsBoxed.value
+    val lociPartitioning = partitioningBroadcast.value
 
-    progress(s"Partitioning reads according to loci partitioning:\n$lociPartitions")
+    val numPartitions = lociPartitioning.numPartitions
 
-    val numTasks = lociPartitions.inverse.map(_._1).max + 1
+    progress(s"Partitioning reads according to loci partitioning:\n$lociPartitioning")
 
-    // Counters
-    val totalRegions = sc.accumulator(0L)
-    val relevantRegions = sc.accumulator(0L)
-    val expandedRegions = sc.accumulator(0L)
+    val numTasks = lociPartitioning.inverse.map(_._1).max + 1
 
-    DelayedMessages.default.say { () =>
-      "Region counts: filtered %,d total regions to %,d relevant regions, expanded for overlaps by %,.2f%% to %,d".format(
-        totalRegions.value,
-        relevantRegions.value,
-        (expandedRegions.value - relevantRegions.value) * 100.0 / relevantRegions.value,
-        expandedRegions.value)
-    }
+    implicit val accumulableParam = new HistogramParam[Int, Long]
 
-    // Expand regions into (task, region) pairs for each region RDD.
-    val taskNumberRegionPairsRDD: RDD[(TaskPosition, R)] =
-      regions.flatMap(region => {
-        val singleContig = lociPartitionsBoxed.value.onContig(region.contigName)
-        val partitionsForRegion = singleContig.getAll(region.start - halfWindowSize, region.end + halfWindowSize)
+    // Histogram of the number of copies made of each region (i.e. when a region straddles loci-partition
+    // boundaries.
+    val regionCopiesHistogram: Accumulable[IntHist, Int] = sc.accumulable(IntHist(), "copies-per-region")
 
-        // Update counters
-        totalRegions += 1
-        if (partitionsForRegion.nonEmpty) relevantRegions += 1
-        expandedRegions += partitionsForRegion.size
+    // Histogram of the number of regions assigned to each partition.
+    val partitionRegionsHistogram: Accumulable[IntHist, Int] = sc.accumulable(IntHist(), "regions-per-partition")
 
-        // Return this region, duplicated for each task it is assigned to.
-        partitionsForRegion.map(task => TaskPosition(task, region.contigName, region.start) -> region)
+    val partitionedRegions =
+      (for {
+        r <- regions
+        partitions = partitioningBroadcast.value.getAll(r, halfWindowSize)
+        _ = (regionCopiesHistogram += partitions.size)
+        partition <- partitions
+      } yield {
+        partitionRegionsHistogram += partition
+        (partition, r.contigName, r.start) -> r
       })
+      .repartitionAndSortWithinPartitions(KeyPartitioner(numPartitions))
+      .values
+      .setName("partitioned-regions")
 
-    // Run the task on each partition. Keep track of the number of regions assigned to each task in an accumulator, so
-    // we can print out a summary of the skew.
-    val regionsByTask = sc.accumulator(MutableHashMap.empty[String, Long])(new HashMapAccumulatorParam)
+    if (printStats) {
+      // Need to force materialization for the accumulator to have data… but that's reasonable because anything
+      // downstream is presumably going to reuse this RDD.
+      val totalReadCopies = partitionedRegions.count
 
-    DelayedMessages.default.say {
-      () => {
-        val stats = new math3.stat.descriptive.DescriptiveStatistics()
-        regionsByTask.value.valuesIterator.foreach(stats.addValue(_))
-        "Regions per task: min=%,.0f 25%%=%,.0f median=%,.0f (mean=%,.0f) 75%%=%,.0f max=%,.0f. Max is %,.2f%% more than mean.".format(
-          stats.getMin,
-          stats.getPercentile(25),
-          stats.getPercentile(50),
-          stats.getMean,
-          stats.getPercentile(75),
-          stats.getMax,
-          (stats.getMax - stats.getMean) * 100.0 / stats.getMean
-        )
-      }
+      val originalReads = regions.count
+
+      // Sorted array of [number of read copies "K"] -> [number of reads that were copied "K" times].
+      val regionCopies: Array[(Int, Long)] = regionCopiesHistogram.value.toArray.sortBy(_._1)
+
+      // Number of distinct reads that were sent to at least one partition.
+      val readsPlaced = regionCopies.filter(_._1 > 0).map(_._2).sum
+
+      // Sorted array: [partition index "K"] -> [number of reads assigned to partition "K"].
+      val regionsPerPartition: Array[(PartitionIndex, Long)] = partitionRegionsHistogram.value.toArray.sortBy(_._1)
+
+      progress(
+        s"Placed $readsPlaced of $originalReads (%.1f%%), %.1fx copies on avg; copies per read histogram:"
+        .format(
+          100.0 * readsPlaced / originalReads,
+          totalReadCopies * 1.0 / readsPlaced
+        ),
+        Stats.fromHist(regionCopies).toString(),
+        "",
+        "Reads per partition stats:",
+        Stats(regionsPerPartition.map(_._2)).toString()
+      )
+
     }
 
-    // Build an RDD of (read set num, read), take union of this over all RDDs, and partition by task.
-    (for {
-      (taskPosition, read) <- taskNumberRegionPairsRDD
-    } yield
-      taskPosition -> read
-    )
-    .repartitionAndSortWithinPartitions(KeyPartitioner(numTasks))
-    .values
+    partitionedRegions
   }
 }

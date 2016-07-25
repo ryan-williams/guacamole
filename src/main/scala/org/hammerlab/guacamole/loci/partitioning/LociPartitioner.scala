@@ -21,7 +21,9 @@ trait LociPartitionerArgs
     usage = "If set: load a LociPartitioning from this path if it exists; write a computed partitioning to this path if it doesn't.",
     handler = classOf[StringOptionHandler]
   )
-  var lociPartitioningPathOpt: Option[String] = None
+  protected var _lociPartitioningPathOpt: Option[String] = None
+
+  def lociPartitioningPathOpt: Option[String] = _lociPartitioningPathOpt
 
   @Args4JOption(
     name = "--loci-partitioner",

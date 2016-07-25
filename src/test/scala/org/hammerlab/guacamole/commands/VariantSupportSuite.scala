@@ -48,7 +48,7 @@ class VariantSupportSuite
   def assertAlleleCounts(pileup: Pileup, alleleCounts: (String, String, Int)*): Unit = {
     val computedAlleleCounts =
       (for {
-        AlleleCount(_, _, _, ref, alternate, count) <- VariantSupport.Caller.pileupToAlleleCounts(Vector(pileup))
+        AlleleCount(_, _, _, ref, alternate, count) <- VariantSupport.Caller.pileupsToAlleleCounts(Vector(pileup))
       } yield
         (ref, alternate, count)
       )

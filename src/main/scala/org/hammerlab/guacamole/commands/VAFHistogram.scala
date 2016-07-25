@@ -8,14 +8,13 @@ import org.apache.spark.mllib.clustering.{GaussianMixture, GaussianMixtureModel}
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
-import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMapMultipleRDDs
-import org.hammerlab.guacamole.loci.partitioning.LociPartitioning
+import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMapMultipleSamples
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.pileup.Pileup
-import org.hammerlab.guacamole.reads.MappedRead
 import org.hammerlab.guacamole.readsets.args.{Arguments => ReadSetsArguments}
 import org.hammerlab.guacamole.readsets.io.{Input, InputFilters, ReadLoadingConfig}
-import org.hammerlab.guacamole.readsets.{PerSample, ReadSets, SampleId}
+import org.hammerlab.guacamole.readsets.rdd.PartitionedRegions
+import org.hammerlab.guacamole.readsets.{PartitionedReads, ReadSets, SampleId}
 import org.hammerlab.guacamole.reference.{ContigName, Locus, NumLoci, ReferenceBroadcast, ReferenceGenome}
 import org.hammerlab.magic.rdd.SplitByKeyRDD._
 import org.kohsuke.args4j.{Option => Args4jOption}
@@ -125,10 +124,13 @@ object VAFHistogram {
 
       val ReadSets(_, _, contigLengths) = readsets
 
-      val lociPartitions =
-        args
-          .getPartitioner(readsets.allMappedReads)
-          .partition(loci.result(contigLengths))
+      val partitionedReads =
+        PartitionedRegions(
+          readsets.mappedReadsRDDs,
+          loci.result(contigLengths),
+          args,
+          halfWindowSize = 0
+        )
 
       val minReadDepth = args.minReadDepth
       val minVariantAlleleFrequency = args.minVAF
@@ -137,9 +139,8 @@ object VAFHistogram {
 
       val (variantLoci, numVariantsPerSample) =
         variantLociFromReads(
-          readsets.mappedReadsRDDs,
+          partitionedReads,
           reference,
-          lociPartitions,
           samplePercent,
           minReadDepth,
           minVariantAlleleFrequency,
@@ -230,27 +231,24 @@ object VAFHistogram {
   /**
    * Find all non-reference loci in the sample
    *
-   * @param readsRDDs RDD of mapped reads for all samples
+   * @param partitionedReads partitioned, mapped reads
    * @param reference genome
-   * @param lociPartitions Positions which to examine for non-reference loci
    * @param samplePercent Percent of non-reference loci to use for descriptive statistics
    * @param minReadDepth Minimum read depth before including variant allele frequency
    * @param minVariantAlleleFrequency Minimum variant allele frequency to include
    * @param printStats Print descriptive statistics for the variant allele frequency distribution
    * @return RDD of VariantLocus, which contain the locus and non-zero variant allele frequency
    */
-  def variantLociFromReads(readsRDDs: PerSample[RDD[MappedRead]],
+  def variantLociFromReads(partitionedReads: PartitionedReads,
                            reference: ReferenceGenome,
-                           lociPartitions: LociPartitioning,
                            samplePercent: Int = 100,
                            minReadDepth: Int = 0,
                            minVariantAlleleFrequency: Int = 0,
                            printStats: Boolean = false): (RDD[VariantLocus], Map[SampleId, Long]) = {
 
     val variantLoci =
-      pileupFlatMapMultipleRDDs[VariantLocus](
-        readsRDDs,
-        lociPartitions,
+      pileupFlatMapMultipleSamples[VariantLocus](
+        partitionedReads,
         skipEmpty = true,
         pileups =>
           for {
@@ -282,6 +280,8 @@ object VAFHistogram {
         ).mkString("\n")
       )
 
+      val numSamples = partitionedReads.numSamples
+
       // Sample variant loci to compute descriptive statistics
       val sampledVAFs =
         if (samplePercent < 100)
@@ -289,7 +289,7 @@ object VAFHistogram {
             .keyBy(_.sampleId)
             .sampleByKey(
               withReplacement = false,
-              fractions = readsRDDs.indices.map(_ -> (samplePercent / 100.0)).toMap
+              fractions = (0 until numSamples).map(_ -> (samplePercent / 100.0)).toMap
             )
             .groupByKey()
             .collect()
@@ -356,4 +356,3 @@ object VAFHistogram {
     model
   }
 }
-

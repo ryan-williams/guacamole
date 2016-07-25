@@ -1,5 +1,7 @@
 package org.hammerlab.guacamole
 
+import org.hammerlab.guacamole.reads.MappedRead
+import org.hammerlab.guacamole.readsets.rdd.PartitionedRegions
 import org.hammerlab.guacamole.reference.{ContigName, NumLoci}
 
 /**
@@ -18,4 +20,5 @@ package object readsets {
   type ContigLengths = Map[ContigName, NumLoci]
   type SampleId = Int
   type NumSamples = Int
+  type PartitionedReads = PartitionedRegions[MappedRead]
 }

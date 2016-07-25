@@ -9,14 +9,14 @@ import org.hammerlab.guacamole.alignment.AffineGapPenaltyAlignment
 import org.hammerlab.guacamole.assembly.{AssemblyArgs, AssemblyUtils}
 import org.hammerlab.guacamole.distributed.WindowFlatMapUtils.windowFlatMapWithState
 import org.hammerlab.guacamole.likelihood.Likelihood
-import org.hammerlab.guacamole.loci.partitioning.LociPartitioning
 import org.hammerlab.guacamole.logging.DelayedMessages
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.reads.MappedRead
-import org.hammerlab.guacamole.readsets.ReadSets
 import org.hammerlab.guacamole.readsets.args.GermlineCallerArgs
 import org.hammerlab.guacamole.readsets.loading.InputFilters
+import org.hammerlab.guacamole.readsets.rdd.PartitionedRegions
+import org.hammerlab.guacamole.readsets.{PartitionedReads, ReadSets}
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.hammerlab.guacamole.variants.{Allele, AlleleConversions, AlleleEvidence, CalledAllele, VariantUtils}
 import org.kohsuke.args4j.{Option => Args4jOption}
@@ -70,21 +70,23 @@ object GermlineAssemblyCaller {
       val minAlignmentQuality = args.minAlignmentQuality
       val qualityReads = mappedReads.filter(_.alignmentQuality > minAlignmentQuality)
 
-      val lociPartitions =
-        args
-          .getPartitioner(mappedReads, args.assemblyWindowRange)
-          .partition(loci.result(contigLengths))
+      val partitionedReads =
+        PartitionedRegions(
+          qualityReads,
+          loci.result(contigLengths),
+          args,
+          args.assemblyWindowRange
+        )
 
       val genotypes: RDD[CalledAllele] =
         discoverGermlineVariants(
-          qualityReads,
+          partitionedReads,
           args.sampleName,
           kmerSize = args.kmerSize,
           assemblyWindowRange = args.assemblyWindowRange,
           minOccurrence = args.minOccurrence,
           minAreaVaf = args.minAreaVaf / 100.0f,
           reference = reference,
-          lociPartitions = lociPartitions,
           minMeanKmerQuality = args.minMeanKmerQuality,
           minPhredScaledLikelihood = args.minLikelihood,
           shortcutAssembly = args.shortcutAssembly
@@ -101,14 +103,13 @@ object GermlineAssemblyCaller {
       DelayedMessages.default.print()
     }
 
-    def discoverGermlineVariants(reads: RDD[MappedRead],
+    def discoverGermlineVariants(partitionedReads: PartitionedReads,
                                  sampleName: String,
                                  kmerSize: Int,
                                  assemblyWindowRange: Int,
                                  minOccurrence: Int,
                                  minAreaVaf: Float,
                                  reference: ReferenceBroadcast,
-                                 lociPartitions: LociPartitioning,
                                  minMeanKmerQuality: Int,
                                  minAltReads: Int = 2,
                                  minPhredScaledLikelihood: Int = 0,
@@ -117,8 +118,7 @@ object GermlineAssemblyCaller {
       val genotypes: RDD[CalledAllele] =
         windowFlatMapWithState[MappedRead, CalledAllele, Option[Long]](
           numSamples = 1,
-          reads,
-          lociPartitions,
+          partitionedReads,
           skipEmpty = true,
           halfWindowSize = assemblyWindowRange,
           initialState = None,

@@ -9,6 +9,7 @@ import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMapMulti
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.pileup.Pileup
+import org.hammerlab.guacamole.readsets.rdd.PartitionedRegions
 import org.hammerlab.guacamole.readsets.{PerSample, ReadSets}
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.kohsuke.args4j.spi.StringArrayOptionHandler
@@ -160,12 +161,13 @@ object SomaticJoint {
 
     assume(loci.nonEmpty)
 
-    val lociPartitions =
-      args
-        .getPartitioner(readsets.allMappedReads)
-        // When mapping over pileups, at locus x we call variants at locus x + 1. Therefore we subtract 1 from the user-
-        // specified loci.
-        .partition(lociSetMinusOne(loci))
+    val partitionedReads =
+      PartitionedRegions(
+        readsets.allMappedReads,
+        lociSetMinusOne(loci),
+        args,
+        halfWindowSize = 0
+      )
 
     val broadcastForceCallLoci = sc.broadcast(forceCallLoci)
 
@@ -189,8 +191,7 @@ object SomaticJoint {
 
     pileupFlatMapMultipleSamples(
       readsets.sampleNames,
-      readsets.allMappedReads,
-      lociPartitions,
+      partitionedReads,
       skipEmpty = true,  // TODO: shouldn't skip empty positions if we might force call them. Need an efficient way to handle this.
       callPileups,
       reference = reference

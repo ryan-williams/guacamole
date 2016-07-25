@@ -9,13 +9,12 @@ import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMapMultipleSamples
-import org.hammerlab.guacamole.loci.partitioning.LociPartitioning
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.pileup.Pileup
-import org.hammerlab.guacamole.reads.MappedRead
 import org.hammerlab.guacamole.readsets.args.{Arguments => ReadSetsArguments}
 import org.hammerlab.guacamole.readsets.loading.{Input, InputFilters, ReadLoadingConfig}
-import org.hammerlab.guacamole.readsets.{PerSample, ReadSets}
+import org.hammerlab.guacamole.readsets.rdd.PartitionedRegions
+import org.hammerlab.guacamole.readsets.{PartitionedReads, PerSample, ReadSets}
 import org.hammerlab.guacamole.reference.{ReferenceBroadcast, ReferenceGenome}
 import org.kohsuke.args4j.{Option => Args4jOption}
 
@@ -120,10 +119,13 @@ object VAFHistogram {
 
       val ReadSets(readsRDDs, _, contigLengths) = readsets
 
-      val lociPartitions =
-        args
-          .getPartitioner(readsets.allMappedReads)
-          .partition(loci.result(contigLengths))
+      val partitionedReads =
+        PartitionedRegions(
+          readsets.allMappedReads,
+          loci.result(contigLengths),
+          args,
+          halfWindowSize = 0
+        )
 
       val reference = ReferenceBroadcast(args.referenceFastaPath, sc)
 
@@ -133,9 +135,8 @@ object VAFHistogram {
       val variantLoci =
         variantLociFromReads(
           readsets.sampleNames,
-          readsets.allMappedReads,
+          partitionedReads,
           reference,
-          lociPartitions,
           samplePercent,
           minReadDepth,
           minVariantAlleleFrequency,
@@ -219,10 +220,8 @@ object VAFHistogram {
   /**
    * Find all non-reference loci in the sample
    *
-   * @param sampleNames Names of samples/files that the @reads were loaded from
-   * @param reads RDD of mapped reads for all samples
+   * @param partitionedReads RDD of mapped reads for the sample
    * @param reference genome
-   * @param lociPartitions Positions which to examine for non-reference loci
    * @param samplePercent Percent of non-reference loci to use for descriptive statistics
    * @param minReadDepth Minimum read depth before including variant allele frequency
    * @param minVariantAlleleFrequency Minimum variant allele frequency to include
@@ -230,9 +229,8 @@ object VAFHistogram {
    * @return RDD of VariantLocus, which contain the locus and non-zero variant allele frequency
    */
   def variantLociFromReads(sampleNames: PerSample[String],
-                           reads: RDD[MappedRead],
+                           partitionedReads: PartitionedReads,
                            reference: ReferenceGenome,
-                           lociPartitions: LociPartitioning,
                            samplePercent: Int = 100,
                            minReadDepth: Int = 0,
                            minVariantAlleleFrequency: Int = 0,
@@ -240,8 +238,7 @@ object VAFHistogram {
     val variantLoci =
       pileupFlatMapMultipleSamples[VariantLocus](
         sampleNames,
-        reads,
-        lociPartitions,
+        partitionedReads,
         skipEmpty = true,
         pileups =>
           pileups

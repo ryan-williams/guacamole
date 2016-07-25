@@ -1,10 +1,11 @@
 package org.hammerlab.guacamole.readsets.rdd
 
-import org.apache.spark.Accumulable
-import org.apache.spark.broadcast.Broadcast
+import org.apache.hadoop.conf.Configuration
 import org.apache.spark.rdd.RDD
+import org.apache.spark.{Accumulable, SparkContext}
 import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.PartitionIndex
-import org.hammerlab.guacamole.loci.partitioning.LociPartitioning
+import org.hammerlab.guacamole.loci.partitioning.{LociPartitionerArgs, LociPartitioning}
+import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.reference.ReferenceRegion
 import org.hammerlab.magic.accumulables.{HistogramParam, HashMap => MagicHashMap}
@@ -13,6 +14,33 @@ import org.hammerlab.magic.util.Stats
 
 import scala.reflect.ClassTag
 
+/**
+ * Groups a {{LociPartitioning}} with an RDD[ReferenceRegion] that has already been partitioned according to the
+ * partitioning.
+ *
+ * This means some regions will occur multiple times in the RDD (due to regions straddling partition boundaries, so it's
+ * important not to confuse this with a regular RDD[ReferenceRegion].
+ */
+class PartitionedRegions[R <: ReferenceRegion: ClassTag](@transient val regions: RDD[R],
+                                                         @transient val partitioning: LociPartitioning)
+  extends Serializable {
+
+  def sc: SparkContext = regions.sparkContext
+  def hc: Configuration = sc.hadoopConfiguration
+
+  lazy val partitionLociSets: Array[LociSet] =
+    partitioning
+      .inverse
+      .toArray
+      .sortBy(_._1)
+      .map(_._2)
+
+  lazy val lociSetsRDD: RDD[LociSet] =
+    sc
+      .parallelize(partitionLociSets, partitionLociSets.length)
+      .setName("lociSetsRDD")
+}
+
 object PartitionedRegions {
 
   type IntHist = MagicHashMap[Int, Long]
@@ -20,19 +48,44 @@ object PartitionedRegions {
   def IntHist(): IntHist = MagicHashMap[Int, Long]()
 
   def apply[R <: ReferenceRegion: ClassTag](regions: RDD[R],
-                                            partitioningBroadcast: Broadcast[LociPartitioning],
+                                            loci: LociSet,
+                                            args: LociPartitionerArgs): PartitionedRegions[R] =
+    apply(regions, loci, args, halfWindowSize = 0)
+
+  def apply[R <: ReferenceRegion: ClassTag](regions: RDD[R],
+                                            loci: LociSet,
+                                            args: LociPartitionerArgs,
+                                            halfWindowSize: Int): PartitionedRegions[R] = {
+
+    val lociPartitioning = LociPartitioning(regions, loci, args, halfWindowSize)
+
+    progress(
+      s"Partitioned loci: ${lociPartitioning.numPartitions} partitions.",
+      "Partition-size stats:",
+      lociPartitioning.partitionSizeStats.toString(),
+      "",
+      "Contigs-spanned-per-partition stats:",
+      lociPartitioning.partitionContigStats.toString()
+    )
+
+    apply(
+      regions,
+      lociPartitioning,
+      halfWindowSize,
+      !args.quiet
+    )
+  }
+
+  def apply[R <: ReferenceRegion: ClassTag](regions: RDD[R],
+                                            lociPartitioning: LociPartitioning,
                                             halfWindowSize: Int,
-                                            printStats: Boolean = true): RDD[R] = {
+                                            printStats: Boolean): PartitionedRegions[R] = {
 
     val sc = regions.sparkContext
 
-    val lociPartitioning = partitioningBroadcast.value
+    val partitioningBroadcast = regions.sparkContext.broadcast(lociPartitioning)
 
     val numPartitions = lociPartitioning.numPartitions
-
-    progress(s"Partitioning reads according to loci partitioning:\n$lociPartitioning")
-
-    val numTasks = lociPartitioning.inverse.map(_._1).max + 1
 
     implicit val accumulableParam = new HistogramParam[Int, Long]
 
@@ -75,10 +128,10 @@ object PartitionedRegions {
 
       progress(
         s"Placed $readsPlaced of $originalReads (%.1f%%), %.1fx copies on avg; copies per read histogram:"
-        .format(
-          100.0 * readsPlaced / originalReads,
-          totalReadCopies * 1.0 / readsPlaced
-        ),
+          .format(
+            100.0 * readsPlaced / originalReads,
+            totalReadCopies * 1.0 / readsPlaced
+          ),
         Stats.fromHist(regionCopies).toString(),
         "",
         "Reads per partition stats:",
@@ -87,6 +140,6 @@ object PartitionedRegions {
 
     }
 
-    partitionedRegions
+    new PartitionedRegions(partitionedRegions, lociPartitioning)
   }
 }

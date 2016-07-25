@@ -28,6 +28,7 @@ import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.readsets.{PerSample, ReadSets}
 import org.hammerlab.guacamole.readsets.args.{Arguments => ReadSetsArguments}
 import org.hammerlab.guacamole.readsets.loading.{InputFilters, ReadLoadingConfig}
+import org.hammerlab.guacamole.readsets.rdd.PartitionedRegions
 import org.hammerlab.guacamole.reference.{ContigName, Locus, ReferenceBroadcast}
 import org.hammerlab.guacamole.util.Bases
 import org.kohsuke.args4j.{Option => Args4jOption}
@@ -87,16 +88,18 @@ object VariantSupport {
             .collect()
         )
 
-      val lociPartitions =
-        args
-          .getPartitioner(readsets.allMappedReads)
-          .partition(loci)
+      val partitionedReads =
+        PartitionedRegions(
+          readsets.allMappedReads,
+          loci,
+          args,
+          halfWindowSize = 0
+        )
 
       val alleleCounts =
         pileupFlatMapMultipleSamples[AlleleCount](
           readsets.sampleNames,
-          readsets.allMappedReads,
-          lociPartitions,
+          partitionedReads,
           skipEmpty = true,
           pileupToAlleleCounts,
           reference

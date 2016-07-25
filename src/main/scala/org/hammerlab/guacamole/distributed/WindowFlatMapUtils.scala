@@ -1,12 +1,11 @@
 package org.hammerlab.guacamole.distributed
 
-import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
-import org.hammerlab.guacamole.loci.partitioning.LociPartitioning
+import org.apache.spark.zip.ZipPartitionsWithIndexRDD._
 import org.hammerlab.guacamole.loci.set.{Contig, LociSet}
 import org.hammerlab.guacamole.reads.HasSampleId
-import org.hammerlab.guacamole.readsets.{NumSamples, PerSample}
 import org.hammerlab.guacamole.readsets.rdd.PartitionedRegions
+import org.hammerlab.guacamole.readsets.{NumSamples, PerSample}
 import org.hammerlab.guacamole.reference.ReferenceRegion
 import org.hammerlab.guacamole.windowing.{SlidingWindow, SplitIterator}
 
@@ -24,9 +23,9 @@ object WindowFlatMapUtils {
    * (new state, result data). The state is initialized to initialState for each task, and for each new contig handled
    * by a single task.
    *
-   * @param numSamples number of samples combined in @regions.
-   * @param regions RDD of reads
-   * @param lociPartitions loci to consider, partitioned into tasks
+   * @param numSamples number of samples / input-files whose reads are in @partitionedReads.
+   * @param partitionedReads partitioned reads RDD; reads that straddle partition boundaries will occur more than once
+   *                         herein.
    * @param skipEmpty If True, then the function will only be called on loci where at least one region maps within a
    *                  window around the locus. If False, then the function will be called at all loci in lociPartitions.
    * @param halfWindowSize if another region overlaps a halfWindowSize to either side of a locus under consideration,
@@ -40,8 +39,7 @@ object WindowFlatMapUtils {
    */
   def windowFlatMapWithState[R <: ReferenceRegion with HasSampleId: ClassTag, T: ClassTag, S](
     numSamples: NumSamples,
-    regions: RDD[R],
-    lociPartitions: LociPartitioning,
+    partitionedReads: PartitionedRegions[R],
     skipEmpty: Boolean,
     halfWindowSize: Int,
     initialState: S,
@@ -49,9 +47,7 @@ object WindowFlatMapUtils {
 
     windowTaskFlatMapMultipleRDDs(
       numSamples,
-      regions,
-      lociPartitions,
-      halfWindowSize,
+      partitionedReads,
       (task, taskLoci, taskRegionsPerSample: PerSample[Iterator[R]]) => {
         collectByContig[R, T](
           taskRegionsPerSample,
@@ -78,9 +74,9 @@ object WindowFlatMapUtils {
    * Computes an aggregate over each task and contig
    * The user specified aggFunction is used to accumulate a result starting with `initialValue`
    *
-   * @param numSamples number of samples combined in @regions.
-   * @param regions RDD of reads
-   * @param lociPartitions loci to consider, partitioned into tasks
+   * @param numSamples number of samples / input-files whose reads are in @partitionedReads.
+   * @param partitionedReads partitioned reads RDD; reads that straddle partition boundaries will occur more than once
+   *                         herein.
    * @param skipEmpty If True, empty windows (no regions within the window) will be skipped
    * @param halfWindowSize A window centered at locus = l will contain regions overlapping l +/- halfWindowSize
    * @param initialValue Initial value for aggregation
@@ -90,8 +86,7 @@ object WindowFlatMapUtils {
    */
   def windowFoldLoci[R <: ReferenceRegion with HasSampleId: ClassTag, T: ClassTag](
     numSamples: NumSamples,
-    regions: RDD[R],
-    lociPartitions: LociPartitioning,
+    partitionedReads: PartitionedRegions[R],
     skipEmpty: Boolean,
     halfWindowSize: Int,
     initialValue: T,
@@ -99,9 +94,7 @@ object WindowFlatMapUtils {
 
     windowTaskFlatMapMultipleRDDs(
       numSamples,
-      regions,
-      lociPartitions,
-      halfWindowSize,
+      partitionedReads,
       (task, taskLoci, taskRegionsPerSample: PerSample[Iterator[R]]) => {
         collectByContig[R, T](
           taskRegionsPerSample,
@@ -135,12 +128,9 @@ object WindowFlatMapUtils {
    *
    *  (3) The results of the provided function are concatenated into an RDD, which is returned.
    *
-   * @param numSamples number of samples combined in @regions.
-   * @param regions RDD of reads.
-   * @param lociPartitions map from locus -> task number. This argument specifies both the loci to be considered and how
-   *                       they should be split among tasks. regions that don't overlap these loci are discarded.
-   * @param halfWindowSize if a region overlaps a region of halfWindowSize to either side of a locus under
-   *                       consideration, then it is included.
+   * @param numSamples number of samples / input-files whose reads are in @partitionedReads.
+   * @param partitionedReads partitioned reads RDD; reads that straddle partition boundaries will occur more than once
+   *                         herein.
    * @param function function to flatMap: (task number, loci, iterators of regions that overlap a window around these
    *                 loci (one region-iterator per sample)) -> T
    * @tparam T type of value returned by function
@@ -148,29 +138,26 @@ object WindowFlatMapUtils {
    */
   private[distributed] def windowTaskFlatMapMultipleRDDs[R <: ReferenceRegion with HasSampleId: ClassTag, T: ClassTag](
     numSamples: NumSamples,
-    regions: RDD[R],
-    lociPartitions: LociPartitioning,
-    halfWindowSize: Int,
+    partitionedReads: PartitionedRegions[R],
     function: (Long, LociSet, PerSample[Iterator[R]]) => Iterator[T]): RDD[T] = {
 
-    assume(numSamples > 0)
-
-    val sc = regions.sparkContext
-
-    val lociPartitionsBoxed: Broadcast[LociPartitioning] = sc.broadcast(lociPartitions)
-
-    val partitionedRegions = PartitionedRegions(regions, lociPartitionsBoxed, halfWindowSize)
-
     // Accumulator to track the number of loci in each task
-    val lociAccumulator = sc.accumulator[Long](0, "NumLoci")
+    val lociAccumulator = partitionedReads.sc.accumulator[Long](0, "NumLoci")
 
-    partitionedRegions
-      .mapPartitionsWithIndex((partitionIdx, reads) => {
-        val iterators = SplitIterator.split[R](numSamples, reads, _.sampleId)
-        val taskLoci = lociPartitionsBoxed.value.inverse(partitionIdx)
-        lociAccumulator += taskLoci.count
-        function(partitionIdx, taskLoci, iterators)
-      })
+    val lociSetsRDD = partitionedReads.lociSetsRDD
+
+    partitionedReads
+      .regions
+      .zipPartitionsWithIndex(
+        lociSetsRDD
+      )(
+        (taskNum, reads, lociSetIter) => {
+          val iterators = SplitIterator.split[R](numSamples, reads, _.sampleId)
+          val taskLoci = lociSetIter.next()
+          lociAccumulator += taskLoci.count
+          function(taskNum, taskLoci, iterators)
+        }
+      )
   }
 
   /**

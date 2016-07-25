@@ -6,12 +6,16 @@ import org.hammerlab.guacamole.loci.partitioning.UniformPartitioner
 import org.hammerlab.guacamole.loci.set.LociParser
 import org.hammerlab.guacamole.readsets.ReadSets
 import org.hammerlab.guacamole.readsets.loading.InputFilters
+import org.hammerlab.guacamole.readsets.rdd.PartitionedRegionsUtil
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.hammerlab.guacamole.util.{Bases, GuacFunSuite, TestUtil}
 import org.hammerlab.guacamole.variants.CalledAllele
 import org.scalatest.BeforeAndAfterAll
 
-class GermlineAssemblyCallerSuite extends GuacFunSuite with BeforeAndAfterAll {
+class GermlineAssemblyCallerSuite
+  extends GuacFunSuite
+    with BeforeAndAfterAll
+    with PartitionedRegionsUtil {
 
   val args = new Arguments
 
@@ -54,13 +58,13 @@ class GermlineAssemblyCallerSuite extends GuacFunSuite with BeforeAndAfterAll {
         )
       )
 
-    val loci = lociParser.result(contigLengths)
+    val lociPartitioning = new UniformPartitioner(args.parallelism).partition(lociParser.result(contigLengths))
 
-    val lociPartitions = new UniformPartitioner(args.parallelism).partition(loci)
+    val partitionedReads = partitionReads(mappedReads, lociPartitioning)
 
     val variants =
       GermlineAssemblyCaller.Caller.discoverGermlineVariants(
-        mappedReads,
+        partitionedReads,
         args.sampleName,
         kmerSize = kmerSize,
         assemblyWindowRange = assemblyWindowRange,
@@ -68,7 +72,6 @@ class GermlineAssemblyCallerSuite extends GuacFunSuite with BeforeAndAfterAll {
         minMeanKmerQuality = 20,
         minAreaVaf = minVaf,
         reference = reference,
-        lociPartitions = lociPartitions,
         shortcutAssembly = shortcutAssembly
       ).collect().sortBy(_.start)
 

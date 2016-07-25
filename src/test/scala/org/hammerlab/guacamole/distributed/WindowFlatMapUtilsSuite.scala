@@ -3,11 +3,15 @@ package org.hammerlab.guacamole.distributed
 import org.hammerlab.guacamole.loci.partitioning.UniformPartitioner
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.reads.MappedRead
+import org.hammerlab.guacamole.readsets.rdd.PartitionedRegionsUtil
 import org.hammerlab.guacamole.util.{GuacFunSuite, TestUtil}
 import org.hammerlab.guacamole.windowing.SlidingWindow
 import WindowFlatMapUtils.windowFoldLoci
 
-class WindowFlatMapUtilsSuite extends GuacFunSuite {
+class WindowFlatMapUtilsSuite
+  extends GuacFunSuite
+    with PartitionedRegionsUtil {
+
   test("test window fold parallelism 5; average read depth") {
 
     // 4 overlapping reads starting at loci = 0
@@ -31,12 +35,18 @@ class WindowFlatMapUtilsSuite extends GuacFunSuite {
         )
       )
 
+    val partitioning = new UniformPartitioner(5).partition(LociSet("chr1:0-20"))
+    val partitionedReads =
+      partitionReads(
+        reads,
+        // Split loci in 5 partitions - we will compute an aggregate value per partition
+        partitioning
+      )
+
     val counts =
       windowFoldLoci(
         numSamples = 1,
-        reads,
-        // Split loci in 5 partitions - we will compute an aggregate value per partition
-        new UniformPartitioner(5).partition(LociSet("chr1:0-20")),
+        partitionedReads,
         skipEmpty = false,
         halfWindowSize = 0,
         initialValue = (0L, 0L),

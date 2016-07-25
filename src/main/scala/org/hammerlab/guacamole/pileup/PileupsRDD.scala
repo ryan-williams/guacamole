@@ -47,13 +47,12 @@ class PileupsRDD(partitionedReads: PartitionedReads) {
       )
   }
 
-  def perSamplePileups(sampleNames: PerSample[String],
-                       reference: ReferenceGenome,
+  def perSamplePileups(reference: ReferenceGenome,
                        requiredLoci: LociSet = LociSet()): RDD[PerSample[Pileup]] = {
 
     val requiredLociBroadcast: Broadcast[LociSet] = sc.broadcast(requiredLoci)
 
-    val numSamples = sampleNames.length
+    val numSamples = partitionedReads.numSamples
 
     partitionedReads
       .mapPartitions(
@@ -75,7 +74,6 @@ class PileupsRDD(partitionedReads: PartitionedReads) {
           } yield
             for {
               (sampleReads, sampleId) <- keyedReads.zipWithIndex
-              sampleName = sampleNames(sampleId)
               referenceContig = reference.getContig(contigName)
             } yield
               Pileup(sampleReads.map(_.region), contigName, locus, referenceContig)

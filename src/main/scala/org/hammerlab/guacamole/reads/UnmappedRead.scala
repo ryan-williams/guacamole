@@ -4,7 +4,6 @@ import org.hammerlab.guacamole.readsets.{SampleId, SampleName}
 
 /**
  * An unmapped read. See the [[Read]] trait for field descriptions.
- *
  */
 case class UnmappedRead(
     name: String,

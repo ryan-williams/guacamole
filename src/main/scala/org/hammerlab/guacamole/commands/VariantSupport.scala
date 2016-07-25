@@ -22,7 +22,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.bdgenomics.adam.rdd.ADAMContext
 import org.bdgenomics.formats.avro.Variant
-import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMapMultipleRDDs
+import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMapMultipleSamples
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.readsets.{PerSample, ReadSets}
@@ -93,9 +93,9 @@ object VariantSupport {
           .partition(loci)
 
       val alleleCounts =
-        pileupFlatMapMultipleRDDs[AlleleCount](
+        pileupFlatMapMultipleSamples[AlleleCount](
           readsets.sampleNames,
-          readsets.mappedReadsRDDs,
+          readsets.allMappedReads,
           lociPartitions,
           skipEmpty = true,
           pileupToAlleleCounts,

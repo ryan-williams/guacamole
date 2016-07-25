@@ -116,7 +116,8 @@ object GermlineAssemblyCaller {
 
       val genotypes: RDD[CalledAllele] =
         windowFlatMapWithState[MappedRead, CalledAllele, Option[Long]](
-          Vector(reads),
+          numSamples = 1,
+          reads,
           lociPartitions,
           skipEmpty = true,
           halfWindowSize = assemblyWindowRange,

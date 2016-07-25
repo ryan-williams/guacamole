@@ -7,18 +7,17 @@ import org.hammerlab.guacamole.distributed.{HashMapAccumulatorParam, KeyPartitio
 import org.hammerlab.guacamole.loci.partitioning.LociPartitioning
 import org.hammerlab.guacamole.logging.DelayedMessages
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
-import org.hammerlab.guacamole.readsets.PerSample
 import org.hammerlab.guacamole.reference.ReferenceRegion
 
 import scala.collection.mutable.{HashMap => MutableHashMap}
 import scala.reflect.ClassTag
 
 object PartitionedRegions {
-  def apply[R <: ReferenceRegion: ClassTag](regionRDDs: PerSample[RDD[R]],
+  def apply[R <: ReferenceRegion: ClassTag](regions: RDD[R],
                                             lociPartitionsBoxed: Broadcast[LociPartitioning],
                                             halfWindowSize: Int): RDD[R] = {
 
-    val sc = regionRDDs(0).sparkContext
+    val sc = regions.sparkContext
 
     val lociPartitions = lociPartitionsBoxed.value
 
@@ -40,9 +39,8 @@ object PartitionedRegions {
     }
 
     // Expand regions into (task, region) pairs for each region RDD.
-    val taskNumberRegionPairsRDDs: PerSample[RDD[(TaskPosition, R)]] =
-    regionRDDs.map(
-      _.flatMap(region => {
+    val taskNumberRegionPairsRDD: RDD[(TaskPosition, R)] =
+      regions.flatMap(region => {
         val singleContig = lociPartitionsBoxed.value.onContig(region.contigName)
         val partitionsForRegion = singleContig.getAll(region.start - halfWindowSize, region.end + halfWindowSize)
 
@@ -54,7 +52,6 @@ object PartitionedRegions {
         // Return this region, duplicated for each task it is assigned to.
         partitionsForRegion.map(task => TaskPosition(task, region.contigName, region.start) -> region)
       })
-    )
 
     // Run the task on each partition. Keep track of the number of regions assigned to each task in an accumulator, so
     // we can print out a summary of the skew.
@@ -77,18 +74,12 @@ object PartitionedRegions {
     }
 
     // Build an RDD of (read set num, read), take union of this over all RDDs, and partition by task.
-    sc
-      .union(
-        for {
-          keyedRegionsRDD <- taskNumberRegionPairsRDDs
-        } yield {
-          for {
-            (taskPosition, read) <- keyedRegionsRDD
-          } yield
-            taskPosition -> read
-        }
-      )
-      .repartitionAndSortWithinPartitions(KeyPartitioner(numTasks))
-      .values
+    (for {
+      (taskPosition, read) <- taskNumberRegionPairsRDD
+    } yield
+      taskPosition -> read
+    )
+    .repartitionAndSortWithinPartitions(KeyPartitioner(numTasks))
+    .values
   }
 }

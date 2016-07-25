@@ -21,7 +21,7 @@ package org.hammerlab.guacamole.distributed
 import com.esotericsoftware.kryo.Kryo
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.BroadcastBlockId
-import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.{pileupFlatMap, pileupFlatMapMultipleRDDs, pileupFlatMapTwoRDDs}
+import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.{pileupFlatMapOneSample, pileupFlatMapMultipleSamples, pileupFlatMapTwoSamples}
 import org.hammerlab.guacamole.loci.partitioning.UniformPartitioner
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.pileup.{Pileup, PileupElement}
@@ -84,7 +84,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
       )
 
     val pileups =
-      pileupFlatMap[Pileup](
+      pileupFlatMapOneSample[Pileup](
         "sample",
         reads,
         new UniformPartitioner(reads.getNumPartitions).partition(LociSet("chr1:1-9")),
@@ -116,7 +116,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
       )
 
     val pileups =
-      pileupFlatMap[Pileup](
+      pileupFlatMapOneSample[Pileup](
         "sample",
         reads,
         new UniformPartitioner(5).partition(LociSet("chr1:1-9")),
@@ -142,7 +142,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
       )
 
     val loci =
-      pileupFlatMap[Long](
+      pileupFlatMapOneSample[Long](
         "test",
         reads,
         new UniformPartitioner(5).partition(LociSet("chr0:5-10,chr1:0-100,chr2:0-1000,chr2:5000-6000")),
@@ -175,7 +175,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
       )
 
     val loci =
-      pileupFlatMapTwoRDDs[Long](
+      pileupFlatMapTwoSamples[Long](
         ("normal", "tumor"),
         reads1,
         reads2,
@@ -219,10 +219,10 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
 
     val loci = LociSet("chr1:1-500,chr2:10-20")
 
-    val reads = Vector(reads1, reads2, reads3)
+    val reads = sc.union(reads1, reads2, reads3)
 
     val resultPlain =
-      pileupFlatMapMultipleRDDs[PerSample[Iterable[String]]](
+      pileupFlatMapMultipleSamples[PerSample[Iterable[String]]](
         sampleNames = Array("1", "2", "3"),
         reads,
         new UniformPartitioner(1).partition(loci),
@@ -232,7 +232,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
       ).collect.map(_.toList)
 
     val resultParallelized =
-      pileupFlatMapMultipleRDDs[PerSample[Iterable[String]]](
+      pileupFlatMapMultipleSamples[PerSample[Iterable[String]]](
         sampleNames = Array("1", "2", "3"),
         reads,
         new UniformPartitioner(800).partition(loci),
@@ -242,7 +242,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
       ).collect.map(_.toList)
 
     val resultWithEmpty =
-      pileupFlatMapMultipleRDDs[PerSample[Iterable[String]]](
+      pileupFlatMapMultipleSamples[PerSample[Iterable[String]]](
         sampleNames = Array("1", "2", "3"),
         reads,
         new UniformPartitioner(5).partition(loci),
@@ -280,7 +280,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
       )
 
     val pileups =
-      pileupFlatMap[PileupElement](
+      pileupFlatMapOneSample[PileupElement](
         "sample",
         reads,
         new UniformPartitioner(5).partition(LociSet("chr1:1-9")),
@@ -315,7 +315,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
       )
 
     val elements =
-      pileupFlatMapTwoRDDs[PileupElement](
+      pileupFlatMapTwoSamples[PileupElement](
         ("normal", "tumor"),
         reads1,
         reads2,
@@ -343,7 +343,7 @@ class PileupFlatMapUtilsSuite extends GuacFunSuite {
       )
 
     val pileups =
-      pileupFlatMap[PileupElement](
+      pileupFlatMapOneSample[PileupElement](
         "sample",
         reads,
         new UniformPartitioner(5).partition(LociSet("chr1:1-12")),

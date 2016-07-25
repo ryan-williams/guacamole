@@ -21,7 +21,7 @@ class WindowFlatMapUtilsSuite extends GuacFunSuite {
     // At pos = 4 through 7, the depth is 3
     // At pos = 8 - 11 through 11, the depth is 2
 
-    val reads = 
+    val reads =
       sc.parallelize(
         Seq(
           TestUtil.makeRead("TCGATCGGC", "8M", 0),
@@ -33,7 +33,8 @@ class WindowFlatMapUtilsSuite extends GuacFunSuite {
 
     val counts =
       windowFoldLoci(
-        Vector(reads),
+        numSamples = 1,
+        reads,
         // Split loci in 5 partitions - we will compute an aggregate value per partition
         new UniformPartitioner(5).partition(LociSet("chr1:0-20")),
         skipEmpty = false,

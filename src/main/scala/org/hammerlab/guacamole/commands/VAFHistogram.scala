@@ -8,7 +8,7 @@ import org.apache.spark.mllib.clustering.{GaussianMixture, GaussianMixtureModel}
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
-import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMapMultipleRDDs
+import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMapMultipleSamples
 import org.hammerlab.guacamole.loci.partitioning.LociPartitioning
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.pileup.Pileup
@@ -133,7 +133,7 @@ object VAFHistogram {
       val variantLoci =
         variantLociFromReads(
           readsets.sampleNames,
-          readsets.mappedReadsRDDs,
+          readsets.allMappedReads,
           reference,
           lociPartitions,
           samplePercent,
@@ -219,7 +219,8 @@ object VAFHistogram {
   /**
    * Find all non-reference loci in the sample
    *
-   * @param readsRDDs RDD of mapped reads for all samples
+   * @param sampleNames Names of samples/files that the @reads were loaded from
+   * @param reads RDD of mapped reads for all samples
    * @param reference genome
    * @param lociPartitions Positions which to examine for non-reference loci
    * @param samplePercent Percent of non-reference loci to use for descriptive statistics
@@ -229,7 +230,7 @@ object VAFHistogram {
    * @return RDD of VariantLocus, which contain the locus and non-zero variant allele frequency
    */
   def variantLociFromReads(sampleNames: PerSample[String],
-                           readsRDDs: PerSample[RDD[MappedRead]],
+                           reads: RDD[MappedRead],
                            reference: ReferenceGenome,
                            lociPartitions: LociPartitioning,
                            samplePercent: Int = 100,
@@ -237,9 +238,9 @@ object VAFHistogram {
                            minVariantAlleleFrequency: Int = 0,
                            printStats: Boolean = false): RDD[VariantLocus] = {
     val variantLoci =
-      pileupFlatMapMultipleRDDs[VariantLocus](
+      pileupFlatMapMultipleSamples[VariantLocus](
         sampleNames,
-        readsRDDs,
+        reads,
         lociPartitions,
         skipEmpty = true,
         pileups =>

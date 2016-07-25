@@ -5,7 +5,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.commands.SparkCommand
 import org.hammerlab.guacamole.commands.jointcaller.evidence.{MultiSampleMultiAlleleEvidence, MultiSampleSingleAlleleEvidence}
-import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMapMultipleRDDs
+import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMapMultipleSamples
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.pileup.Pileup
@@ -160,8 +160,6 @@ object SomaticJoint {
 
     assume(loci.nonEmpty)
 
-    val mappedReadRDDs = readsets.mappedReadsRDDs
-
     val lociPartitions =
       args
         .getPartitioner(readsets.allMappedReads)
@@ -189,9 +187,9 @@ object SomaticJoint {
       ).toIterator
     }
 
-    pileupFlatMapMultipleRDDs(
+    pileupFlatMapMultipleSamples(
       readsets.sampleNames,
-      mappedReadRDDs,
+      readsets.allMappedReads,
       lociPartitions,
       skipEmpty = true,  // TODO: shouldn't skip empty positions if we might force call them. Need an efficient way to handle this.
       callPileups,

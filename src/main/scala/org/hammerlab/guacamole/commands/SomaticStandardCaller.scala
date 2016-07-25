@@ -22,7 +22,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.bdgenomics.adam.rdd.ADAMContext
 import org.bdgenomics.formats.avro.DatabaseVariantAnnotation
-import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMapTwoRDDs
+import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMapTwoSamples
 import org.hammerlab.guacamole.filters.PileupFilter.PileupFilterArguments
 import org.hammerlab.guacamole.filters.SomaticGenotypeFilter.SomaticGenotypeFilterArguments
 import org.hammerlab.guacamole.filters.{PileupFilter, SomaticAlternateReadDepthFilter, SomaticGenotypeFilter, SomaticReadDepthFilter}
@@ -101,7 +101,7 @@ object SomaticStandard {
           .partition(loci.result(contigLengths))
 
       var potentialGenotypes: RDD[CalledSomaticAllele] =
-        pileupFlatMapTwoRDDs[CalledSomaticAllele](
+        pileupFlatMapTwoSamples[CalledSomaticAllele](
           (args.sampleNames(0), args.sampleNames(1)),
           tumorReads.mappedReads,
           normalReads.mappedReads,

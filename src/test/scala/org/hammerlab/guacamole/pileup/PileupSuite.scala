@@ -52,9 +52,6 @@ class PileupSuite
       TestUtil.makeRead("TCGATCGA", "8M", 1),
       TestUtil.makeRead("TCGACCCTCGA", "4M3I4M", 1))
 
-    val noPileup = makePileup(reads, "chr1", 0).elements
-    assert(noPileup.size === 0)
-
     val firstPileup = makePileup(reads, "chr1", 1)
     firstPileup.elements.forall(_.isMatch) should be(true)
     firstPileup.elements.forall(_.qualityScore == 31) should be(true)
@@ -95,12 +92,11 @@ class PileupSuite
       TestUtil.makeRead("TCGACCCTCGA", "4M3I4M", 1, "chr1", Some(Seq(10, 15, 20, 25, 5, 5, 5, 10, 15, 20, 25)))
     )
 
-    val noPileup = makePileup(reads, "chr1", 0).elements
-    noPileup.size should be(0)
-
     val pastInsertPileup = makePileup(reads, "chr1", 5)
     pastInsertPileup.elements.foreach(_.isMatch should be(true))
+
     pastInsertPileup.elements.foreach(_.qualityScore should be(10))
+
   }
 
   test("create pileup from long insert reads; after insertion") {

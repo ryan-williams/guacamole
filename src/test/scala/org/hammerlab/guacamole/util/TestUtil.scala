@@ -225,8 +225,8 @@ object TestUtil {
     val contig = tumorReads(0).contigName
     assume(normalReads(0).contigName == contig)
     (
-      Pileup("tumor", contig, locus, reference.getContig(contig), tumorReads),
-      Pileup("normal", contig, locus, reference.getContig(contig), normalReads)
+      Pileup("tumor", contig, locus, reference.getContig(contig), tumorReads.filter(_.overlapsLocus(locus))),
+      Pileup("normal", contig, locus, reference.getContig(contig), normalReads.filter(_.overlapsLocus(locus)))
     )
   }
 

@@ -139,8 +139,7 @@ object Pileup {
             locus: Locus,
             contigSequence: ContigSequence,
             reads: Iterable[MappedRead]): Pileup = {
-    //TODO: Is this call to overlaps locus necessary?
-    val elements = reads.filter(_.overlapsLocus(locus)).map(PileupElement(_, locus, contigSequence))
+    val elements = reads.map(PileupElement(_, locus, contigSequence))
     new Pileup(sampleName, contigName, locus, contigSequence, elements)
   }
 }

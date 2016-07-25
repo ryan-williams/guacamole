@@ -133,10 +133,10 @@ object WindowFlatMapUtils {
 
     partitionedReads
       .mapPartitions(
-        (reads, loci) =>
+        (keyedReads, loci) =>
           function(
             loci,
-            SplitIterator.split[R](partitionedReads.numSamples, reads)
+            SplitIterator.split[R](partitionedReads.numSamples, keyedReads)
           )
       )
   }

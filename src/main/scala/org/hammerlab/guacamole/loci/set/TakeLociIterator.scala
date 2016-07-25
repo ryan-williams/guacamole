@@ -97,8 +97,8 @@ class TakeLociIterator(it: BufferedIterator[(Position, Coverage)],
    * @return The number of covering regions, and a [[Contig]] with the taken loci ranges.
    */
   def takeLoci(it: ContigIterator[(HasLocus, Coverage)],
-            numRegions: Int,
-            dropAbove: Int): Option[(Int, Contig)] = {
+               numRegions: Int,
+               dropAbove: Int): Option[(Int, Contig)] = {
 
     // Accumulate intervals on this contig here.
     val intervals = ArrayBuffer[Interval]()

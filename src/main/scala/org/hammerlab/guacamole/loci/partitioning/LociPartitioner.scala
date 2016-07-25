@@ -22,7 +22,9 @@ trait LociPartitionerArgs
     forbids = Array("--partitioning-dir"),
     handler = classOf[StringOptionHandler]
   )
-  var lociPartitioningPathOpt: Option[String] = None
+  protected var _lociPartitioningPathOpt: Option[String] = None
+
+  def lociPartitioningPathOpt: Option[String] = _lociPartitioningPathOpt
 
   @Args4JOption(
     name = "--loci-partitioner",

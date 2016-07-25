@@ -1,15 +1,17 @@
 package org.hammerlab.guacamole.readsets.rdd
 
 import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{Accumulable, SparkContext}
 import org.hammerlab.guacamole.loci.partitioning.LociPartitioner.PartitionIndex
-import org.hammerlab.guacamole.loci.partitioning.{LociPartitionerArgs, LociPartitioning}
+import org.hammerlab.guacamole.loci.partitioning.LociPartitioning
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.reference.ReferenceRegion
 import org.hammerlab.magic.accumulables.{HistogramParam, HashMap => MagicHashMap}
 import org.hammerlab.magic.rdd.KeyPartitioner
+import org.hammerlab.magic.rdd.SequenceFileSerializableRDD._
 import org.hammerlab.magic.util.Stats
 
 import scala.reflect.ClassTag
@@ -39,6 +41,14 @@ class PartitionedRegions[R <: ReferenceRegion: ClassTag](@transient val regions:
     sc
       .parallelize(partitionLociSets, partitionLociSets.length)
       .setName("lociSetsRDD")
+
+  def save(fn: String, compressed: Boolean = true, overwrite: Boolean = false): this.type = {
+    if (compressed)
+      regions.saveCompressed(fn)
+    else
+      regions.saveSequenceFile(fn)
+    this
+  }
 }
 
 object PartitionedRegions {
@@ -47,14 +57,22 @@ object PartitionedRegions {
 
   def IntHist(): IntHist = MagicHashMap[Int, Long]()
 
+  def load[R <: ReferenceRegion: ClassTag](sc: SparkContext,
+                                           fn: String,
+                                           partitioning: LociPartitioning): PartitionedRegions[R] = {
+    progress(s"Loading partitioned reads from $fn")
+    val regions = sc.fromSequenceFile[R](fn, splittable = false)
+    new PartitionedRegions(regions, partitioning)
+  }
+
   def apply[R <: ReferenceRegion: ClassTag](regions: RDD[R],
                                             loci: LociSet,
-                                            args: LociPartitionerArgs): PartitionedRegions[R] =
+                                            args: PartitionedRegionsArgs): PartitionedRegions[R] =
     apply(regions, loci, args, halfWindowSize = 0)
 
   def apply[R <: ReferenceRegion: ClassTag](regions: RDD[R],
                                             loci: LociSet,
-                                            args: LociPartitionerArgs,
+                                            args: PartitionedRegionsArgs,
                                             halfWindowSize: Int): PartitionedRegions[R] = {
 
     val lociPartitioning = LociPartitioning(regions, loci, args, halfWindowSize)
@@ -72,6 +90,8 @@ object PartitionedRegions {
       regions,
       lociPartitioning,
       halfWindowSize,
+      args.partitionedReadsPathOpt,
+      args.compressReadPartitions,
       !args.quiet
     )
   }
@@ -79,11 +99,37 @@ object PartitionedRegions {
   def apply[R <: ReferenceRegion: ClassTag](regions: RDD[R],
                                             lociPartitioning: LociPartitioning,
                                             halfWindowSize: Int,
+                                            partitionedRegionsPathOpt: Option[String],
+                                            compress: Boolean,
                                             printStats: Boolean): PartitionedRegions[R] = {
 
     val sc = regions.sparkContext
 
-    val partitioningBroadcast = regions.sparkContext.broadcast(lociPartitioning)
+    partitionedRegionsPathOpt match {
+      case Some(partitionedRegionsPath) =>
+
+        val fs = FileSystem.get(sc.hadoopConfiguration)
+        val path = new Path(partitionedRegionsPath)
+        if (fs.exists(path))
+          load(sc, partitionedRegionsPath, lociPartitioning)
+        else
+          compute(regions, lociPartitioning, halfWindowSize, compress, printStats)
+            .save(partitionedRegionsPath, compressed = compress)
+
+      case None =>
+        compute(regions, lociPartitioning, halfWindowSize, compress, printStats)
+    }
+  }
+
+  private def compute[R <: ReferenceRegion: ClassTag](regions: RDD[R],
+                                                      lociPartitioning: LociPartitioning,
+                                                      halfWindowSize: Int,
+                                                      compress: Boolean,
+                                                      printStats: Boolean): PartitionedRegions[R] = {
+
+    val sc = regions.sparkContext
+
+    val partitioningBroadcast = sc.broadcast(lociPartitioning)
 
     val numPartitions = lociPartitioning.numPartitions
 

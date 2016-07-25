@@ -13,6 +13,8 @@ trait PartitionedRegionsUtil {
       reads,
       lociPartitioning,
       halfWindowSize = 0,
+      partitionedRegionsPathOpt = None,
+      compress = false,
       printStats = false
     )
   }

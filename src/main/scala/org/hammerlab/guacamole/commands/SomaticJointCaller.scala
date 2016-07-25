@@ -9,7 +9,8 @@ import org.hammerlab.guacamole.jointcaller.{Input, InputCollection, Parameters, 
 import org.hammerlab.guacamole.loci.LociArgs
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
-import org.hammerlab.guacamole.pileup.Pileup
+import org.hammerlab.guacamole.pileup.PileupsRDD._
+import org.hammerlab.guacamole.pileup.{Pileup, PileupArgs}
 import org.hammerlab.guacamole.readsets.rdd.PartitionedRegions
 import org.hammerlab.guacamole.readsets.{PerSample, ReadSets}
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
@@ -19,7 +20,8 @@ import org.kohsuke.args4j.{Option => Args4jOption}
 object SomaticJoint {
   class Arguments
     extends Parameters.CommandlineArguments
-      with InputCollection.Arguments {
+      with InputCollection.Arguments
+      with PileupArgs {
 
     @Args4jOption(name = "--out", usage = "Output path for all variants in VCF. Default: no output")
     var out: String = ""
@@ -194,13 +196,32 @@ object SomaticJoint {
         .iterator
     }
 
-    pileupFlatMapMultipleSamples(
-      readsets.numSamples,
-      partitionedReads,
-      skipEmpty = true,  // TODO: shouldn't skip empty positions if we might force call them. Need an efficient way to handle this.
-      callPileups,
-      reference = reference
-    )
+    args.pileupStrategy match {
+
+      case "windows" =>
+        pileupFlatMapMultipleSamples(
+          readsets.numSamples,
+          partitionedReads,
+          skipEmpty = true,  // TODO: shouldn't skip empty positions if we might force call them. Need an efficient way to handle this.
+          callPileups,
+          reference
+        )
+
+      case "iterator" =>
+        val perSamplePileupsRDD: RDD[PerSample[Pileup]] =
+          partitionedReads.perSamplePileups(
+            readsets.numSamples,
+            reference,
+            forceCallLoci
+          )
+
+        progress(s"Partitioned reads")
+
+        perSamplePileupsRDD.flatMap(callPileups)
+
+      case s =>
+        throw new Exception(s"Invalid pileup-construction strategy: $s; valid options: windows, iterator.")
+    }
   }
 
   def writeCalls(calls: Seq[MultiSampleMultiAlleleEvidence],
@@ -253,12 +274,12 @@ object SomaticJoint {
     if (out.nonEmpty) {
       writeSome(out, calls, inputs.items)
     }
+
     if (outDir.nonEmpty) {
       def path(filename: String) = outDir + "/" + filename + ".vcf"
-      def anyForced(evidence: MultiSampleSingleAlleleEvidence): Boolean = {
-        forceCallLoci.onContig(evidence.allele.contigName)
-          .intersects(evidence.allele.start, evidence.allele.end)
-      }
+
+      def anyForced(evidence: MultiSampleSingleAlleleEvidence): Boolean =
+        forceCallLoci.intersects(evidence.allele)
 
       val dir = new java.io.File(outDir)
       val dirCreated = dir.mkdir()

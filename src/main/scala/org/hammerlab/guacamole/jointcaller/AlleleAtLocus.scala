@@ -3,7 +3,7 @@ package org.hammerlab.guacamole.jointcaller
 import org.hammerlab.guacamole.jointcaller.pileup_summarization.ReadSubsequence
 import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.readsets.PerSample
-import org.hammerlab.guacamole.reference.{ContigName, Locus}
+import org.hammerlab.guacamole.reference.{ContigName, Locus, ReferenceRegion}
 import org.hammerlab.guacamole.util.Bases
 
 /**
@@ -25,17 +25,20 @@ import org.hammerlab.guacamole.util.Bases
  * @param ref reference allele, must be nonempty
  * @param alt alternate allele, may be equal to reference
  */
-case class AlleleAtLocus(contigName: ContigName, start: Locus, ref: String, alt: String) {
+case class AlleleAtLocus(contigName: ContigName, start: Locus, ref: String, alt: String)
+  extends ReferenceRegion {
 
   assume(ref.nonEmpty)
   assume(alt.nonEmpty)
 
-  lazy val id = "%s:%d-%d %s>%s".format(
-    contigName,
-    start,
-    end,
-    ref,
-    alt)
+  lazy val id =
+    "%s:%d-%d %s>%s".format(
+      contigName,
+      start,
+      end,
+      ref,
+      alt
+    )
 
   /** Zero-based exclusive end site on the reference genome. */
   lazy val end = start + ref.length
@@ -51,7 +54,8 @@ case class AlleleAtLocus(contigName: ContigName, start: Locus, ref: String, alt:
    * @param startEndTransform transformation function on (start, end) pairs.
    * @return a new AlleleAtLocus instance
    */
-  def transform(alleleTransform: String => String, startEndTransform: (Locus, Locus) => (Locus, Locus)): AlleleAtLocus = {
+  def transform(alleleTransform: String => String,
+                startEndTransform: (Locus, Locus) => (Locus, Locus)): AlleleAtLocus = {
     val newRef = alleleTransform(ref)
     val newAlt = alleleTransform(alt)
     val (newStart, newEnd) = startEndTransform(start, end)
@@ -60,6 +64,7 @@ case class AlleleAtLocus(contigName: ContigName, start: Locus, ref: String, alt:
     result
   }
 }
+
 object AlleleAtLocus {
 
   /**

@@ -201,10 +201,11 @@ class PileupsRDDSuite
 
     val partitionedReads = makePartitionedReads(readsets, halfWindowSize = 0, maxRegionsPerPartition, numPartitions)
 
-    val pileups: Array[PerSample[(ContigName, Locus, ExpectedReadsStr)]] =
+    val numSamples = perSampleReads.length
 
+    val pileups: Array[PerSample[(ContigName, Locus, ExpectedReadsStr)]] =
       partitionedReads
-        .perSamplePileups(perSampleReads.indices.toVector.map(_.toString), reference)
+        .perSamplePileups(numSamples, reference)
         .map(_.map(simplifyPileup))
         .collect()
 

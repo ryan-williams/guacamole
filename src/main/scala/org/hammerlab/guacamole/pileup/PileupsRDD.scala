@@ -6,7 +6,7 @@ import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.reads.MappedRead
 import org.hammerlab.guacamole.readsets.iterator.FilterAndRequireLoci
 import org.hammerlab.guacamole.readsets.iterator.overlaps.{LociOverlapsIterator, LociOverlapsPerSampleIterator}
-import org.hammerlab.guacamole.readsets.{PartitionedReads, PerSample}
+import org.hammerlab.guacamole.readsets.{NumSamples, PartitionedReads, PerSample}
 import org.hammerlab.guacamole.reference.{Position, ReferenceGenome}
 
 class PileupsRDD(partitionedReads: PartitionedReads) {
@@ -46,13 +46,11 @@ class PileupsRDD(partitionedReads: PartitionedReads) {
       )
   }
 
-  def perSamplePileups(sampleNames: PerSample[String],
+  def perSamplePileups(numSamples: NumSamples,
                        reference: ReferenceGenome,
                        requiredLoci: LociSet = LociSet()): RDD[PerSample[Pileup]] = {
 
     val requiredLociBroadcast: Broadcast[LociSet] = sc.broadcast(requiredLoci)
-
-    val numSamples = sampleNames.length
 
     partitionedReads
       .mapPartitions(
@@ -74,7 +72,6 @@ class PileupsRDD(partitionedReads: PartitionedReads) {
           } yield
             for {
               (sampleReads, sampleId) <- reads.zipWithIndex
-              sampleName = sampleNames(sampleId)
               referenceContig = reference.getContig(contigName)
             } yield
               Pileup(sampleReads, contigName, locus, referenceContig)

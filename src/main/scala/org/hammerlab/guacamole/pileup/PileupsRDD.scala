@@ -35,13 +35,14 @@ class PileupsRDD(partitionedReads: PartitionedReads) {
 
           for {
             (Position(contigName, locus), overlappingReads) <- overlaps
-          } yield
+          } yield {
             Pileup(
               overlappingReads,
               contigName,
               locus,
               reference.getContig(contigName)
             )
+          }
         }
       )
   }
@@ -74,7 +75,12 @@ class PileupsRDD(partitionedReads: PartitionedReads) {
               (sampleReads, sampleId) <- reads.zipWithIndex
               referenceContig = reference.getContig(contigName)
             } yield
-              Pileup(sampleReads, contigName, locus, referenceContig)
+              Pileup(
+                sampleReads,
+                contigName,
+                locus,
+                referenceContig
+              )
         }
       )
   }

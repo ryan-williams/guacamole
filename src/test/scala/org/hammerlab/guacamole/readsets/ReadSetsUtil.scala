@@ -53,7 +53,8 @@ trait ReadSetsUtil
               sequence,
               cigar = (end - start).toString + "M",
               start = start,
-              chr = contig
+              chr = contig,
+              sampleId = sampleId
             )
 
         val reads = mappedReads.map(x => x: Read)

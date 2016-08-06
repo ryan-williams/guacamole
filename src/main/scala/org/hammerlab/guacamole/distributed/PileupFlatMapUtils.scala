@@ -4,7 +4,7 @@ import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.distributed.WindowFlatMapUtils.windowFlatMapWithState
 import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.reads.MappedRead
-import org.hammerlab.guacamole.readsets.{PartitionedReads, PerSample}
+import org.hammerlab.guacamole.readsets.{NumSamples, PartitionedReads, PerSample, SampleName}
 import org.hammerlab.guacamole.reference.{ContigSequence, ReferenceGenome}
 import org.hammerlab.guacamole.windowing.SlidingWindow
 
@@ -51,6 +51,7 @@ object PileupFlatMapUtils {
                                           function: Pileup => Iterator[T],
                                           reference: ReferenceGenome): RDD[T] = {
     windowFlatMapWithState(
+      numSamples = 1,
       partitionedReads,
       skipEmpty,
       halfWindowSize = 0,
@@ -76,6 +77,7 @@ object PileupFlatMapUtils {
                                            function: (Pileup, Pileup) => Iterator[T],
                                            reference: ReferenceGenome): RDD[T] = {
     windowFlatMapWithState(
+      numSamples = 2,
       partitionedReads,
       skipEmpty,
       halfWindowSize = 0,
@@ -94,11 +96,13 @@ object PileupFlatMapUtils {
    *
    * @see the windowTaskFlatMapMultipleRDDs function for other argument descriptions.
    */
-  def pileupFlatMapMultipleSamples[T: ClassTag](partitionedReads: PartitionedReads,
+  def pileupFlatMapMultipleSamples[T: ClassTag](numSamples: NumSamples,
+                                                partitionedReads: PartitionedReads,
                                                 skipEmpty: Boolean,
                                                 function: PerSample[Pileup] => Iterator[T],
                                                 reference: ReferenceGenome): RDD[T] = {
     windowFlatMapWithState(
+      numSamples,
       partitionedReads,
       skipEmpty,
       halfWindowSize = 0,

@@ -18,7 +18,7 @@
 
 package org.hammerlab.guacamole.reads
 
-import org.hammerlab.guacamole.readsets.SampleName
+import org.hammerlab.guacamole.readsets.{SampleId, SampleName}
 
 /**
  * An unmapped read. See the [[Read]] trait for field descriptions.
@@ -29,6 +29,7 @@ case class UnmappedRead(
     sequence: IndexedSeq[Byte],
     baseQualities: IndexedSeq[Byte],
     isDuplicate: Boolean,
+    sampleId: SampleId,
     sampleName: SampleName,
     failedVendorQualityChecks: Boolean,
     isPaired: Boolean) extends Read {

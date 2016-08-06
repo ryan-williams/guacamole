@@ -53,14 +53,15 @@ trait ReadSetsUtil
               sequence,
               cigar = (end - start).toString + "M",
               start = start,
-              chr = contig
+              chr = contig,
+              sampleId = sampleId
             )
 
         val reads = mappedReads.map(x => x: Read)
 
         val rdd = sc.parallelize(reads, numPartitions)
 
-        ReadsRDD(rdd, Input("test", "test")) -> mappedReads
+        ReadsRDD(rdd, Input(sampleId, "test", "test")) -> mappedReads
       }).unzip
 
     (

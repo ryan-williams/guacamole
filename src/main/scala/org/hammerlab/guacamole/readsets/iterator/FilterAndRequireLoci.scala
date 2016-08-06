@@ -2,7 +2,7 @@ package org.hammerlab.guacamole.readsets.iterator
 
 import org.hammerlab.guacamole.loci.iterator.{MergeLociIterator, SkippableLociIterator}
 import org.hammerlab.guacamole.loci.set.LociSet
-import org.hammerlab.guacamole.reference.{ContigIterator, HasContig, Locus, Position, ReferenceRegion}
+import org.hammerlab.guacamole.reference.{ContigIterator, HasContig, Locus, Position}
 
 object FilterAndRequireLoci {
   def apply[C <: HasContig, T](elems: Iterator[C],

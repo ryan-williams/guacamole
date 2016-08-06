@@ -168,7 +168,7 @@ object SomaticJoint {
 
     val partitionedReads =
       PartitionedRegions(
-        readsets.mappedReadsRDDs,
+        readsets.allMappedReads,
         lociSetMinusOne(loci),
         args,
         halfWindowSize = 0
@@ -200,6 +200,7 @@ object SomaticJoint {
 
       case "windows" =>
         pileupFlatMapMultipleSamples(
+          readsets.numSamples,
           partitionedReads,
           skipEmpty = true,  // TODO: shouldn't skip empty positions if we might force call them. Need an efficient way to handle this.
           callPileups,
@@ -209,6 +210,7 @@ object SomaticJoint {
       case "iterator" =>
         val perSamplePileupsRDD: RDD[PerSample[Pileup]] =
           partitionedReads.perSamplePileups(
+            readsets.numSamples,
             reference,
             forceCallLoci
           )

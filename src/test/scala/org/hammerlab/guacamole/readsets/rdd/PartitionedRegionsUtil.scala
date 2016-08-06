@@ -3,17 +3,17 @@ package org.hammerlab.guacamole.readsets.rdd
 import org.apache.spark.rdd.RDD
 import org.hammerlab.guacamole.loci.partitioning.LociPartitioning
 import org.hammerlab.guacamole.loci.set.LociSet
-import org.hammerlab.guacamole.readsets.{ContigLengths, PartitionedReads, PerSample, ReadSets}
+import org.hammerlab.guacamole.readsets.{ContigLengths, PartitionedReads, ReadSets}
 import org.hammerlab.guacamole.reference.ReferenceRegion
 
 import scala.reflect.ClassTag
 
 trait PartitionedRegionsUtil {
 
-  def partitionReads[R <: ReferenceRegion: ClassTag](readsRDDs: PerSample[RDD[R]],
+  def partitionReads[R <: ReferenceRegion: ClassTag](reads: RDD[R],
                                                      lociPartitioning: LociPartitioning): PartitionedRegions[R] = {
     PartitionedRegions(
-      readsRDDs,
+      reads,
       lociPartitioning,
       halfWindowSize = 0,
       partitionedRegionsPathOpt = None,
@@ -30,6 +30,6 @@ trait PartitionedRegionsUtil {
     args.parallelism = numPartitions
     args.maxReadsPerPartition = maxRegionsPerPartition
 
-    PartitionedRegions(readsets.mappedReadsRDDs, LociSet.all(contigLengths), args, halfWindowSize)
+    PartitionedRegions(readsets.allMappedReads, LociSet.all(contigLengths), args, halfWindowSize)
   }
 }

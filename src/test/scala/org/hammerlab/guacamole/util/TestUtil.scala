@@ -21,13 +21,12 @@ package org.hammerlab.guacamole.util
 import java.io.{File, FileNotFoundException}
 import java.nio.file.Files
 
-import htsjdk.samtools.TextCigarCodec
 import org.apache.commons.io.FileUtils
 import org.apache.spark.SparkContext
 import org.hammerlab.guacamole.loci.set.LociParser
 import org.hammerlab.guacamole.pileup.Pileup
-import org.hammerlab.guacamole.reads.{MappedRead, MateAlignmentProperties, PairedRead, Read}
-import org.hammerlab.guacamole.readsets.{ReadSets, SampleName}
+import org.hammerlab.guacamole.reads.MappedRead
+import org.hammerlab.guacamole.readsets.ReadSets
 import org.hammerlab.guacamole.readsets.args.SingleSampleArgs
 import org.hammerlab.guacamole.readsets.io.{InputFilters, ReadLoadingConfig}
 import org.hammerlab.guacamole.readsets.rdd.ReadsRDD

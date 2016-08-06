@@ -12,9 +12,6 @@ trait ReadsRDDUtil extends ReadsUtil {
 
   def sc: SparkContext
 
-  def makeReadSets(inputs: InputCollection, loci: LociParser): ReadSets =
-    ReadSets(sc, inputs.items, filters = InputFilters(overlapsLoci = loci))
-
   def makeReadsRDD(reads: (String, String, Int)*): RDD[MappedRead] =
     sc.parallelize(
       for {

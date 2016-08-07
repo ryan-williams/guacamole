@@ -23,6 +23,8 @@ import org.apache.spark.storage.BroadcastBlockId
 import org.hammerlab.guacamole.loci.partitioning.UniformPartitioner
 import org.hammerlab.guacamole.loci.set.LociSet
 import org.hammerlab.guacamole.pileup.{Pileup, PileupElement}
+import org.hammerlab.guacamole.readsets.PerSample
+import org.hammerlab.guacamole.readsets.rdd.ReadsRDDUtil
 import org.hammerlab.guacamole.reference.ReferenceBroadcast.MapBackedReferenceSequence
 import org.hammerlab.guacamole.util.{AssertBases, Bases, GuacFunSuite, KryoTestRegistrar, TestUtil}
 
@@ -46,7 +48,16 @@ class PileupFlatMapUtilsSuiteRegistrar extends KryoTestRegistrar {
   }
 }
 
-class PileupFlatMapUtilsSuite extends GuacFunSuite {
+private object Util {
+  // This helper function is in its own object here to avoid serializing `PileupFlatMapUtilsSuite`, which is not
+  // serializable due to mixing in `Matchers`.
+  def pileupsToElementStrings(pileups: PerSample[Pileup]): Iterator[PerSample[Seq[String]]] =
+    Iterator(pileups.map(_.elements.map(p => Bases.basesToString(p.sequencedBases))))
+}
+
+class PileupFlatMapUtilsSuite
+  extends GuacFunSuite
+    with ReadsRDDUtil {
 
   override def registrar: String = "org.hammerlab.guacamole.distributed.PileupFlatMapUtilsSuiteRegistrar"
 

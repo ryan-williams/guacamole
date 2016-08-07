@@ -45,7 +45,6 @@ object VariantSupport {
 
     @Args4jOption(name = "--reference-fasta", required = true, usage = "Local path to a reference FASTA file")
     var referenceFastaPath: String = ""
-
   }
 
   object Caller extends SparkCommand[Arguments] {

@@ -213,10 +213,9 @@ class PileupSuite extends GuacFunSuite with TableDrivenPropertyChecks {
     val deletionPileup = pileup.atGreaterLocus(9, Seq.empty.iterator)
 
     deletionPileup.elements.map(_.alignment).count {
-      case Deletion(bases, _) => {
+      case Deletion(bases, _) =>
         Bases.basesToString(bases) should equal("AAAAAAAAAAA")
         true
-      }
       case _ => false
     } should be(5)
 

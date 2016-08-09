@@ -14,6 +14,7 @@ import org.hammerlab.guacamole.pileup.{Pileup, PileupArgs}
 import org.hammerlab.guacamole.readsets.rdd.PartitionedRegions
 import org.hammerlab.guacamole.readsets.{PerSample, ReadSets}
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
+import org.hammerlab.magic.rdd.SequenceFileSerializableRDD._
 import org.kohsuke.args4j.spi.StringArrayOptionHandler
 import org.kohsuke.args4j.{Option => Args4jOption}
 
@@ -92,23 +93,28 @@ object SomaticJoint {
 
       val reference = ReferenceBroadcast(args.referenceFastaPath, sc, partialFasta = args.referenceFastaIsPartial)
 
-      val calls = makeCalls(
-        sc,
-        inputs,
-        readsets,
-        parameters,
-        reference,
-        loci,
-        forceCallLoci,
-        args.onlySomatic,
-        args.includeFiltered,
-        args
-      )
+      val calls =
+        makeCalls(
+          sc,
+          inputs,
+          readsets,
+          parameters,
+          reference,
+          loci,
+          forceCallLoci,
+          args.onlySomatic,
+          args.includeFiltered,
+          args
+        )
 
       calls.cache()
 
+      val objFilePath = args.outDir + "/calls"
+      progress(s"Saving calls to: $objFilePath")
+      calls.saveSequenceFile(objFilePath)
+
       progress("Collecting evidence for %,d sites with calls".format(calls.count))
-      val collectedCalls = calls.collect()
+      val collectedCalls = calls.take(100000)
 
       progress(
         "Called %,d germline and %,d somatic variants.".format(

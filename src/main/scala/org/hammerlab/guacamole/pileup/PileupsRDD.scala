@@ -47,9 +47,15 @@ class PileupsRDD(partitionedReads: PartitionedReads) {
       )
   }
 
-  def perSamplePileups(numSamples: NumSamples,
-                       reference: ReferenceGenome,
-                       requiredLoci: LociSet = LociSet()): RDD[PerSample[Pileup]] = {
+  def perSamplePileupsLazy(numSamples: NumSamples,
+                           reference: ReferenceGenome,
+                           requiredLoci: LociSet = LociSet()): RDD[PerSample[Pileup]] = {
+    pileups(reference, requiredLoci).map(_.splitBySample(numSamples))
+  }
+
+  def perSamplePileupsDirect(numSamples: NumSamples,
+                             reference: ReferenceGenome,
+                             requiredLoci: LociSet = LociSet()): RDD[PerSample[Pileup]] = {
 
     val requiredLociBroadcast: Broadcast[LociSet] = sc.broadcast(requiredLoci)
 

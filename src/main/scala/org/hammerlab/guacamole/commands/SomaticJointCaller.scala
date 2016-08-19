@@ -213,15 +213,27 @@ object SomaticJoint {
           reference
         )
 
-      case "iterator" =>
+      case "rdd" | "rdd-direct" =>
         val perSamplePileupsRDD: RDD[PerSample[Pileup]] =
-          partitionedReads.perSamplePileups(
+          partitionedReads.perSamplePileupsDirect(
             readsets.numSamples,
             reference,
             forceCallLoci
           )
 
         progress(s"Partitioned reads")
+
+        perSamplePileupsRDD.flatMap(callPileups)
+
+      case "rdd-lazy" =>
+        val perSamplePileupsRDD: RDD[PerSample[Pileup]] =
+          partitionedReads.perSamplePileupsLazy(
+            readsets.numSamples,
+            reference,
+            forceCallLoci
+          )
+
+        progress(s"Partitioned reads 'lazily'")
 
         perSamplePileupsRDD.flatMap(callPileups)
 

@@ -2,8 +2,11 @@ package org.hammerlab.guacamole.pileup
 
 import org.hammerlab.guacamole.pileup.Pileup.PileupElements
 import org.hammerlab.guacamole.reads.MappedRead
+import org.hammerlab.guacamole.readsets.{NumSamples, PerSample}
 import org.hammerlab.guacamole.reference.{ContigName, ContigSequence, Locus}
 import org.hammerlab.guacamole.variants.Allele
+
+import scala.collection.mutable.ArrayBuffer
 
 /**
  * A [[Pileup]] at a locus contains a sequence of [[PileupElement]] instances, one for every read that overlaps that
@@ -41,6 +44,20 @@ case class Pileup(contigName: ContigName,
    * Depth of pileup - number of reads at locus
    */
   lazy val depth: Int = elements.size
+
+  def splitBySample(numSamples: NumSamples): PerSample[Pileup] = {
+    val perSampleElements = Vector.fill(numSamples)(ArrayBuffer[PileupElement]())
+    for {
+      element <- elements
+    } {
+      perSampleElements(element.read.sampleId) += element
+    }
+
+    for {
+      sampleElements <- perSampleElements
+    } yield
+      Pileup(contigName, locus, contigSequence, sampleElements)
+  }
 
   /**
    * Number of positively stranded reads

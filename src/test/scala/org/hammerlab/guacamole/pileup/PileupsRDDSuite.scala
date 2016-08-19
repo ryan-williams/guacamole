@@ -205,7 +205,7 @@ class PileupsRDDSuite
 
     val pileups: Array[PerSample[(ContigName, Locus, ExpectedReadsStr)]] =
       partitionedReads
-        .perSamplePileups(numSamples, reference)
+        .perSamplePileupsDirect(numSamples, reference)
         .map(_.map(simplifyPileup))
         .collect()
 

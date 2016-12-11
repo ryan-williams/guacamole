@@ -1,10 +1,12 @@
 package org.hammerlab.guacamole.pileup
 
-import htsjdk.samtools.{CigarElement, CigarOperator}
+import htsjdk.samtools.{ CigarElement, CigarOperator }
 import org.bdgenomics.adam.util.PhredUtils.phredToSuccessProbability
-import org.hammerlab.genomics.reference.{ContigSequence, Locus}
-import org.hammerlab.guacamole.reads.MappedRead
-import org.hammerlab.guacamole.util.CigarUtils
+import org.hammerlab.genomics.bases.Bases
+import org.hammerlab.genomics.bases.Bases._
+import org.hammerlab.genomics.cigar.Utils.{ getReadLength, getReferenceLength }
+import org.hammerlab.genomics.reads.MappedRead
+import org.hammerlab.genomics.reference.{ ContigSequence, Locus }
 import org.hammerlab.guacamole.variants.Allele
 
 import scala.annotation.tailrec
@@ -15,7 +17,7 @@ import scala.annotation.tailrec
  * @param read The read this [[PileupElement]] is coming from.
  * @param locus The reference locus.
  * @param readPosition The offset into the sequence of bases in the read that this element corresponds to.
- * @param cigarElementIndex The index in the read's sequence of cigar elements ([[org.hammerlab.guacamole.reads.MappedRead.cigarElements]])
+ * @param cigarElementIndex The index in the read's sequence of cigar elements ([[org.hammerlab.genomics.reads.MappedRead.cigarElements]])
  *                          of the element that contains the current readPosition.
  * @param cigarElementLocus The reference START position of the current cigar element.
  *                          If the element is an INSERTION this the PRECEDING reference base
@@ -47,9 +49,26 @@ case class PileupElement(
     (cigarElementLocus - read.start).toInt +
       (if (cigarElement.getOperator.consumesReferenceBases()) indexWithinCigarElement else 0)
 
-  def cigarElementReadLength = CigarUtils.getReadLength(cigarElement)
-  def cigarElementReferenceLength = CigarUtils.getReferenceLength(cigarElement)
+  def cigarElementReadLength = getReadLength(cigarElement)
+  def cigarElementReferenceLength = getReferenceLength(cigarElement)
   def cigarElementEndLocus = cigarElementLocus + cigarElementReferenceLength
+
+  /**
+   * Number of mismatching bases in this read. Does *not* include indels: only looks at read bases that align to a
+   * single base in the reference and do not match it.
+   *
+   * @return count of mismatching bases
+   */
+  lazy val countOfMismatches: Int =
+    (
+      if (isMismatch) 1 else 0
+    ) +
+      (
+        if (locus + 1 < read.end)
+          advanceToLocus(locus + 1).countOfMismatches
+        else
+          0
+      )
 
   /*
    * True if this is the last base of the current cigar element.
@@ -61,17 +80,18 @@ case class PileupElement(
     val nextBaseCigarElement = if (isFinalCigarBase) nextCigarElement else Some(cigarElement)
     val nextBaseCigarOperator = nextBaseCigarElement.map(_.getOperator)
 
-    def makeInsertion(cigarElem: CigarElement) =
+    def makeInsertion(cigarElem: CigarElement) = {
       Insertion(
-        read.sequence.view(
+        read.sequence.slice(
           readPosition,
-          readPosition + CigarUtils.getReadLength(cigarElem) + 1
+          readPosition + getReadLength(cigarElem) + 1
         ),
         read.baseQualities.view(
           readPosition,
-          readPosition + CigarUtils.getReadLength(cigarElem) + 1
+          readPosition + getReadLength(cigarElem) + 1
         )
       )
+    }
 
     (cigarOperator, nextBaseCigarOperator) match {
 
@@ -134,8 +154,8 @@ case class PileupElement(
    * the inserted sequence starting at the current locus. Otherwise, this is
    * an array of length 1.
    */
-  def sequencedBases: Seq[Byte] = alignment.sequencedBases
-  def referenceBases: Seq[Byte] = alignment.referenceBases
+  def sequencedBases: Bases = alignment.sequencedBases
+  def referenceBases: Bases = alignment.referenceBases
 
   lazy val allele: Allele = Allele(referenceBases, sequencedBases)
 
@@ -188,7 +208,7 @@ case class PileupElement(
   }
 
   /**
-   * Returns whether the current cigar element of this [[org.hammerlab.guacamole.reads.MappedRead]] contains the given reference locus.
+   * Returns whether the current cigar element of this [[org.hammerlab.genomics.reads.MappedRead]] contains the given reference locus.
    *
    * Can only return true if the cigar element consumes reference bases.
    */
@@ -247,6 +267,7 @@ object PileupElement {
   /**
    * Create a new [[PileupElement]] backed by the given read at the specified locus. The read must overlap the locus.
    */
+  def apply(read: MappedRead, contigSequence: ContigSequence): PileupElement = apply(read, read.start, contigSequence)
   def apply(read: MappedRead, locus: Locus, contigSequence: ContigSequence): PileupElement =
     PileupElement(
       read = read,

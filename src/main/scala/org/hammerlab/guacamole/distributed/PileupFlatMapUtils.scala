@@ -1,11 +1,12 @@
 package org.hammerlab.guacamole.distributed
 
 import org.apache.spark.rdd.RDD
+import org.hammerlab.genomics.reads.MappedRead
+import org.hammerlab.genomics.readsets.{ PerSample, SampleName, SampleRead }
 import org.hammerlab.genomics.reference.ContigSequence
 import org.hammerlab.guacamole.distributed.WindowFlatMapUtils.windowFlatMapWithState
 import org.hammerlab.guacamole.pileup.Pileup
-import org.hammerlab.guacamole.reads.MappedRead
-import org.hammerlab.guacamole.readsets.{PartitionedReads, PerSample, SampleName}
+import org.hammerlab.guacamole.readsets.PartitionedReads
 import org.hammerlab.guacamole.reference.ReferenceGenome
 import org.hammerlab.guacamole.windowing.SlidingWindow
 
@@ -54,7 +55,7 @@ object PileupFlatMapUtils {
                                           skipEmpty: Boolean,
                                           function: Pileup => Iterator[T],
                                           reference: ReferenceGenome): RDD[T] = {
-    windowFlatMapWithState(
+    windowFlatMapWithState[SampleRead, MappedRead, T, Option[Pileup]](
       numSamples = 1,
       partitionedReads,
       skipEmpty,
@@ -82,7 +83,7 @@ object PileupFlatMapUtils {
                                            skipEmpty: Boolean,
                                            function: (Pileup, Pileup) => Iterator[T],
                                            reference: ReferenceGenome): RDD[T] = {
-    windowFlatMapWithState(
+    windowFlatMapWithState[SampleRead, MappedRead, T, Option[(Pileup, Pileup)]](
       numSamples = 2,
       partitionedReads,
       skipEmpty,
@@ -107,7 +108,7 @@ object PileupFlatMapUtils {
                                                 skipEmpty: Boolean,
                                                 function: PerSample[Pileup] => Iterator[T],
                                                 reference: ReferenceGenome): RDD[T] = {
-    windowFlatMapWithState(
+    windowFlatMapWithState[SampleRead, MappedRead, T, Option[PerSample[Pileup]]](
       sampleNames.length,
       partitionedReads,
       skipEmpty,

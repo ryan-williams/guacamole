@@ -1,11 +1,12 @@
 package org.hammerlab.guacamole.jointcaller.evidence
 
-import org.hammerlab.guacamole.jointcaller.Input.{Analyte, TissueType}
-import org.hammerlab.guacamole.jointcaller._
-import org.hammerlab.guacamole.jointcaller.annotation.{MultiSampleAnnotations, SingleSampleAnnotations}
+import org.hammerlab.genomics.bases.Bases
+import org.hammerlab.genomics.readsets.{ PerSample, SampleId }
+import org.hammerlab.guacamole.jointcaller.Input.{ Analyte, TissueType }
+import org.hammerlab.guacamole.jointcaller.{ AlleleAtLocus, InputCollection, Parameters }
+import org.hammerlab.guacamole.jointcaller.annotation.{ MultiSampleAnnotations, SingleSampleAnnotations }
 import org.hammerlab.guacamole.jointcaller.pileup_summarization.MultiplePileupStats
 import org.hammerlab.guacamole.jointcaller.pileup_summarization.PileupStats.AlleleMixture
-import org.hammerlab.guacamole.readsets.{PerSample, SampleId}
 
 import scala.collection.Set
 
@@ -63,7 +64,7 @@ case class MultiSampleSingleAlleleEvidence(parameters: Parameters,
    * @return negative log-base 10 prior probability for that allele. Since log probs are negative, this number will
    *         be *positive* (it's the negative of a negative).
    */
-  def germlinePrior(alleles: (String, String)): Double =
+  def germlinePrior(alleles: (Bases, Bases)): Double =
     Seq(
       alleles._1,
       alleles._2
@@ -85,14 +86,15 @@ case class MultiSampleSingleAlleleEvidence(parameters: Parameters,
    * The posteriors are plain log10 logprobs. They are negative. The maximum a posteriori estimate is the greatest
    * (i.e. least negative, closest to 0) posterior.
    */
-  val perNormalSampleGermlinePosteriors: Map[SampleId, Map[(String, String), Double]] = {
+  val perNormalSampleGermlinePosteriors: Map[SampleId, Map[(Bases, Bases), Double]] = {
     (
       inputs
         .items
         .filter(_.normalDNA)
         .map(_.index) ++
         Seq(normalDNAPooledIndex)
-    ).map(
+    )
+    .map(
       index => {
 
         val likelihoods =
@@ -110,20 +112,22 @@ case class MultiSampleSingleAlleleEvidence(parameters: Parameters,
               alleles -> (likelihood - germlinePrior(alleles))
           )
       }
-    ).toMap
+    )
+    .toMap
   }
+
   val pooledGermlinePosteriors = perNormalSampleGermlinePosteriors(normalDNAPooledIndex)
 
   /**
    * Called germline genotype. We currently just use the maximum posterior from the pooled normal data.
    */
-  val germlineAlleles: (String, String) = pooledGermlinePosteriors.maxBy(_._2)._1
+  val germlineAlleles: (Bases, Bases) = pooledGermlinePosteriors.maxBy(_._2)._1
 
   /** Are we making a germline call here? */
   val isGermlineCall = germlineAlleles != (allele.ref, allele.ref)
 
   /** Negative log10 prior probability for the given mixture in RNA. */
-  private def somaticPriorRna(mixture: Map[String, Double]): Double = {
+  private def somaticPriorRna(mixture: AlleleMixture): Double = {
     val contents = mixture.filter(_._2 > 0).keys.toSet
     if (contents == Set(allele.ref))
       0
@@ -169,7 +173,7 @@ case class MultiSampleSingleAlleleEvidence(parameters: Parameters,
   /**
    * Negative log10 prior probability for a somatic call on a given mixture. See germlinePrior.
    */
-  private def somaticPriorDna(mixture: Map[String, Double]): Double = {
+  private def somaticPriorDna(mixture: AlleleMixture): Double = {
     val contents = mixture.filter(_._2 > 0).keys.toSet
     if (contents == Set(allele.ref))
       0

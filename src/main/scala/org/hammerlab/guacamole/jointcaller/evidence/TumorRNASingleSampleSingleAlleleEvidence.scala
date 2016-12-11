@@ -1,5 +1,6 @@
 package org.hammerlab.guacamole.jointcaller.evidence
 
+import org.hammerlab.genomics.bases.Bases
 import org.hammerlab.guacamole.jointcaller._
 import org.hammerlab.guacamole.jointcaller.annotation.SingleSampleAnnotations
 import org.hammerlab.guacamole.jointcaller.pileup_summarization.PileupStats
@@ -14,7 +15,7 @@ import org.hammerlab.guacamole.jointcaller.pileup_summarization.PileupStats.Alle
  * @param logLikelihoods Map from allelic mixtures to log10 likelihoods
  */
 case class TumorRNASingleSampleSingleAlleleEvidence(allele: AlleleAtLocus,
-                                                    allelicDepths: Map[String, Int],
+                                                    allelicDepths: Map[Bases, Int],
                                                     logLikelihoods: Map[AlleleMixture, Double],
                                                     annotations: Option[SingleSampleAnnotations] = None)
     extends SingleSampleSingleAlleleEvidence {

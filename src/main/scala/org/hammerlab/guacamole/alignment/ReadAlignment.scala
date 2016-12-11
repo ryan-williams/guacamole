@@ -1,8 +1,9 @@
 package org.hammerlab.guacamole.alignment
 
 import breeze.linalg.DenseVector
-import htsjdk.samtools.{Cigar, TextCigarCodec}
-import org.hammerlab.guacamole.alignment.AlignmentState.{AlignmentState, cigarKey, isGapAlignment}
+import htsjdk.samtools.{ Cigar, TextCigarCodec }
+import org.hammerlab.genomics.bases.Bases
+import org.hammerlab.guacamole.alignment.AlignmentState.{ AlignmentState, cigarKey, isGapAlignment }
 
 /**
  *
@@ -61,8 +62,8 @@ object ReadAlignment {
    * @param closeGapProbability Penalty to end in an insertion or deletion in the alignment
    * @return An alignment path and score
    */
-  def apply(sequence: Seq[Byte],
-            reference: Seq[Byte],
+  def apply(sequence: Bases,
+            reference: Bases,
             mismatchProbability: Double = math.exp(-4),
             openGapProbability: Double = math.exp(-6),
             closeGapProbability: Double = 1 - math.exp(-1)): ReadAlignment = {
@@ -89,8 +90,8 @@ object ReadAlignment {
     ReadAlignment(path, refStartIdx, refEndIdx, score.toInt)
   }
 
-  private[alignment] def scoreAlignmentPaths(sequence: Seq[Byte],
-                                             reference: Seq[Byte],
+  private[alignment] def scoreAlignmentPaths(sequence: Bases,
+                                             reference: Bases,
                                              mismatchProbability: Double,
                                              openGapProbability: Double,
                                              closeGapProbability: Double): DenseVector[Path] = {

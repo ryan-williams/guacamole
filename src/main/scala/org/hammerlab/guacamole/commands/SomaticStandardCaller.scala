@@ -5,6 +5,9 @@ import org.apache.spark.rdd.RDD
 import org.bdgenomics.adam.rdd.ADAMContext
 import org.bdgenomics.formats.avro.VariantAnnotation
 import org.hammerlab.commands.Args
+import org.hammerlab.genomics.reads.MappedRead
+import org.hammerlab.genomics.readsets.args.{ ReferenceArgs, TumorNormalReadsArgs }
+import org.hammerlab.genomics.readsets.{ ReadSets, SampleRead }
 import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMapTwoSamples
 import org.hammerlab.guacamole.filters.somatic.SomaticGenotypeFilter
 import org.hammerlab.guacamole.filters.somatic.SomaticGenotypeFilter.SomaticGenotypeFilterArguments
@@ -12,11 +15,11 @@ import org.hammerlab.guacamole.likelihood.Likelihood
 import org.hammerlab.guacamole.likelihood.Likelihood.probabilitiesOfGenotypes
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.pileup.Pileup
-import org.hammerlab.guacamole.readsets.ReadSets
-import org.hammerlab.guacamole.readsets.args.{ ReferenceArgs, TumorNormalReadsArgs }
+import org.hammerlab.guacamole.readsets.PartitionedReads
 import org.hammerlab.guacamole.readsets.rdd.{ PartitionedRegions, PartitionedRegionsArgs }
+import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.hammerlab.guacamole.variants.{ Allele, AlleleEvidence, CalledSomaticAllele, Genotype, GenotypeOutputArgs, GenotypeOutputCaller }
-import org.kohsuke.args4j.{ Option => Args4jOption }
+import org.kohsuke.args4j.{ Option ⇒ Args4jOption }
 
 import scala.math.{ exp, max }
 
@@ -73,13 +76,13 @@ object SomaticStandard {
     override val description = "call somatic variants using independent callers on tumor and normal"
 
     override def computeVariants(args: Arguments, sc: SparkContext) = {
-      val reference = args.reference(sc)
+      val reference = ReferenceBroadcast(args, sc)
 
       val (readsets, loci) = ReadSets(sc, args)
 
-      val partitionedReads =
+      val partitionedReads: PartitionedReads =
         PartitionedRegions(
-          readsets.allMappedReads,
+          readsets.sampleIdxKeyedMappedReads,
           loci,
           args
         )

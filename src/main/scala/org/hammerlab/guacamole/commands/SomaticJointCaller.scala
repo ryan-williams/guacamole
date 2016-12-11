@@ -6,15 +6,15 @@ import org.apache.spark.rdd.RDD
 import org.hammerlab.commands.Args
 import org.hammerlab.genomics.loci.parsing.ParsedLoci
 import org.hammerlab.genomics.loci.set.LociSet
+import org.hammerlab.genomics.readsets.{ PerSample, ReadSets }
 import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMapMultipleSamples
 import org.hammerlab.guacamole.jointcaller.evidence.{ MultiSampleMultiAlleleEvidence, MultiSampleSingleAlleleEvidence }
 import org.hammerlab.guacamole.jointcaller.{ Input, InputCollection, Parameters, VCFOutput }
 import org.hammerlab.guacamole.loci.args.ForceCallLociArgs
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.pileup.Pileup
-import org.hammerlab.guacamole.readsets.args.{ ReferenceArgs, Arguments ⇒ ReadSetsArguments }
+import org.hammerlab.genomics.readsets.args.{ ReferenceArgs, Arguments ⇒ ReadSetsArguments }
 import org.hammerlab.guacamole.readsets.rdd.{ PartitionedRegions, PartitionedRegionsArgs }
-import org.hammerlab.guacamole.readsets.{ PerSample, ReadSets }
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.kohsuke.args4j.spi.StringArrayOptionHandler
 import org.kohsuke.args4j.{ Option ⇒ Args4jOption }
@@ -81,14 +81,14 @@ object SomaticJoint {
           "Force calling %,d loci across %,d contig(s): %s".format(
             forceCallLoci.count,
             forceCallLoci.contigs.length,
-            forceCallLoci.truncatedString()
+            forceCallLoci.toString(10000)
           )
         )
       }
 
       val parameters = Parameters(args)
 
-      val reference = args.reference(sc)
+      val reference = ReferenceBroadcast(args, sc)
 
       val calls = makeCalls(
         sc,
@@ -166,7 +166,7 @@ object SomaticJoint {
 
     val partitionedReads =
       PartitionedRegions(
-        readsets.allMappedReads,
+        readsets.sampleIdxKeyedMappedReads,
         lociSetMinusOne(loci),
         args
       )

@@ -1,5 +1,6 @@
 package org.hammerlab.guacamole.jointcaller.evidence
 
+import org.hammerlab.genomics.bases.Bases
 import org.hammerlab.guacamole.jointcaller._
 import org.hammerlab.guacamole.jointcaller.annotation.SingleSampleAnnotations
 import org.hammerlab.guacamole.jointcaller.pileup_summarization.PileupStats
@@ -14,7 +15,7 @@ import org.hammerlab.guacamole.jointcaller.pileup_summarization.PileupStats.Alle
  * @param logLikelihoods Map from allelic mixtures to log10 likelihoods
  */
 case class TumorDNASingleSampleSingleAlleleEvidence(allele: AlleleAtLocus,
-                                                    allelicDepths: Map[String, Int],
+                                                    allelicDepths: Map[Bases, Int],
                                                     logLikelihoods: Map[AlleleMixture, Double],
                                                     annotations: Option[SingleSampleAnnotations] = None)
     extends SingleSampleSingleAlleleEvidence {
@@ -35,7 +36,12 @@ object TumorDNASingleSampleSingleAlleleEvidence {
   def apply(allele: AlleleAtLocus, stats: PileupStats, parameters: Parameters): TumorDNASingleSampleSingleAlleleEvidence = {
     assume(allele.ref == stats.ref, "%s != %s".format(allele.ref, stats.ref))
 
-    val altVaf = math.max(parameters.somaticVafFloor, stats.vaf(allele.alt))
+    val altVaf =
+      math.max(
+        parameters.somaticVafFloor,
+        stats.vaf(allele.alt)
+      )
+
     val possibleMixtures = Seq(Map(allele.ref -> 1.0)) ++ (
       if (allele.ref != allele.alt)
         Seq(Map(allele.alt -> altVaf, allele.ref -> (1.0 - altVaf)))

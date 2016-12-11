@@ -3,11 +3,11 @@ package org.hammerlab.guacamole.distributed
 import org.apache.spark.rdd.RDD
 import org.hammerlab.genomics.loci.iterator.LociIterator
 import org.hammerlab.genomics.loci.set.LociSet
+import org.hammerlab.genomics.readsets.{ HasSampleId, NumSamples, PerSample }
 import org.hammerlab.genomics.reference.Region
-import org.hammerlab.guacamole.reads.SampleRegion
 import org.hammerlab.guacamole.readsets.rdd.PartitionedRegions
-import org.hammerlab.guacamole.readsets.{NumSamples, PerSample}
-import org.hammerlab.guacamole.windowing.{SlidingWindow, SplitIterator}
+import org.hammerlab.guacamole.windowing.SlidingWindow.advanceMultipleWindows
+import org.hammerlab.guacamole.windowing.{ SlidingWindow, SplitIterator }
 
 import scala.reflect.ClassTag
 
@@ -37,15 +37,15 @@ object WindowFlatMapUtils {
    * @tparam S state type
    * @return RDD[T] of flatmap results
    */
-  def windowFlatMapWithState[R <: SampleRegion: ClassTag, T: ClassTag, S](
+  def windowFlatMapWithState[M <: HasSampleId, R <: Region: ClassTag, T: ClassTag, S](
     numSamples: NumSamples,
-    partitionedReads: PartitionedRegions[R],
+    partitionedReads: PartitionedRegions[M, R],
     skipEmpty: Boolean,
     halfWindowSize: Int,
     initialState: S,
-    function: (S, PerSample[SlidingWindow[R]]) => (S, Iterator[T])): RDD[T] = {
+    function: (S, PerSample[SlidingWindow[R]]) => (S, Iterator[T]))(implicit toR: M => R): RDD[T] = {
 
-    splitSamplesAndMap(
+    splitSamplesAndMap[M, R, T](
       numSamples,
       partitionedReads,
       (partitionLoci, taskRegionsPerSample: PerSample[Iterator[R]]) => {
@@ -62,7 +62,7 @@ object WindowFlatMapUtils {
             // probably worth revisiting.
             val builder = Vector.newBuilder[T]
 
-            while (SlidingWindow.advanceMultipleWindows(perSampleWindows, contigLoci, skipEmpty).isDefined) {
+            while (advanceMultipleWindows(perSampleWindows, contigLoci, skipEmpty).isDefined) {
               val (state, elements) = function(lastState, perSampleWindows)
               lastState = state
               builder ++= elements
@@ -90,17 +90,17 @@ object WindowFlatMapUtils {
    * @tparam T type of returned [[RDD]]
    * @return [[RDD[T]]]
    */
-  private[distributed] def splitSamplesAndMap[R <: SampleRegion: ClassTag, T: ClassTag](
+  private[distributed] def splitSamplesAndMap[M <: HasSampleId, R <: Region: ClassTag, T: ClassTag](
     numSamples: NumSamples,
-    partitionedReads: PartitionedRegions[R],
-    function: (LociSet, PerSample[Iterator[R]]) => Iterator[T]): RDD[T] = {
+    partitionedReads: PartitionedRegions[M, R],
+    function: (LociSet, PerSample[Iterator[R]]) => Iterator[T])(implicit toR: M => R): RDD[T] = {
 
     partitionedReads
       .mapPartitions(
         (reads, loci) =>
           function(
             loci,
-            SplitIterator.split[R](numSamples, reads, _.sampleId)
+            SplitIterator.split[M](numSamples, reads, _.sampleId).map(_.map(toR))
           )
       )
   }

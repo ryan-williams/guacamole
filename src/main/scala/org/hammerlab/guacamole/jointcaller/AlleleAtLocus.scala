@@ -1,10 +1,10 @@
 package org.hammerlab.guacamole.jointcaller
 
-import org.hammerlab.genomics.reference.{ContigName, Locus}
+import org.hammerlab.genomics.bases.Bases
+import org.hammerlab.genomics.readsets.PerSample
+import org.hammerlab.genomics.reference.{ ContigName, Locus }
 import org.hammerlab.guacamole.jointcaller.pileup_summarization.ReadSubsequence
 import org.hammerlab.guacamole.pileup.Pileup
-import org.hammerlab.guacamole.readsets.PerSample
-import org.hammerlab.guacamole.util.Bases
 
 /**
  * An allele (alt) at a site in the genome. We also keep track of the reference allele (ref) at this site.
@@ -25,7 +25,7 @@ import org.hammerlab.guacamole.util.Bases
  * @param ref reference allele, must be nonempty
  * @param alt alternate allele, may be equal to reference
  */
-case class AlleleAtLocus(contigName: ContigName, start: Locus, ref: String, alt: String) {
+case class AlleleAtLocus(contigName: ContigName, start: Locus, ref: Bases, alt: Bases) {
 
   assume(ref.nonEmpty)
   assume(alt.nonEmpty)
@@ -39,27 +39,8 @@ case class AlleleAtLocus(contigName: ContigName, start: Locus, ref: String, alt:
 
   /** Zero-based exclusive end site on the reference genome. */
   lazy val end = start + ref.length
-
-  /**
-   * Apply a transformation function to the alleles (ref and alt) and also the start and end coordinates, returning
-   * a new AlleleAtLocus.
-   *
-   * This is used when we need to change the number of bases of reference context used, e.g. to change the variant
-   * "A>C" to "GA>GC", as part of harmonizing it with other variants of different lengths at the same site.
-   *
-   * @param alleleTransform transformation function on alleles
-   * @param startEndTransform transformation function on (start, end) pairs.
-   * @return a new AlleleAtLocus instance
-   */
-  def transform(alleleTransform: String => String, startEndTransform: (Locus, Locus) => (Locus, Locus)): AlleleAtLocus = {
-    val newRef = alleleTransform(ref)
-    val newAlt = alleleTransform(alt)
-    val (newStart, newEnd) = startEndTransform(start, end)
-    val result = copy(start = newStart, ref = newRef, alt = newAlt)
-    assert(result.end == newEnd)
-    result
-  }
 }
+
 object AlleleAtLocus {
 
   /**
@@ -134,11 +115,14 @@ object AlleleAtLocus {
       if (allelesSortedByTotal.nonEmpty) {
         Vector(allelesSortedByTotal.head)
       } else {
-        Vector(AlleleAtLocus(
-          contig,
-          variantStart,
-          Bases.baseToString(contigSequence.apply(variantStart.toInt)),
-          "N"))
+        Vector(
+          AlleleAtLocus(
+            contig,
+            variantStart,
+            Bases(contigSequence.apply(variantStart.toInt)),
+            "N"
+          )
+        )
       }
     } else if (maxAlleles.isDefined) {
       assume(maxAlleles.get > 0)

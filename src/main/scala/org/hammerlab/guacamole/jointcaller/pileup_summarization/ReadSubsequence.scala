@@ -1,9 +1,10 @@
 package org.hammerlab.guacamole.jointcaller.pileup_summarization
 
-import org.hammerlab.genomics.reference.{ContigSequence, Locus}
+import org.hammerlab.genomics.bases.Bases
+import org.hammerlab.genomics.bases.Bases._
+import org.hammerlab.genomics.reads.MappedRead
+import org.hammerlab.genomics.reference.{ ContigSequence, Locus }
 import org.hammerlab.guacamole.pileup.PileupElement
-import org.hammerlab.guacamole.reads.MappedRead
-import org.hammerlab.guacamole.util.Bases
 
 /**
  * A sub-sequence of the bases sequenced by a MappedRead.
@@ -26,19 +27,19 @@ case class ReadSubsequence(read: MappedRead,
   def referenceLength: Int = (endLocus - startLocus).toInt
 
   /** The sequenced bases as a string */
-  def sequence(): String = Bases.basesToString(read.sequence.slice(startReadPosition, endReadPosition))
+  def sequence(): Bases = read.sequence.slice(startReadPosition, endReadPosition)
 
   /** true if the sequence contains only A,C,G,T (e.g. no N's) */
   def sequenceIsAllStandardBases(): Boolean =
-    Bases.allStandardBases(read.sequence.slice(startReadPosition, endReadPosition))
+    read.sequence.slice(startReadPosition, endReadPosition).allStandardBases
 
   /** The base qualities corresponding to the sequenced bases. */
-  def baseQualities(): Seq[Int] = if (startReadPosition == endReadPosition) {
-    // Technically no sequenced bases at this location (deletion). Use quality of previous base.
-    Seq(read.baseQualities(startReadPosition).toInt)
-  } else {
-    read.baseQualities.slice(startReadPosition, endReadPosition).map(_.toInt)
-  }
+  def baseQualities(): Seq[Int] =
+    if (startReadPosition == endReadPosition)
+      // Technically no sequenced bases at this location (deletion). Use quality of previous base.
+      Seq(read.baseQualities(startReadPosition).toInt)
+    else
+      read.baseQualities.slice(startReadPosition, endReadPosition).map(_.toInt)
 
   /** Average base quality of the sequenced bases. */
   def meanBaseQuality(): Double = {
@@ -50,9 +51,8 @@ case class ReadSubsequence(read: MappedRead,
   }
 
   /** The reference sequence at this locus. */
-  def refSequence(contigReferenceSequence: ContigSequence): String = {
-    Bases.basesToString(contigReferenceSequence.slice(startLocus.toInt, endLocus.toInt))
-  }
+  def refSequence(contigReferenceSequence: ContigSequence): Bases =
+    contigReferenceSequence.slice(startLocus.toInt, endLocus.toInt)
 }
 
 object ReadSubsequence {

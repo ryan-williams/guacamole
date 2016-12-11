@@ -6,13 +6,14 @@ import htsjdk.samtools.SAMSequenceDictionary
 import htsjdk.variant.variantcontext._
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder
 import htsjdk.variant.vcf._
-import org.hammerlab.guacamole.jointcaller.Input.{Analyte, TissueType}
-import org.hammerlab.guacamole.jointcaller.annotation.{MultiSampleAnnotations, SingleSampleAnnotations}
+import org.hammerlab.genomics.bases.Bases
+import org.hammerlab.guacamole.jointcaller.Input.{ Analyte, TissueType }
+import org.hammerlab.guacamole.jointcaller.annotation.{ MultiSampleAnnotations, SingleSampleAnnotations }
 import org.hammerlab.guacamole.jointcaller.evidence._
 import org.hammerlab.guacamole.jointcaller.pileup_summarization.PileupStats.AlleleMixture
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 
-import scala.collection.{JavaConversions, mutable}
+import scala.collection.{ JavaConversions, mutable }
 
 object VCFOutput {
   /**
@@ -132,12 +133,12 @@ object VCFOutput {
 
     val allele = samplesEvidence.allele
 
-    def alleleToString(x: String) = if (x.isEmpty) "." else x
+    def alleleToString(bases: Bases): String = if (bases.isEmpty) "." else bases.toString
 
-    def makeHtsjdkAllele(someAllele: String): Allele =
-      Allele.create(someAllele, someAllele == allele.ref)
+    def makeHtsjdkAllele(someAllele: Bases): Allele =
+      Allele.create(someAllele.toString, someAllele == allele.ref)
 
-    def allelicDepthString(depths: Map[String, Int]): String = {
+    def allelicDepthString(depths: Map[Bases, Int]): String = {
       val allAlleles = (Seq(allele.ref, allele.alt) ++ depths.keys.toSeq).distinct
       allAlleles.map(
         allele =>
@@ -259,38 +260,41 @@ object VCFOutput {
 
           val thisSampleTriggered = samplesEvidence.tumorDnaSampleIndicesTriggered.contains(input.index)
 
-          val sampleGenotype = samplesEvidence.parameters.somaticGenotypePolicy match {
-            case Parameters.SomaticGenotypePolicy.Presence =>
-              // Call an alt if there is any variant evidence in this sample and no other alt allele has more evidence.
-              val topTwoAlleles =
-                tumorEvidence
-                  .allelicDepths
-                  .filter(_._2 > 0)
-                  .toSeq
-                  .sortBy(-1 * _._2)
-                  .map(_._1)
-                  .take(2)
-                  .toSet
+          val sampleGenotype =
+            samplesEvidence
+              .parameters
+              .somaticGenotypePolicy match {
+              case Parameters.SomaticGenotypePolicy.Presence =>
+                // Call an alt if there is any variant evidence in this sample and no other alt allele has more evidence.
+                val topTwoAlleles =
+                  tumorEvidence
+                    .allelicDepths
+                    .filter(_._2 > 0)
+                    .toSeq
+                    .sortBy(-1 * _._2)
+                    .map(_._1)
+                    .take(2)
+                    .toSet
 
-              topTwoAlleles match {
-                case x if x == Set(allele.ref, allele.alt) =>
+                topTwoAlleles match {
+                  case x if x == Set(allele.ref, allele.alt) =>
+                    Seq(allele.ref, allele.alt)
+
+                  case x if x == Set(allele.ref) || x == Set(allele.alt) =>
+                    Seq(x.head, x.head)
+
+                  case _ =>
+                    Seq(allele.ref, allele.ref) // fall back on hom ref
+                }
+
+              case Parameters.SomaticGenotypePolicy.Trigger =>
+                // Call an alt if this sample triggered a call.
+                if (thisSampleTriggered)
                   Seq(allele.ref, allele.alt)
+                else
+                  Seq(allele.ref, allele.ref)
 
-                case x if x == Set(allele.ref) || x == Set(allele.alt) =>
-                  Seq(x.head, x.head)
-
-                case _ =>
-                  Seq(allele.ref, allele.ref) // fall back on hom ref
-              }
-
-            case Parameters.SomaticGenotypePolicy.Trigger =>
-              // Call an alt if this sample triggered a call.
-              if (thisSampleTriggered)
-                Seq(allele.ref, allele.alt)
-              else
-                Seq(allele.ref, allele.ref)
-
-          }
+            }
 
           genotypeBuilder.alleles(
             JavaConversions.seqAsJavaList(

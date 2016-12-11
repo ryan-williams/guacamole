@@ -2,17 +2,14 @@ package org.hammerlab.guacamole.assembly
 
 import breeze.stats.mean
 import htsjdk.samtools.CigarOperator
-import org.hammerlab.guacamole.reads.{MappedRead, Read}
-import org.hammerlab.guacamole.util.Bases.basesToString
+import org.hammerlab.genomics.bases.{ Base, Bases }
+import org.hammerlab.genomics.reads.{ MappedRead, Read }
+import org.hammerlab.guacamole.assembly.DeBruijnGraph.{ Kmer, Sequence, SubKmer }
 
 import scala.collection.mutable
 
 class DeBruijnGraph(val kmerSize: Int,
-                    val kmerCounts: mutable.Map[DeBruijnGraph#Kmer, Int]) {
-
-  type Kmer = Seq[Byte] // Sequence of length `kmerSize`
-  type SubKmer = Seq[Byte] // Sequence of bases < `kmerSize`
-  type Sequence = Seq[Byte]
+                    val kmerCounts: mutable.Map[Kmer, Int]) {
 
   // Table to store prefix to kmers that share that prefix
   val prefixTable: mutable.Map[SubKmer, List[Kmer]] =
@@ -81,8 +78,8 @@ class DeBruijnGraph(val kmerSize: Int,
    */
   private[assembly] def pruneKmers(minSupport: Int) = {
     kmerCounts
-      .filter(_._2 < minSupport)
-      .foreach({ case (kmer, count) => removeKmer(kmer) })
+      .filter { _._2 < minSupport }
+      .foreach { case (kmer, _) => removeKmer(kmer) }
   }
 
   /**
@@ -186,12 +183,12 @@ class DeBruijnGraph(val kmerSize: Int,
                        maxPathLength: Int = Int.MaxValue,
                        maxPaths: Int = 10,
                        avoidLoops: Boolean = true,
-                       debugPrint: Boolean = false): List[(Path)] = {
+                       debugPrint: Boolean = false): List[Path] = {
 
-    assume(source.length == kmerSize, s"Source kmer ${basesToString(source)} has size ${source.length} != $kmerSize")
-    assume(sink.length == kmerSize, s"Sink kmer ${basesToString(sink)} has size ${sink.length} != $kmerSize")
+    assume(source.length == kmerSize, s"Source kmer ${source} has size ${source.length} != $kmerSize")
+    assume(sink.length == kmerSize, s"Sink kmer $sink has size ${sink.length} != $kmerSize")
 
-    var paths = List.empty[(Path)]
+    var paths = List.empty[Path]
     var visited: mutable.Set[Kmer] = mutable.Set.empty
 
     // Add the source node to the frontier
@@ -232,9 +229,9 @@ class DeBruijnGraph(val kmerSize: Int,
 
       if (debugPrint) {
         if (currentPath.isEmpty) {
-          println(basesToString(next))
+          println(next)
         } else {
-          println(" " * (currentPath.map(_.length).sum - kmerSize + 1) + basesToString(next))
+          println(" " * (currentPath.map(_.length).sum - kmerSize + 1) + next)
         }
       }
 
@@ -303,14 +300,14 @@ class DeBruijnGraph(val kmerSize: Int,
    * Find all nodes that have in-degree = 0
    */
   def sources: Iterable[Kmer] = {
-    kmerCounts.keys.filter(parents(_).isEmpty).map(_.take(kmerSize))
+    kmerCounts.keys.filter(parents(_).isEmpty).map(_.take(kmerSize): Bases)
   }
 
   /**
    * Find all nodes that have out-degree = 0
    */
   def sinks: Iterable[Kmer] = {
-    kmerCounts.keys.filter(children(_).isEmpty).map(_.takeRight(kmerSize))
+    kmerCounts.keys.filter(children(_).isEmpty).map(_.takeRight(kmerSize): Bases)
   }
 
   /**
@@ -336,8 +333,9 @@ class DeBruijnGraph(val kmerSize: Int,
 }
 
 object DeBruijnGraph {
-  type Sequence = DeBruijnGraph#Sequence
-  type Kmer = DeBruijnGraph#Kmer
+  type Kmer = Bases // Sequence of length `kmerSize`
+  type SubKmer = Bases // Sequence of bases < `kmerSize`
+  type Sequence = Bases
 
   def apply(reads: Seq[Read],
             kmerSize: Int,
@@ -345,7 +343,7 @@ object DeBruijnGraph {
             minMeanKmerBaseQuality: Int = 0,
             mergeNodes: Boolean = false): DeBruijnGraph = {
 
-    val kmerCounts = mutable.Map.empty[DeBruijnGraph#Kmer, Int]
+    val kmerCounts = mutable.Map.empty[Kmer, Int]
 
     reads.foreach(
       read => {
@@ -382,7 +380,7 @@ object DeBruijnGraph {
    * @return A single merged sequence
    */
   def mergeOverlappingSequences(sequences: Seq[Sequence], overlapSize: Int): Sequence = {
-    val head = sequences.headOption.getOrElse(Seq.empty)
+    val head: Bases = sequences.headOption.getOrElse(Bases.empty)
     val rest = sequences.tail.flatMap(sequence => sequence.takeRight(sequence.length - overlapSize + 1))
     head ++ rest
   }
@@ -399,7 +397,7 @@ object DeBruijnGraph {
   private def getConsensusKmer(reads: Seq[MappedRead],
                                startLocus: Int,
                                endLocus: Int,
-                               minOccurrence: Int): Iterable[Vector[Byte]] = {
+                               minOccurrence: Int): Iterable[Bases] = {
 
     // Filter to reads that entirely cover the region.
     // Exclude reads that have any non-M Cigars (these don't have a 1-to-1 base mapping to the region).
@@ -418,7 +416,7 @@ object DeBruijnGraph {
       .groupBy(identity)
       .map(kv => (kv._1, kv._2.length))
       .filter(_._2 >= minOccurrence)
-      .map(_._1.toVector)
+      .map(_._1: Bases)
   }
 
   /**
@@ -437,29 +435,30 @@ object DeBruijnGraph {
   def discoverPathsFromReads(reads: Seq[MappedRead],
                              referenceStart: Int,
                              referenceEnd: Int,
-                             referenceSequence: Array[Byte],
+                             referenceSequence: Array[Base],
                              kmerSize: Int,
                              minOccurrence: Int,
                              maxPaths: Int,
                              minMeanKmerBaseQuality: Int,
                              debugPrint: Boolean = false) = {
+
     val referenceKmerSource = referenceSequence.take(kmerSize)
     val referenceKmerSink = referenceSequence.takeRight(kmerSize)
 
-
-    val currentGraph: DeBruijnGraph = DeBruijnGraph(
-      reads,
-      kmerSize,
-      minOccurrence,
-      minMeanKmerBaseQuality,
-      mergeNodes = true
-    )
+    val currentGraph: DeBruijnGraph =
+      DeBruijnGraph(
+        reads,
+        kmerSize,
+        minOccurrence,
+        minMeanKmerBaseQuality,
+        mergeNodes = true
+      )
 
     currentGraph.depthFirstSearch(
-      referenceKmerSource,
-      referenceKmerSink,
-      maxPaths = maxPaths,
-      debugPrint = debugPrint
-    )
+        referenceKmerSource,
+        referenceKmerSink,
+        maxPaths = maxPaths,
+        debugPrint = debugPrint
+      )
   }
 }

@@ -1,8 +1,8 @@
 package org.hammerlab.guacamole.pileup
 
-import org.hammerlab.genomics.reference.{ContigName, ContigSequence, Locus}
-import org.hammerlab.guacamole.reads.MappedRead
-import org.hammerlab.guacamole.readsets.SampleName
+import org.hammerlab.genomics.reads.MappedRead
+import org.hammerlab.genomics.readsets.SampleName
+import org.hammerlab.genomics.reference.{ ContigName, ContigSequence, Locus }
 import org.hammerlab.guacamole.variants.Allele
 
 /**

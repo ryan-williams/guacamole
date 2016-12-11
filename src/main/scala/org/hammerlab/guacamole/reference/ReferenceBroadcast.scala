@@ -7,10 +7,11 @@ import grizzled.slf4j.Logging
 import htsjdk.samtools.reference.FastaSequenceFile
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
-import org.hammerlab.genomics.loci.parsing.{LociRange, LociRanges, ParsedLociRange}
+import org.hammerlab.genomics.bases.Base
+import org.hammerlab.genomics.loci.parsing.{ LociRange, LociRanges, ParsedLociRange }
 import org.hammerlab.genomics.loci.set.LociSet
-import org.hammerlab.genomics.reference.{ContigName, ContigSequence, Locus, NumLoci}
-import org.hammerlab.guacamole.util.Bases.unmaskBases
+import org.hammerlab.genomics.readsets.args.ReferenceArgs
+import org.hammerlab.genomics.reference.{ ContigName, ContigSequence, Locus, NumLoci }
 
 import scala.collection.mutable
 
@@ -18,7 +19,7 @@ case class ReferenceBroadcast(broadcastedContigs: Map[String, ContigSequence],
                               source: Option[String])
   extends ReferenceGenome {
 
-  override def getContig(contigName: String): ContigSequence =
+  override def getContig(contigName: ContigName): ContigSequence =
     try {
       broadcastedContigs(contigName)
     } catch {
@@ -26,26 +27,34 @@ case class ReferenceBroadcast(broadcastedContigs: Map[String, ContigSequence],
         throw ContigNotFound(contigName, broadcastedContigs.keys)
     }
 
-  override def getReferenceBase(contigName: String, locus: Int): Byte =
+  override def getReferenceBase(contigName: ContigName, locus: Int): Base =
     getContig(contigName)(locus)
 
-  override def getReferenceSequence(contigName: String, startLocus: Int, endLocus: Int): Array[Byte] =
+  override def getReferenceSequence(contigName: ContigName, startLocus: Int, endLocus: Int): Array[Base] =
     getContig(contigName).slice(startLocus, endLocus)
 }
 
 object ReferenceBroadcast extends Logging {
+
+  def apply(args: ReferenceArgs, sc: SparkContext): ReferenceBroadcast =
+    ReferenceBroadcast(
+      args.referencePath,
+      sc,
+      partialFasta = args.referenceIsPartial
+    )
+
   /**
    * The standard ContigSequence implementation, which is an Array of bases.
    *
    * TODO: Arrays can't be more than 2³² long, use 2bit instead?
    */
   case class ArrayBackedReferenceSequence(contigName: ContigName,
-                                          wrapped: Broadcast[Array[Byte]])
+                                          wrapped: Broadcast[Array[Base]])
     extends ContigSequence {
 
     val length: NumLoci = wrapped.value.length
 
-    def apply(locus: Locus): Byte =
+    def apply(locus: Locus): Base =
       try {
         wrapped.value(locus.toInt)
       } catch {
@@ -53,7 +62,7 @@ object ReferenceBroadcast extends Logging {
           throw new Exception(s"Position $contigName:$locus missing from reference", e)
       }
 
-    def slice(start: Locus, end: Locus): Array[Byte] =
+    def slice(start: Locus, end: Locus): Array[Base] =
       if (start < 0 || end > length)
         throw new Exception(
           s"Illegal reference slice: $contigName:[$start,$end) (valid range: [0,$length)"
@@ -69,8 +78,10 @@ object ReferenceBroadcast extends Logging {
    */
   case class MapBackedReferenceSequence(contigName: ContigName,
                                         length: NumLoci,
-                                        wrapped: Broadcast[Map[Int, Byte]]) extends ContigSequence {
-    def apply(locus: Locus): Byte =
+                                        wrapped: Broadcast[Map[Int, Base]])
+    extends ContigSequence {
+
+    def apply(locus: Locus): Base =
       try {
         wrapped.value(locus.toInt)
       } catch {
@@ -78,7 +89,7 @@ object ReferenceBroadcast extends Logging {
           throw new Exception(s"Position $contigName:$locus missing from reference", e)
       }
 
-    def slice(start: Locus, end: Locus): Array[Byte] = (start until end).map(apply).toArray
+    def slice(start: Locus, end: Locus): Array[Base] = (start until end).map(apply).toArray
   }
 
   /**
@@ -93,8 +104,7 @@ object ReferenceBroadcast extends Logging {
     val broadcastedSequences = Map.newBuilder[String, ContigSequence]
     while (nextSequence != null) {
       val contigName = nextSequence.getName
-      val sequence = nextSequence.getBases
-      unmaskBases(sequence)
+      val sequence: Array[Base] = nextSequence.getBases.map(b => b: Base)
       info(s"Broadcasting contig: $contigName")
       val broadcastedSequence = ArrayBackedReferenceSequence(contigName, sc.broadcast(sequence))
       broadcastedSequences += ((contigName, broadcastedSequence))
@@ -119,7 +129,7 @@ object ReferenceBroadcast extends Logging {
   def readPartialFasta(fastaPath: String, sc: SparkContext): ReferenceBroadcast = {
     val raw = readFasta(fastaPath, sc)
 
-    val result = mutable.HashMap[ContigName, mutable.HashMap[Int, Byte]]()
+    val result = mutable.HashMap[ContigName, mutable.HashMap[Int, Base]]()
 
     val contigLengths = mutable.HashMap[ContigName, NumLoci]()
 
@@ -171,7 +181,7 @@ object ReferenceBroadcast extends Logging {
             )
           }
 
-          val sequenceMap = result.getOrElseUpdate(contig.name, mutable.HashMap[Int, Byte]())
+          val sequenceMap = result.getOrElseUpdate(contig.name, mutable.HashMap[Int, Base]())
           for {
             (locus, base) <- contig.iterator.zip(sequence.iterator)
           } {
@@ -216,7 +226,7 @@ object ReferenceBroadcast extends Logging {
     ReferenceBroadcast(broadcastedContigs, source = None)
 }
 
-case class ContigNotFound(contigName: String, availableContigs: Iterable[String])
+case class ContigNotFound(contigName: ContigName, availableContigs: Iterable[String])
   extends Exception(
     s"Contig $contigName does not exist in the current reference. Available contigs are ${availableContigs.mkString(",")}"
   )

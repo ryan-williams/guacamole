@@ -1,6 +1,7 @@
 package org.hammerlab.guacamole.reference
 
-import org.hammerlab.genomics.reference.ContigSequence
+import org.hammerlab.genomics.bases.Base
+import org.hammerlab.genomics.reference.{ ContigName, ContigSequence }
 
 trait ReferenceGenome {
 
@@ -18,7 +19,7 @@ trait ReferenceGenome {
    * @param contigName contig/chromosome to retrieve reference sequence from
    * @return Full sequence associated with the contig
    */
-  def getContig(contigName: String): ContigSequence
+  def getContig(contigName: ContigName): ContigSequence
 
   /**
    * Retrieve a reference base on a given contig at a given locus
@@ -27,7 +28,7 @@ trait ReferenceGenome {
    * @param locus position in the sequence to retrieve
    * @return Base at the given reference position
    */
-  def getReferenceBase(contigName: String, locus: Int): Byte
+  def getReferenceBase(contigName: ContigName, locus: Int): Base
 
   /**
    * Get the reference base at the given reference location
@@ -37,5 +38,5 @@ trait ReferenceGenome {
    * @param endLocus 0-based exclusive end of the subsequence
    * @return Array of bases for the reference sequence
    */
-  def getReferenceSequence(contigName: String, startLocus: Int, endLocus: Int): Array[Byte]
+  def getReferenceSequence(contigName: ContigName, startLocus: Int, endLocus: Int): Array[Base]
 }

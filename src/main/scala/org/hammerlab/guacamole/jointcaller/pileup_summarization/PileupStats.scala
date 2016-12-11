@@ -1,9 +1,9 @@
 package org.hammerlab.guacamole.jointcaller.pileup_summarization
 
 import org.bdgenomics.adam.util.PhredUtils
+import org.hammerlab.genomics.bases.Bases
 import org.hammerlab.guacamole.jointcaller.pileup_summarization.PileupStats.AlleleMixture
 import org.hammerlab.guacamole.pileup.PileupElement
-import org.hammerlab.guacamole.util.Bases.basesToString
 
 /**
  * Statistics over a PileupElement instances (a pileup).
@@ -20,12 +20,11 @@ import org.hammerlab.guacamole.util.Bases.basesToString
  * @param referenceSequence reference bases. The length determines the size of alleles to consider. The first element should
  *                    be the reference base at locus elements.head.locus + 1.
  */
-class PileupStats(val elements: Seq[PileupElement], val referenceSequence: Seq[Byte]) {
+class PileupStats(val elements: Seq[PileupElement], val referenceSequence: Bases) {
   assume(referenceSequence.nonEmpty)
   assume(elements.forall(_.locus == elements.head.locus))
 
-  /** The reference sequence as a string. */
-  val ref = basesToString(referenceSequence)
+  def ref = referenceSequence
 
   /**
    * The sequenced alleles at this site as ReadSubsequence instances.
@@ -37,12 +36,12 @@ class PileupStats(val elements: Seq[PileupElement], val referenceSequence: Seq[B
     element => ReadSubsequence.ofFixedReferenceLength(element, referenceSequence.length))
 
   /** Map from sequenced allele -> the ReadSubsequence instances for that allele. */
-  val alleleToSubsequences: Map[String, Seq[ReadSubsequence]] = subsequences.groupBy(_.sequence)
+  val alleleToSubsequences: Map[Bases, Seq[ReadSubsequence]] = subsequences.groupBy(_.sequence)
 
   /** Map from sequenced allele -> number of reads supporting that allele. */
   val allelicDepths = alleleToSubsequences.mapValues(_.size).withDefaultValue(0)
 
-  def truncatedAllelicDepths(max: Int): Map[String, Int] = {
+  def truncatedAllelicDepths(max: Int): Map[Bases, Int] = {
     allelicDepths.toSeq.sortBy(-1 * _._2).zipWithIndex.filter(_._2 < max).map(_._1).toMap
   }
 
@@ -50,7 +49,7 @@ class PileupStats(val elements: Seq[PileupElement], val referenceSequence: Seq[B
   val totalDepthIncludingReadsContributingNoAlleles = elements.size
 
   /** All sequenced alleles that are not the ref allele, sorted by decreasing allelic depth. */
-  val nonRefAlleles: Seq[String] = allelicDepths.filterKeys(_ != ref).toSeq.sortBy(_._2 * -1).map(_._1)
+  val nonRefAlleles: Seq[Bases] = allelicDepths.filterKeys(_ != ref).toSeq.sortBy(_._2 * -1).map(_._1)
 
   /** Alt allele with most reads. */
   val topAlt = nonRefAlleles.headOption.getOrElse("N")
@@ -59,7 +58,7 @@ class PileupStats(val elements: Seq[PileupElement], val referenceSequence: Seq[B
   val secondAlt = if (nonRefAlleles.size > 1) nonRefAlleles(1) else "N"
 
   /** Fraction of reads supporting the given allele. */
-  def vaf(allele: String): Double = allelicDepths(allele).toDouble / totalDepthIncludingReadsContributingNoAlleles
+  def vaf(allele: Bases): Double = allelicDepths(allele).toDouble / totalDepthIncludingReadsContributingNoAlleles
 
   /** Map from allele to read names supporting that allele. */
   lazy val readNamesByAllele = alleleToSubsequences
@@ -92,10 +91,10 @@ class PileupStats(val elements: Seq[PileupElement], val referenceSequence: Seq[B
 }
 object PileupStats {
   /** Map from sequenced allele -> variant allelic fraction. The allelic fractions should sum to 1. */
-  type AlleleMixture = Map[String, Double]
+  type AlleleMixture = Map[Bases, Double]
 
   /** Create a PileupStats instance. */
-  def apply(elements: Seq[PileupElement], refSequence: Seq[Byte]): PileupStats = {
+  def apply(elements: Seq[PileupElement], refSequence: Bases): PileupStats = {
     new PileupStats(elements, refSequence)
   }
 }

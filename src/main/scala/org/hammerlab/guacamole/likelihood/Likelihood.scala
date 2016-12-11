@@ -1,10 +1,9 @@
 package org.hammerlab.guacamole.likelihood
 
-import breeze.linalg.{DenseMatrix, DenseVector, logNormalize, sum}
-import breeze.numerics.{exp, log}
-import org.hammerlab.guacamole.pileup.{Pileup, PileupElement}
-import org.hammerlab.guacamole.util.Bases.isStandardBase
-import org.hammerlab.guacamole.variants.{Allele, Genotype}
+import breeze.linalg.{ DenseMatrix, DenseVector, logNormalize, sum }
+import breeze.numerics.{ exp, log }
+import org.hammerlab.guacamole.pileup.{ Pileup, PileupElement }
+import org.hammerlab.guacamole.variants.{ Allele, Genotype }
 
 /**
  * Functions for calculating the likelihood of a genotype given some read evidence (pileup elements).
@@ -34,7 +33,7 @@ object Likelihood {
     prior: Genotype => Double = uniformPrior,
     logSpace: Boolean = false): Seq[(Genotype, Double)] = {
 
-    val alleles = pileup.distinctAlleles.filter(allele => allele.altBases.forall(isStandardBase))
+    val alleles = pileup.distinctAlleles.filter(allele => allele.altBases.forall(_.isStandardBase))
 
     // Assume the alleles are equivalent fractions in the genotype
     val genotypes =

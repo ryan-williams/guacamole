@@ -74,7 +74,7 @@ class GermlineAssemblyCallerSuite
         (contig, start, allele.refBases, allele.altBases)
       }
 
-    actualVariants should be(expectedVariants)
+    actualVariants === (expectedVariants)
   }
 
   test("test assembly caller: illumina platinum tests; homozygous snp") {

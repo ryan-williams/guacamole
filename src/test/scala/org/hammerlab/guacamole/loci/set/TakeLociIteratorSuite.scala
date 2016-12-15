@@ -19,7 +19,7 @@ class TakeLociIteratorSuite extends FunSuite with Matchers {
 
     val expected = expectedStrs.map(TestLociSet.apply)
 
-    new TakeLociIterator(depths.iterator.buffered, 15, trimRanges).toList should be(expected)
+    new TakeLociIterator(depths.iterator.buffered, 15, trimRanges).toList === (expected)
   }
 
   test("simple") {

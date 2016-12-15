@@ -7,7 +7,7 @@ import org.scalactic.TypeCheckedTripleEquals
 class GuacFunSuite
   extends KryoSerializerSuite(classOf[Registrar], referenceTracking = true)
     with SparkSerializerSuite
-    with TypeCheckedTripleEquals {
+    /*with TypeCheckedTripleEquals*/ {
   conf.setAppName("guacamole")
 }
 

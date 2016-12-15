@@ -20,7 +20,7 @@ class DeBruijnGraphSuite
     val kmers = Seq[Sequence]("TTTC", "TTCC", "TCCC", "CCCC")
     val longerKmer = mergeOverlappingSequences(kmers, 4)
 
-    longerKmer.length should be(7)
+    longerKmer.length === (7)
     AssertBases(longerKmer, "TTTCCCC")
   }
 
@@ -115,23 +115,23 @@ class DeBruijnGraphSuite
 
     val tcaChildren = graph.children("TCA")
     AssertBases(graph.kmerSuffix("TCA"), "CA")
-    tcaChildren.length should be(1) // CA is the suffix and CAT is the only kmer
+    tcaChildren.length === (1) // CA is the suffix and CAT is the only kmer
     AssertBases(tcaChildren(0), "CAT")
 
     val tcaParents = graph.parents("TCA")
     AssertBases(graph.kmerPrefix("TCA"), "TC")
-    tcaParents.length should be(1) // TC is the prefix and ATC is the only kmer
+    tcaParents.length === (1) // TC is the prefix and ATC is the only kmer
     AssertBases(tcaParents(0), "ATC")
 
     val catParents = graph.parents("CAT")
     AssertBases(graph.kmerPrefix("CAT"), "CA")
-    catParents.length should be(2) // CA is the prefix, TCA and ACA are parents
+    catParents.length === (2) // CA is the prefix, TCA and ACA are parents
     AssertBases(catParents(0), "ACA")
     AssertBases(catParents(1), "TCA")
 
     val catChildren = graph.children("CAT")
     AssertBases(graph.kmerSuffix("CAT"), "AT")
-    catChildren.length should be(2) // CA is the suffix, ATC and ATA are children
+    catChildren.length === (2) // CA is the suffix, ATC and ATA are children
     AssertBases(catChildren(0), "ATA")
     AssertBases(catChildren(1), "ATC")
   }
@@ -140,9 +140,9 @@ class DeBruijnGraphSuite
     val sequence = "AAATCCCTTTTA"
     val kmerSize = 4
     val graph = DeBruijnGraph(Seq(makeRead(sequence)), kmerSize)
-    graph.kmerCounts.keys.size should be(sequence.length - kmerSize + 1)
+    graph.kmerCounts.keys.size === (sequence.length - kmerSize + 1)
 
-    graph.kmerCounts.foreach(_._2 should be(1))
+    graph.kmerCounts.foreach(_._2 === (1))
   }
 
   test("find forward unique path; full graph") {
@@ -153,7 +153,7 @@ class DeBruijnGraphSuite
     val firstKmer = "AAAT"
 
     val mergeableForward = graph.mergeForward(firstKmer)
-    mergeableForward.size should be(9)
+    mergeableForward.size === (9)
 
     AssertBases(mergeOverlappingSequences(mergeableForward, 4), sequence)
   }
@@ -166,7 +166,7 @@ class DeBruijnGraphSuite
     val lastKmer = "GGGT"
 
     val mergeableReverse = graph.mergeBackward(lastKmer)
-    mergeableReverse.size should be(9)
+    mergeableReverse.size === (9)
 
     val mergedReference: Sequence = mergeOverlappingSequences(mergeableReverse, 4)
 
@@ -186,7 +186,7 @@ class DeBruijnGraphSuite
     val firstKmer = "AAAT"
 
     val mergeableForward = graph.mergeForward(firstKmer)
-    mergeableForward.size should be(7)
+    mergeableForward.size === (7)
     AssertBases(mergeOverlappingSequences(mergeableForward, 4), "AAATCCCTGG")
   }
 
@@ -203,7 +203,7 @@ class DeBruijnGraphSuite
     val firstKmer = "AAAT"
 
     val mergeableForward = graph.mergeForward(firstKmer)
-    mergeableForward.size should be(2)
+    mergeableForward.size === (2)
     AssertBases(mergeOverlappingSequences(mergeableForward, 4), "AAATC")
   }
 
@@ -216,7 +216,7 @@ class DeBruijnGraphSuite
     val firstKmer = "AAAT"
 
     val mergeableForward = graph.mergeForward(firstKmer)
-    mergeableForward.size should be(2)
+    mergeableForward.size === (2)
     AssertBases(mergeOverlappingSequences(mergeableForward, 4), "AAATC")
   }
 
@@ -229,12 +229,12 @@ class DeBruijnGraphSuite
     val seq1End = "GGGT"
 
     val seq1mergeableReverse = graph.mergeBackward(seq1End)
-    seq1mergeableReverse.size should be(2)
+    seq1mergeableReverse.size === (2)
     AssertBases(mergeOverlappingSequences(seq1mergeableReverse, 4), "TGGGT")
 
     val seq2End = "GGAT"
     val seq2mergeableReverse = graph.mergeBackward(seq2End)
-    seq2mergeableReverse.size should be(2)
+    seq2mergeableReverse.size === (2)
     AssertBases(mergeOverlappingSequences(seq2mergeableReverse, 4), "TGGAT")
 
   }
@@ -248,7 +248,7 @@ class DeBruijnGraphSuite
     val lastKmer = "GGGT"
 
     val mergeableReverse = graph.mergeBackward(lastKmer)
-    mergeableReverse.size should be(3)
+    mergeableReverse.size === (3)
     AssertBases(mergeOverlappingSequences(mergeableReverse, 4), "CTGGGT")
   }
 
@@ -258,10 +258,10 @@ class DeBruijnGraphSuite
     val kmerSize = 4
     val graph = DeBruijnGraph(Seq(read), kmerSize)
 
-    graph.kmerCounts.keys.size should be(9)
+    graph.kmerCounts.keys.size === (9)
 
     graph.mergeNodes()
-    graph.kmerCounts.keys.size should be(1)
+    graph.kmerCounts.keys.size === (1)
     AssertBases(graph.kmerCounts.keys.head, "AAATCCCTGGGT")
 
   }
@@ -273,10 +273,10 @@ class DeBruijnGraphSuite
     val kmerSize = 4
     val graph = DeBruijnGraph(Seq(read, variantRead), kmerSize)
 
-    graph.kmerCounts.keys.size should be(11)
+    graph.kmerCounts.keys.size === (11)
 
     graph.mergeNodes()
-    graph.kmerCounts.keys.size should be(3)
+    graph.kmerCounts.keys.size === (3)
 
     graph.kmerCounts === Counts("AAATCCCTGG" -> 1, "TGGGT" -> 1, "TGGAT" -> 1)
   }
@@ -300,8 +300,8 @@ class DeBruijnGraphSuite
       .zipWithIndex.foreach {
         case (kmer, idx) => {
           val mergedNode = graph.mergeIndex(kmer)
-          mergedNode._1 should be(longRead.sequence)
-          mergedNode._2 should be(idx)
+          mergedNode._1 === (longRead.sequence)
+          mergedNode._2 === (idx)
         }
       }
 
@@ -336,12 +336,12 @@ class DeBruijnGraphSuite
     val referenceKmerSink = reference.takeRight(kmerSize)
     val paths = graph.depthFirstSearch(referenceKmerSource, referenceKmerSink)
 
-    paths.length should be(1)
+    paths.length === (1)
     AssertBases(mergeOverlappingSequences(paths(0), kmerSize), reference)
 
     graph.mergeNodes()
     val pathsAfterMerging = graph.depthFirstSearch(referenceKmerSource, referenceKmerSink)
-    pathsAfterMerging.length should be(1)
+    pathsAfterMerging.length === (1)
     AssertBases(mergeOverlappingSequences(pathsAfterMerging(0), kmerSize), reference)
 
   }
@@ -377,12 +377,12 @@ class DeBruijnGraphSuite
     val referenceKmerSink = reference.takeRight(kmerSize)
     val paths = graph.depthFirstSearch(referenceKmerSource, referenceKmerSink)
 
-    paths.length should be(1)
+    paths.length === (1)
     AssertBases(mergeOverlappingSequences(paths(0), kmerSize), reference)
 
     graph.mergeNodes()
     val pathsAfterMerging = graph.depthFirstSearch(referenceKmerSource, referenceKmerSink)
-    pathsAfterMerging.length should be(1)
+    pathsAfterMerging.length === (1)
     AssertBases(mergeOverlappingSequences(pathsAfterMerging(0), kmerSize), reference)
   }
 
@@ -419,12 +419,12 @@ class DeBruijnGraphSuite
     val referenceKmerSink = reference.takeRight(kmerSize)
     val paths = graph.depthFirstSearch(referenceKmerSource, referenceKmerSink)
 
-    paths.length should be(1)
+    paths.length === (1)
     AssertBases(mergeOverlappingSequences(paths(0), kmerSize), reference)
 
     graph.mergeNodes()
     val pathsAfterMerging = graph.depthFirstSearch(referenceKmerSource, referenceKmerSink)
-    pathsAfterMerging.length should be(1)
+    pathsAfterMerging.length === (1)
     AssertBases(mergeOverlappingSequences(pathsAfterMerging(0), kmerSize), reference)
 
   }
@@ -457,6 +457,6 @@ class DeBruijnGraphSuite
         referenceKmerSink
       )
 
-    paths.length should be(1)
+    paths.length === (1)
   }
 }

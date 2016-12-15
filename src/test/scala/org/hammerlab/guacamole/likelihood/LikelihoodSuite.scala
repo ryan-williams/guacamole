@@ -111,7 +111,7 @@ class LikelihoodSuite
             likelihood / totalExpectedLikelihood
       )
 
-    actualProbabilities.size should equal(expectedProbabilities.size)
+    actualProbabilities.size === (expectedProbabilities.size)
 
     val actualProbabilitiesMap = actualProbabilities.toMap
 

@@ -42,6 +42,6 @@ class MicroRegionPartitionerSuite
         microPartitionsPerPartition = 100
       ).partition(loci)
 
-    result.toString should equal("chr1:0-7=0,chr1:7-100=1")
+    result.toString === ("chr1:0-7=0,chr1:7-100=1")
   }
 }

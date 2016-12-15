@@ -37,7 +37,7 @@ class AlleleAtLocusSuite
         onlyStandardBases = true
       )
 
-    possibleAlleles should equal(Seq(AlleleAtLocus("chr22", 46931061, "G", "A")))
+    possibleAlleles === (Seq(AlleleAtLocus("chr22", 46931061, "G", "A")))
   }
 }
 
@@ -58,7 +58,7 @@ class AlleleAtLocusSuite
 //
 //  test("serde") {
 //    val aal = AlleleAtLocus("chr22", 46931061, "G", "A")
-//    deserialize[AlleleAtLocus](serialize(aal)) should be(aal)
+//    deserialize[AlleleAtLocus](serialize(aal)) === (aal)
 //  }
 //
 //  test("read") {
@@ -76,6 +76,6 @@ class AlleleAtLocusSuite
 //      isPaired = true
 //    )
 //
-//    deserialize[MappedRead](serialize(read)) should be(read)
+//    deserialize[MappedRead](serialize(read)) === (read)
 //  }
 //}

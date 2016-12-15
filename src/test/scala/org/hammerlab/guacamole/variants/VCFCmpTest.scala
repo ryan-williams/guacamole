@@ -8,6 +8,6 @@ trait VCFCmpTest extends Matchers {
     scala.io.Source.fromFile(path).getLines().filterNot(_.startsWith("##")).mkString("\n")
 
   def checkVCFs(actualPath: String, expectedPath: String): Unit = {
-    vcfContentsIgnoringHeaders(actualPath) should be(vcfContentsIgnoringHeaders(expectedPath))
+    vcfContentsIgnoringHeaders(actualPath) === (vcfContentsIgnoringHeaders(expectedPath))
   }
 }

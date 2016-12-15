@@ -77,7 +77,7 @@ class CoverageRDDSuite
     checkCoverage(traversalCoverage, expected)
     checkCoverage(explodedCoverage, expected)
 
-    traversalCoverage.compare(explodedCoverage).stats should be(CmpStats(14))
+    traversalCoverage.compare(explodedCoverage).stats === (CmpStats(14))
   }
 
   test("some loci, half-window") {
@@ -105,7 +105,7 @@ class CoverageRDDSuite
     checkCoverage(traversalCoverage, expected)
     checkCoverage(explodedCoverage, expected)
 
-    traversalCoverage.compare(explodedCoverage).stats should be(CmpStats(10))
+    traversalCoverage.compare(explodedCoverage).stats === (CmpStats(10))
   }
 
   def checkCoverage(rdd: RDD[(Position, Coverage)], expected: List[(String, (Int, Int))]): Unit = {

@@ -47,7 +47,7 @@ class SomaticStandardCallerSuite
       normalPileup,
       normalOddsThreshold = 2,
       tumorOddsThreshold = 2
-    ) should be(None)
+    ) === (None)
   }
 
   test("single-base deletion") {
@@ -77,7 +77,7 @@ class SomaticStandardCallerSuite
         tumorOddsThreshold = 2
       ).map(_.allele)
 
-    alleleOpt should be(Some(Allele("GA", "G")))
+    alleleOpt === (Some(Allele("GA", "G")))
   }
 
   test("multiple-base deletion") {
@@ -109,7 +109,7 @@ class SomaticStandardCallerSuite
         tumorOddsThreshold = 2
       ).map(_.allele)
 
-    alleleOpt should be(Some(Allele("AGCTTCG", "A")))
+    alleleOpt === (Some(Allele("AGCTTCG", "A")))
   }
 
   test("single-base insertion") {
@@ -135,7 +135,7 @@ class SomaticStandardCallerSuite
         tumorOddsThreshold = 2
       ).map(_.allele)
 
-    alleleOpt should be(Some(Allele("A", "AG")))
+    alleleOpt === (Some(Allele("A", "AG")))
   }
 
   test("multiple-base insertion") {
@@ -161,7 +161,7 @@ class SomaticStandardCallerSuite
         tumorOddsThreshold = 2
       ).map(_.allele)
 
-    alleleOpt should be(Some(Allele("A", "AGGTC")))
+    alleleOpt === (Some(Allele("A", "AGGTC")))
   }
 
   test("insertions and deletions") {
@@ -196,7 +196,7 @@ class SomaticStandardCallerSuite
           tumorOddsThreshold = 2
         ).map(_.allele)
 
-      alleleOpt should be(Some(Allele(refBases, altBases)))
+      alleleOpt === (Some(Allele(refBases, altBases)))
     }
 
     testLocus("chr3", 11, "CGA", "C")

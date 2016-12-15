@@ -58,7 +58,7 @@ class VariantSupportSuite
       .toArray
       .sortBy(x => x)
 
-    computedAlleleCounts should be(alleleCounts.sortBy(x => x))
+    computedAlleleCounts === (alleleCounts.sortBy(x => x))
   }
 
   def gatkReads(loci: String) =

@@ -19,7 +19,7 @@ class VAFHistogramSuite extends GuacFunSuite {
       VariantLocus(0, "chr1", 5L, 0.55f)
     ))
 
-    VAFHistogram.generateVAFHistograms(loci, 10) should be(
+    VAFHistogram.generateVAFHistograms(loci, 10) === (
       Map(
         0 ->
           Vector(
@@ -35,7 +35,7 @@ class VAFHistogramSuite extends GuacFunSuite {
       )
     )
 
-    VAFHistogram.generateVAFHistograms(loci, 20) should be(
+    VAFHistogram.generateVAFHistograms(loci, 20) === (
       Map(
         0 ->
           Vector(
@@ -51,7 +51,7 @@ class VAFHistogramSuite extends GuacFunSuite {
       )
     )
 
-    VAFHistogram.generateVAFHistograms(loci, 100) should be(
+    VAFHistogram.generateVAFHistograms(loci, 100) === (
       Map(
         0 ->
           Vector(

@@ -20,7 +20,7 @@ class ReadAlignmentSuite extends FunSuite with Matchers {
       60
     )
 
-    alignment.toCigarString should be("6=")
+    alignment.toCigarString === ("6=")
   }
 
   test("test cigar string: mixed match/insertion") {
@@ -37,7 +37,7 @@ class ReadAlignmentSuite extends FunSuite with Matchers {
       60
     )
 
-    alignment.toCigarString should be("3=2I1=")
+    alignment.toCigarString === ("3=2I1=")
   }
 
   test("test cigar string: start with single match") {
@@ -54,7 +54,7 @@ class ReadAlignmentSuite extends FunSuite with Matchers {
       60
     )
 
-    alignment.toCigarString should be("1=4I1=")
+    alignment.toCigarString === ("1=4I1=")
   }
 
   test("test cigar string: with mismatch") {
@@ -71,7 +71,7 @@ class ReadAlignmentSuite extends FunSuite with Matchers {
       60
     )
 
-    alignment.toCigarString should be("1=2X3=")
+    alignment.toCigarString === ("1=2X3=")
   }
 
   test("score alignment: exact match") {
@@ -84,7 +84,7 @@ class ReadAlignmentSuite extends FunSuite with Matchers {
         closeGapProbability = 1e-2
       )
 
-    alignments(0)._3.toInt should be(0)
+    alignments(0)._3.toInt === (0)
   }
 
   test("score alignment: single mismatch") {
@@ -97,36 +97,36 @@ class ReadAlignmentSuite extends FunSuite with Matchers {
         closeGapProbability = 1e-2
       )
 
-    math.round(alignments(0)._3) should be(5)
+    math.round(alignments(0)._3) === (5)
   }
 
   test("align exact match") {
-    ReadAlignment("TCGA", "TCGA").toCigarString should be("4=")
+    ReadAlignment("TCGA", "TCGA").toCigarString === ("4=")
   }
 
   test("align: single mismatch") {
-    ReadAlignment("TCGA", "TCCA").toCigarString should be("2=1X1=")
+    ReadAlignment("TCGA", "TCCA").toCigarString === ("2=1X1=")
   }
 
   test("align long exact match") {
     val sequence = "TCGATGATCTGAGA"
-    ReadAlignment(sequence, sequence).toCigarString should be(sequence.length.toString + "=")
+    ReadAlignment(sequence, sequence).toCigarString === (sequence.length.toString + "=")
   }
 
   test("short align with insertion; left aligned") {
-    ReadAlignment("TCCGA", "TCGA").toCigarString should be("1=1I3=")
+    ReadAlignment("TCCGA", "TCGA").toCigarString === ("1=1I3=")
   }
 
   test("long align with insertion") {
-    ReadAlignment("TCGACCCTCTGA", "TCGATCTGA").toCigarString should be("4=3I5=")
+    ReadAlignment("TCGACCCTCTGA", "TCGATCTGA").toCigarString === ("4=3I5=")
   }
 
   test("long align with deletion") {
-    ReadAlignment("TCGATCTGA", "TCGACCCTCTGA").toCigarString should be("4=3D5=")
+    ReadAlignment("TCGATCTGA", "TCGACCCTCTGA").toCigarString === ("4=3D5=")
   }
 
   test("mixed mismatch and insertion") {
-    ReadAlignment("TCGACCCTCTTA", "TCGATCTGA").toCigarString should be("4=3I3=1X1=")
+    ReadAlignment("TCGACCCTCTTA", "TCGATCTGA").toCigarString === ("4=3I3=1X1=")
   }
 
   test("only mismatch long sequence") {
@@ -135,7 +135,7 @@ class ReadAlignmentSuite extends FunSuite with Matchers {
         "ATTCTCAAGTTTTAAGTGGTATTCTAATTATGGCAGTAATTAACTGAATAAAGAGATTCATCATGTGCAAAAACTAATCTTGTTTACTTAAAATTGAGAGT",
         "ATTCTCAAGTTTTAAGTGGTTTTCTAATTATGGCAGTAATAAACTGAATAAAGAGATTCATCATGTGCAAAAACTAATCTTGTTTACTTAAAATTGAGAGT")
 
-    alignment.toCigarString should be("20=1X19=1X60=")
+    alignment.toCigarString === ("20=1X19=1X60=")
   }
 
   test("2 mismatch with deletion sequence") {
@@ -144,7 +144,7 @@ class ReadAlignmentSuite extends FunSuite with Matchers {
         "ATTCTCAAGTTTTAAGTGGTATTCTAATTATGGCAGTAATTAACTGAATAAAGAGATTCATCATGTGCAAAAACTAATCTT"+"GTTTACTTAAAATTGAGAGT",
         "ATTCTCAAGTTTTAAGTGGTTTTCTAATTATGGCAGTAATAAACTGAATAAAGAGATTCATCATGTGCAAAAACTAATCTTCCCGTTTACTTAAAATTGAGAGT")
 
-    alignment.toCigarString should be("20=1X19=1X40=3D20=")
+    alignment.toCigarString === ("20=1X19=1X40=3D20=")
   }
 
   test("left aligning a deletion alignment") {
@@ -153,6 +153,6 @@ class ReadAlignmentSuite extends FunSuite with Matchers {
         "AGACACGGAGACACACAGAGATACACGGAAACACAG"  +"ACATGCACACACGCGAAGACACAGACACATACACATGCAT",
         "AGACACGGAGACACACAGAGATACACGGAAACACAGAC"+"ACATGCACACACGCGAAGACACAGACACATACACATGCAT")
 
-    alignment.toCigarString should be("36=2D40=")
+    alignment.toCigarString === ("36=2D40=")
   }
 }

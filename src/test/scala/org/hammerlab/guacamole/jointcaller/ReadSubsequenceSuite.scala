@@ -36,10 +36,10 @@ class ReadSubsequenceSuite
 
     val pileups = reads.map(read => makePileup(Seq(read), "chr1", 1))
 
-    ReadSubsequence.ofFixedReferenceLength(pileups(0).elements.head, 1).get.sequence should equal("C")
-    ReadSubsequence.ofFixedReferenceLength(pileups(0).elements.head, 2).get.sequence should equal("CG")
-    ReadSubsequence.ofFixedReferenceLength(pileups(1).elements.head, 6).get.sequence should equal("CGACCCTCG")
-    ReadSubsequence.ofFixedReferenceLength(pileups(3).elements.head, 1).get.sequenceIsAllStandardBases should equal(false)
+    ReadSubsequence.ofFixedReferenceLength(pileups(0).elements.head, 1).get.sequence === ("C")
+    ReadSubsequence.ofFixedReferenceLength(pileups(0).elements.head, 2).get.sequence === ("CG")
+    ReadSubsequence.ofFixedReferenceLength(pileups(1).elements.head, 6).get.sequence === ("CGACCCTCG")
+    ReadSubsequence.ofFixedReferenceLength(pileups(3).elements.head, 1).get.sequenceIsAllStandardBases === (false)
   }
 
   test("ofNextAltAllele") {
@@ -55,21 +55,21 @@ class ReadSubsequenceSuite
 
     val pileups = reads.map(read => makePileup(Seq(read), "chr1", 1))
 
-    ReadSubsequence.ofNextAltAllele(pileups(0).elements(0)) should equal(None)
+    ReadSubsequence.ofNextAltAllele(pileups(0).elements(0)) === (None)
 
     ReadSubsequence.ofNextAltAllele(
-      pileups(1).atGreaterLocus(4, Iterator.empty).elements(0)).get.sequence should equal("G")
+      pileups(1).atGreaterLocus(4, Iterator.empty).elements(0)).get.sequence === ("G")
 
     ReadSubsequence.ofNextAltAllele(
-      pileups(2).atGreaterLocus(3, Iterator.empty).elements(0)).get.sequence should equal("ACCC")
+      pileups(2).atGreaterLocus(3, Iterator.empty).elements(0)).get.sequence === ("ACCC")
 
     ReadSubsequence.ofNextAltAllele(
-      pileups(3).atGreaterLocus(3, Iterator.empty).elements(0)).get.sequence should equal("GCCC")
+      pileups(3).atGreaterLocus(3, Iterator.empty).elements(0)).get.sequence === ("GCCC")
 
     ReadSubsequence.ofNextAltAllele(
-      pileups(4).atGreaterLocus(2, Iterator.empty).elements(0)).get.sequence should equal("AGCCC")
+      pileups(4).atGreaterLocus(2, Iterator.empty).elements(0)).get.sequence === ("AGCCC")
 
-    ReadSubsequence.ofNextAltAllele(pileups(5).elements(0)).get.sequenceIsAllStandardBases should equal(false)
+    ReadSubsequence.ofNextAltAllele(pileups(5).elements(0)).get.sequenceIsAllStandardBases === (false)
   }
 
   test("gathering possible alleles") {
@@ -99,7 +99,7 @@ class ReadSubsequenceSuite
 
     assert(alleles.nonEmpty)
 
-    alleles.map(_.alt) should equal(Seq("C"))
-    alleles.map(_.ref) should equal(Seq("G"))
+    alleles.map(_.alt) === (Seq("C"))
+    alleles.map(_.ref) === (Seq("G"))
   }
 }

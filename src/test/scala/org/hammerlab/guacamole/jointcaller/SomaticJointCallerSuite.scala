@@ -43,14 +43,14 @@ class SomaticJointCallerSuite
       )
       .collect
 
-    calls.length should equal(1)
+    calls.length === (1)
 
     val evidences = calls.head.singleAlleleEvidences
-    evidences.length should equal(1)
+    evidences.length === (1)
 
     val allele = evidences.head.allele
-    allele.start should be(65857040)
-    allele.ref should be("G")
+    allele.start === (65857040)
+    allele.ref === ("G")
   }
 
   test("call a somatic deletion") {
@@ -69,10 +69,10 @@ class SomaticJointCallerSuite
       )
       .collect
 
-    calls.length should equal(1)
-    calls.head.singleAlleleEvidences.length should equal(1)
-    calls.head.singleAlleleEvidences.head.allele.ref should equal("TCTTTAGAAA")
-    calls.head.singleAlleleEvidences.head.allele.alt should equal("T")
+    calls.length === (1)
+    calls.head.singleAlleleEvidences.length === (1)
+    calls.head.singleAlleleEvidences.head.allele.ref === ("TCTTTAGAAA")
+    calls.head.singleAlleleEvidences.head.allele.alt === ("T")
   }
 
   test("call germline variants") {
@@ -92,27 +92,27 @@ class SomaticJointCallerSuite
       .map(call => (call.contigName, call.start) -> call)
       .toMap
 
-    calls(("chr1", 179895860)).singleAlleleEvidences.length should equal(1)
+    calls(("chr1", 179895860)).singleAlleleEvidences.length === (1)
 
     val bestAllele = calls(("chr1", 179895860)).bestAllele()
 
-    bestAllele.isSomaticCall should be(false)
-    bestAllele.isGermlineCall should be(true)
-    bestAllele.allele.ref should equal("T")
-    bestAllele.allele.alt should equal("C")
-    bestAllele.allEvidences.head.annotations.get.strandBias.phredValue should equal(0)
-    bestAllele.allEvidences.head.annotations.get.annotationsFailingFilters should equal(Seq.empty)
-    bestAllele.annotations.get.annotationsFailingFilters should equal(Seq.empty)
+    bestAllele.isSomaticCall === (false)
+    bestAllele.isGermlineCall === (true)
+    bestAllele.allele.ref === ("T")
+    bestAllele.allele.alt === ("C")
+    bestAllele.allEvidences.head.annotations.get.strandBias.phredValue === (0)
+    bestAllele.allEvidences.head.annotations.get.annotationsFailingFilters === (Seq.empty)
+    bestAllele.annotations.get.annotationsFailingFilters === (Seq.empty)
 
 
 //    TODO: after PR#479 this test fails as the test data no longer contains a germline variant
 //    See https://github.com/hammerlab/guacamole/pull/479
-//    calls(("chr1", 167190087)).bestAllele.isGermlineCall should be(true)
+//    calls(("chr1", 167190087)).bestAllele.isGermlineCall === (true)
 //    calls(("chr1", 167190087)).bestAllele.allele.ref
 //    calls(("chr1", 167190087)).bestAllele.allele.alt
-//    calls(("chr1", 167190087)).bestAllele.allEvidences.head.annotations.get.strandBias.phredValue > 20 should be(true)
-//    calls(("chr1", 167190087)).bestAllele.allEvidences.head.annotations.get.strandBias.isFiltered should be(true)
-//    calls(("chr1", 167190087)).bestAllele.failingFilterNames.contains("STRAND_BIAS") should be(true)
+//    calls(("chr1", 167190087)).bestAllele.allEvidences.head.annotations.get.strandBias.phredValue > 20 === (true)
+//    calls(("chr1", 167190087)).bestAllele.allEvidences.head.annotations.get.strandBias.isFiltered === (true)
+//    calls(("chr1", 167190087)).bestAllele.failingFilterNames.contains("STRAND_BIAS") === (true)
   }
 
   test("don't call variants with N as the reference base") {
@@ -132,7 +132,7 @@ class SomaticJointCallerSuite
       )
       .collect
 
-    calls.length should equal(0)
+    calls.length === (0)
   }
 
   test("call a somatic variant using RNA evidence") {
@@ -178,25 +178,25 @@ class SomaticJointCallerSuite
         withClue("germline variant %s".format(description)) {
           // There should be a germline homozygous call at 22:46931077 in one based, which is 22:46931076 in zero based.
           val filtered46931076 = calls.filter(call => call.start == 46931076 && call.end == 46931077)
-          filtered46931076.length should be(1)
-          filtered46931076.head.bestAllele.isGermlineCall should be(true)
-          filtered46931076.head.bestAllele.allele.ref should equal("G")
-          filtered46931076.head.bestAllele.allele.alt should equal("C")
-          filtered46931076.head.bestAllele.germlineAlleles should equal("C", "C")
+          filtered46931076.length === (1)
+          filtered46931076.head.bestAllele.isGermlineCall === (true)
+          filtered46931076.head.bestAllele.allele.ref === ("G")
+          filtered46931076.head.bestAllele.allele.alt === ("C")
+          filtered46931076.head.bestAllele.germlineAlleles === ("C", "C")
         }
     }
 
     // RNA should enable a call G->A call at 22:46931062 in one based, which is 22:46931061 in zero based.
-    callsWithoutRNA.exists(call => call.start == 46931061 && call.end == 46931062) should be(false)
+    callsWithoutRNA.exists(call => call.start == 46931061 && call.end == 46931062) === (false)
     val filtered46931061 = callsWithRNA.filter(call => call.start == 46931061 && call.end == 46931062)
-    filtered46931061.length should be(1)
+    filtered46931061.length === (1)
 
     val bestAllele = filtered46931061.head.bestAllele
 
-    bestAllele.isSomaticCall should be(true)
-    bestAllele.allele.ref should equal("G")
-    bestAllele.allele.alt should equal("A")
-    bestAllele.tumorDNAPooledEvidence.allelicDepths.toSet should equal(Set("G" -> 90, "A" -> 2))
-    bestAllele.normalDNAPooledEvidence.allelicDepths.toSet should equal(Set("G" -> 51))
+    bestAllele.isSomaticCall === (true)
+    bestAllele.allele.ref === ("G")
+    bestAllele.allele.alt === ("A")
+    bestAllele.tumorDNAPooledEvidence.allelicDepths.toSet === (Set("G" -> 90, "A" -> 2))
+    bestAllele.normalDNAPooledEvidence.allelicDepths.toSet === (Set("G" -> 51))
   }
 }

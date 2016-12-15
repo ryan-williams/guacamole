@@ -28,7 +28,7 @@ class ContigCoverageIteratorSuite
       } yield
         locus -> Coverage(depth, starts)
 
-    ContigCoverageIterator(halfWindowSize, ContigIterator(reads)).toList should be(expected)
+    ContigCoverageIterator(halfWindowSize, ContigIterator(reads)).toList === (expected)
   }
 
   test("simple") {
@@ -84,36 +84,36 @@ class ContigCoverageIteratorSuite
   test("skips") {
     val it = ContigCoverageIterator(halfWindowSize = 1, reads)
 
-    it.next() should be( 9 -> Coverage(1, 1))
-    it.next() should be(10 -> Coverage(3, 2))
+    it.next() === ( 9 -> Coverage(1, 1))
+    it.next() === (10 -> Coverage(3, 2))
     it.skipTo(15)
-    it.next() should be(15 -> Coverage(3, 0))
-    it.next() should be(16 -> Coverage(3, 0))
+    it.next() === (15 -> Coverage(3, 0))
+    it.next() === (16 -> Coverage(3, 0))
     it.skipTo(21)
-    it.next() should be(21 -> Coverage(2, 0))
+    it.next() === (21 -> Coverage(2, 0))
     it.skipTo(25)
-    it.next() should be(29 -> Coverage(1, 1))
-    it.next() should be(30 -> Coverage(1, 0))
+    it.next() === (29 -> Coverage(1, 1))
+    it.next() === (30 -> Coverage(1, 0))
     it.skipTo(39)
-    it.next() should be(39 -> Coverage(1, 0))
+    it.next() === (39 -> Coverage(1, 0))
     it.skipTo(45)
-    it.hasNext should be(false)
+    it.hasNext === (false)
   }
 
   test("skips+starts") {
     val it = ContigCoverageIterator(halfWindowSize = 1, reads)
 
     it.skipTo(15)
-    it.next() should be(15 -> Coverage(3, 3))
+    it.next() === (15 -> Coverage(3, 3))
     it.skipTo(35)
-    it.next() should be(35 -> Coverage(1, 1))
+    it.next() === (35 -> Coverage(1, 1))
   }
 
   test("skip completely over read") {
     val it = ContigCoverageIterator(halfWindowSize = 1, reads)
 
     it.skipTo(21)
-    it.next() should be(21 -> Coverage(2, 2))
+    it.next() === (21 -> Coverage(2, 2))
   }
 
   test("load read then skip over it") {
@@ -121,21 +121,21 @@ class ContigCoverageIteratorSuite
 
     it.hasNext
     it.skipTo(21)
-    it.next() should be(21 -> Coverage(2, 2))
+    it.next() === (21 -> Coverage(2, 2))
   }
 
   test("skip completely over reads") {
     val it = ContigCoverageIterator(halfWindowSize = 1, reads)
 
     it.skipTo(25)
-    it.next() should be(29 -> Coverage(1, 1))
+    it.next() === (29 -> Coverage(1, 1))
   }
 
   test("intersection") {
     val lociIterator = new LociIterator(Iterator(Interval(12, 15)).buffered)
     val it = ContigCoverageIterator(halfWindowSize = 1, reads).intersect(lociIterator)
 
-    it.toList should be(
+    it.toList === (
       List(
         12 -> Coverage(3, 3),
         13 -> Coverage(3, 0),
@@ -156,8 +156,8 @@ class ContigCoverageIteratorSuite
       )
 
     val it = ContigCoverageIterator(halfWindowSize = 0, reads)
-    it.next() should be( 0 -> Coverage(1, 1))
-    it.next() should be( 1 -> Coverage(2, 1))
+    it.next() === ( 0 -> Coverage(1, 1))
+    it.next() === ( 1 -> Coverage(2, 1))
     intercept[RegionsNotSortedException] {
       it.next()
     }

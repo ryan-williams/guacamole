@@ -50,23 +50,24 @@ class PileupStatsSuite
     val pileups = (1 until refString.length).map(locus => makePileup(reads, "chr1", locus))
 
     val stats1 = PileupStats.apply(pileups(1).elements, "G")
-    stats1.totalDepthIncludingReadsContributingNoAlleles should equal(6)
-    stats1.allelicDepths should equal(Map("G" -> 6))
-    stats1.nonRefAlleles should equal(Seq.empty)
-    stats1.topAlt should equal("N")
-    assert(stats1.logLikelihoodPileup(Map("G" -> 1.0)) > stats1.logLikelihoodPileup(Map("G" -> .99, "C" -> .01)))
+    stats1.totalDepthIncludingReadsContributingNoAlleles === (6)
+    stats1.allelicDepths === (Map("G" -> 6))
+    stats1.nonRefAlleles === (Seq.empty)
+    stats1.topAlt === ("N")
+    stats1.logLikelihoodPileup(Map("G" -> 1.0)) should be > stats1.logLikelihoodPileup(Map("G" -> .99, "C" -> .01))
+    //assert(stats1.logLikelihoodPileup(Map("G" -> 1.0)) > stats1.logLikelihoodPileup(Map("G" -> .99, "C" -> .01)))
     assert(stats1.logLikelihoodPileup(Map("T" -> 1.0)) < stats1.logLikelihoodPileup(Map("G" -> .99, "C" -> .01)))
 
     val stats2 = PileupStats.apply(pileups(2).elements, "A")
-    stats2.allelicDepths should equal(Map("A" -> 2, "C" -> 3, "ACCC" -> 1))
-    stats2.nonRefAlleles should equal(Seq("C", "ACCC"))
+    stats2.allelicDepths === (Map("A" -> 2, "C" -> 3, "ACCC" -> 1))
+    stats2.nonRefAlleles === (Seq("C", "ACCC"))
     assert(stats2.logLikelihoodPileup(Map("A" -> 0.5, "C" -> 0.5)) > stats2.logLikelihoodPileup(Map("A" -> 1.0)))
 
     // True because of the higher base qualities on the C allele:
     assert(stats2.logLikelihoodPileup(Map("C" -> 1.0)) > stats2.logLikelihoodPileup(Map("A" -> 1.0)))
 
     val stats3 = PileupStats.apply(pileups(3).elements, "T")
-    stats3.totalDepthIncludingReadsContributingNoAlleles should equal(6)
-    stats3.allelicDepths should equal(Map("T" -> 2)) // reads with an SNV at position 4 don't count
+    stats3.totalDepthIncludingReadsContributingNoAlleles === (6)
+    stats3.allelicDepths === (Map("T" -> 2)) // reads with an SNV at position 4 don't count
   }
 }

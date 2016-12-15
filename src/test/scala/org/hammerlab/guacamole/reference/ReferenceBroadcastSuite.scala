@@ -12,7 +12,7 @@ class ReferenceBroadcastSuite extends GuacFunSuite with Matchers {
   test("loading and broadcasting reference") {
 
     val reference = ReferenceBroadcast(testFastaPath, sc)
-    reference.broadcastedContigs.keys.size should be(2)
+    reference.broadcastedContigs.keys.size === (2)
 
     reference.broadcastedContigs.keys should contain("1")
     reference.broadcastedContigs.keys should contain("2")
@@ -21,16 +21,16 @@ class ReferenceBroadcastSuite extends GuacFunSuite with Matchers {
   test("retrieving reference sequences") {
     val reference = ReferenceBroadcast(testFastaPath, sc)
 
-    reference.getReferenceBase("1", 0) should be(N)
-    reference.getReferenceBase("1", 80) should be(C)
-    reference.getReferenceBase("1", 160) should be(T)
-    reference.getReferenceBase("1", 240) should be(G)
-    reference.getReferenceBase("1", 320) should be(A)
+    reference.getReferenceBase("1", 0) === (N)
+    reference.getReferenceBase("1", 80) === (C)
+    reference.getReferenceBase("1", 160) === (T)
+    reference.getReferenceBase("1", 240) === (G)
+    reference.getReferenceBase("1", 320) === (A)
 
-    reference.getReferenceBase("2", 0) should be(N)
-    reference.getReferenceBase("2", 80) should be(T)
-    reference.getReferenceBase("2", 160) should be(C)
-    reference.getReferenceBase("2", 240) should be(G)
+    reference.getReferenceBase("2", 0) === (N)
+    reference.getReferenceBase("2", 80) === (T)
+    reference.getReferenceBase("2", 160) === (C)
+    reference.getReferenceBase("2", 240) === (G)
 
     AssertBases(
       reference.getReferenceSequence("1", 80, 160),

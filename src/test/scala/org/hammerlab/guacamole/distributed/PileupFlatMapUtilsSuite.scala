@@ -93,15 +93,15 @@ class PileupFlatMapUtilsSuite
         reference = reference
       ).collect()
 
-    pileups.length should be(8)
+    pileups.length === (8)
     val firstPileup = pileups.head
-    firstPileup.locus should be(1L)
-    firstPileup.referenceBase should be(T)
+    firstPileup.locus === (1L)
+    firstPileup.referenceBase === (T)
 
-    firstPileup.elements.forall(_.readPosition == 0L) should be(true)
-    firstPileup.elements.forall(_.isMatch) should be(true)
+    firstPileup.elements.forall(_.readPosition == 0L) === (true)
+    firstPileup.elements.forall(_.isMatch) === (true)
 
-    pileups.forall(_.elements.head.isMatch) should be(true)
+    pileups.forall(_.elements.head.isMatch) === (true)
   }
 
   test("test pileup flatmap parallelism 5; create pileups") {
@@ -118,10 +118,10 @@ class PileupFlatMapUtilsSuite
       ).collect()
 
     val firstPileup = pileups.head
-    firstPileup.locus should be(1L)
-    firstPileup.referenceBase should be(T)
+    firstPileup.locus === (1L)
+    firstPileup.referenceBase === (T)
 
-    pileups.forall(_.elements.head.isMatch) should be(true)
+    pileups.forall(_.elements.head.isMatch) === (true)
   }
 
   test("test pileup flatmap parallelism 5; skip empty pileups") {
@@ -137,7 +137,7 @@ class PileupFlatMapUtilsSuite
         reference = reference
       ).collect
 
-    loci should equal(Array(1, 2, 3, 4, 5, 6, 7, 8))
+    loci === (Array(1, 2, 3, 4, 5, 6, 7, 8))
   }
 
   test("test pileup flatmap two rdds; skip empty pileups") {
@@ -177,7 +177,7 @@ class PileupFlatMapUtilsSuite
         reference = reference
       ).collect
 
-    loci should equal(Seq(1, 2, 3, 4, 5, 6, 7, 8, 99, 100, 101, 102, 103, 104, 105, 106, 107))
+    loci === (Seq(1, 2, 3, 4, 5, 6, 7, 8, 99, 100, 101, 102, 103, 104, 105, 106, 107))
   }
 
   test("test pileup flatmap multiple rdds; skip empty pileups") {
@@ -241,22 +241,22 @@ class PileupFlatMapUtilsSuite
         reference = reference
       ).collect.map(_.toList)
 
-    resultPlain should equal(resultParallelized)
+    resultPlain === (resultParallelized)
 
-    resultWithEmpty(0) should equal(resultPlain(0))
-    resultWithEmpty(1) should equal(resultPlain(1))
-    resultWithEmpty(2) should equal(resultPlain(2))
-    resultWithEmpty(3) should equal(resultPlain(3))
-    resultWithEmpty(35) should equal(Seq(Seq(), Seq(), Seq()))
+    resultWithEmpty(0) === (resultPlain(0))
+    resultWithEmpty(1) === (resultPlain(1))
+    resultWithEmpty(2) === (resultPlain(2))
+    resultWithEmpty(3) === (resultPlain(3))
+    resultWithEmpty(35) === (Seq(Seq(), Seq(), Seq()))
 
-    resultPlain(0) should equal(Seq(Seq("T", "T", "T"), Seq("A", "C", "T"), Seq("A", "G", "G")))
-    resultPlain(1) should equal(Seq(Seq("C", "C", "C"), Seq("A", "C", "T"), Seq("A", "G", "G")))
-    resultPlain(2) should equal(Seq(Seq("G", "G", "G"), Seq("A", "C", "T"), Seq("G", "A", "G")))
-    resultPlain(3) should equal(Seq(Seq("A", "A", "A"), Seq("A", "C", "T"), Seq("G", "A", "G")))
+    resultPlain(0) === (Seq(Seq("T", "T", "T"), Seq("A", "C", "T"), Seq("A", "G", "G")))
+    resultPlain(1) === (Seq(Seq("C", "C", "C"), Seq("A", "C", "T"), Seq("A", "G", "G")))
+    resultPlain(2) === (Seq(Seq("G", "G", "G"), Seq("A", "C", "T"), Seq("G", "A", "G")))
+    resultPlain(3) === (Seq(Seq("A", "A", "A"), Seq("A", "C", "T"), Seq("G", "A", "G")))
 
-    resultPlain(8) should equal(Seq(Seq(), Seq("X"), Seq("X")))
-    resultPlain(9) should equal(Seq(Seq("G", "G", "G"), Seq("Y"), Seq("Z")))
-    resultPlain(10) should equal(Seq(Seq("G", "G", "G"), Seq("X"), Seq("X")))
+    resultPlain(8) === (Seq(Seq(), Seq("X"), Seq("X")))
+    resultPlain(9) === (Seq(Seq("G", "G", "G"), Seq("Y"), Seq("Z")))
+    resultPlain(10) === (Seq(Seq("G", "G", "G"), Seq("X"), Seq("X")))
   }
 
   test("test pileup flatmap parallelism 5; create pileup elements") {
@@ -272,8 +272,8 @@ class PileupFlatMapUtilsSuite
         reference = makeReference(sc, "chr1", 1, "TCGATCGA")
       ).collect()
 
-    pileups.length should be(24)
-    pileups.forall(_.isMatch) should be(true)
+    pileups.length === (24)
+    pileups.forall(_.isMatch) === (true)
   }
 
   test("test two-rdd pileup flatmap; create pileup elements") {
@@ -313,7 +313,7 @@ class PileupFlatMapUtilsSuite
         reference = makeReference(sc, "chr1", 0, "ATCGATCGA" + "N"*90 + "AGGGGGGGGGG" + "N"*500)
       ).collect()
 
-    elements.map(_.isMatch) should equal(List.fill(elements.length)(true))
+    elements.map(_.isMatch) === (List.fill(elements.length)(true))
     AssertBases(
       elements.flatMap(_.sequencedBases),
       "TTTTTTCCCCCCGGGGGGAAAAAATTTTTTCCCCCCGGGGGGAAAAAAAGGGGGGGGGGGGGGGGGGGGGGGGGG"
@@ -341,8 +341,8 @@ class PileupFlatMapUtilsSuite
         reference = makeReference(sc, "chr1", 1, "ATCGATCGATC")
       ).collect()
 
-    pileups.length should be(24)
+    pileups.length === (24)
     val insertionPileups = pileups.filter(_.isInsertion)
-    insertionPileups.length should be(1)
+    insertionPileups.length === (1)
   }
 }

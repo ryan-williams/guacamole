@@ -270,7 +270,6 @@ class PileupSuite
     val at5 = pileupElementFromRead(decadentRead1, 5)
     assert(at5 != null)
     AssertBases(at5.sequencedBases, "A")
-    assert(at5.sequencedBases.headOption.exists(_ == A))
 
     // At the end of the read:
     assert(pileupElementFromRead(decadentRead1, 74) != null)

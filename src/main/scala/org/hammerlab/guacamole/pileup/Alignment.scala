@@ -61,7 +61,7 @@ case class Deletion(override val referenceBases: Bases, baseQuality: Byte) exten
 }
 object Deletion {
   def apply(referenceBases: String, baseQuality: Byte): Deletion =
-    Deletion(referenceBases, baseQuality)
+    Deletion(referenceBases: Bases, baseQuality)
 }
 
 /**

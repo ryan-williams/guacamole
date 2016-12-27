@@ -83,9 +83,12 @@ object ReadAlignment {
       )
 
     val ((refEndIdx, path, score), refStartIdx) =
-      (for (i <- 0 to reference.length) yield {
-        (alignment(i), i)
-      }).minBy(_._1._3)
+      (for {
+        i <- 0 to reference.length
+      } yield
+        alignment(i) → i
+      )
+      .minBy(_._1._3)
 
     ReadAlignment(path, refStartIdx, refEndIdx, score.toInt)
   }

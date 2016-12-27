@@ -177,12 +177,12 @@ class TakeLociIterator(it: BufferedIterator[(Position, Coverage)],
           curIntervalOpt match {
             // Extend the current interval, if possible.
             case Some((start, end)) if !trimRanges || locus == end =>
-              Some(start -> (locus + 1))
+              Some(start → locus.next)
 
             // Otherwise, commit the current interval if it exists, and start a new one.
             case _ =>
               maybeAddInterval()
-              Some(locus -> (locus + 1))
+              Some(locus → locus.next)
           }
 
         it.next()

@@ -8,7 +8,7 @@ import org.hammerlab.genomics.loci.set.LociSet
 import org.hammerlab.genomics.readsets.ReadSets
 import org.hammerlab.genomics.readsets.args.{ ReferenceArgs, Arguments ⇒ ReadSetsArguments }
 import org.hammerlab.genomics.readsets.io.InputConfig
-import org.hammerlab.genomics.reference.Interval
+import org.hammerlab.genomics.reference.{ Interval, Region }
 import org.hammerlab.guacamole.commands.GuacCommand
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.readsets.rdd.PartitionedRegionsArgs
@@ -59,7 +59,6 @@ object GeneratePartialFasta extends GuacCommand[GeneratePartialFastaArguments] {
   override def run(args: GeneratePartialFastaArguments, sc: SparkContext): Unit = {
 
     val reference = ReferenceBroadcast(args, sc)
-    val parsedLoci = args.parseConfig(sc.hadoopConfiguration).loci
 
     val readsets =
       ReadSets(
@@ -74,7 +73,7 @@ object GeneratePartialFasta extends GuacCommand[GeneratePartialFastaArguments] {
       LociSet(
         readsets
           .allMappedReads
-          .map(read => (read.contigName, read.start, read.end))
+          .map(read => Region(read.contigName, read.start, read.end))
           .collect
       )
 
@@ -87,10 +86,10 @@ object GeneratePartialFasta extends GuacCommand[GeneratePartialFastaArguments] {
       Interval(start, end) <- contig.ranges
     } {
       try {
-        val paddedStart = start.toInt - padding
-        val paddedEnd = end.toInt + padding
-        val sequence = reference.getContig(contig.name).slice(paddedStart, paddedEnd)
-        writer.write(">%s:%d-%d/%d\n".format(contig.name, paddedStart, paddedEnd, contigLengths(contig.name)))
+        val paddedStart = start - padding
+        val paddedEnd = end + padding
+        val sequence = reference.getContig(contig.name).slice(paddedStart, 2 * padding)
+        writer.write(">%s/%s\n".format(Region(contig.name, paddedStart, paddedEnd), contigLengths(contig.name)))
         writer.write(sequence.toString)
         writer.write("\n")
       } catch {

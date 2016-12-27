@@ -4,10 +4,10 @@ import org.apache.hadoop.fs.{ FileSystem, Path }
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{ Accumulable, SparkContext }
 import org.hammerlab.genomics.loci.set.LociSet
-import org.hammerlab.genomics.reference.Region
+import org.hammerlab.genomics.reference.{ ContigName, Locus, Region }
 import org.hammerlab.guacamole.loci.partitioning.LociPartitioning
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
-import org.hammerlab.magic.accumulables.{ HistogramParam, HashMap => MagicHashMap }
+import org.hammerlab.magic.accumulables.{ HistogramParam, HashMap ⇒ MagicHashMap }
 import org.hammerlab.magic.rdd.serde.SequenceFileSerializableRDD._
 import org.hammerlab.spark.PartitionIndex
 import org.hammerlab.spark.util.KeyPartitioner
@@ -182,6 +182,9 @@ object PartitionedRegions {
 
     // Histogram of the number of regions assigned to each partition.
     val partitionRegionsHistogram: Accumulable[IntHist, Int] = sc.accumulable(IntHist(), "regions-per-partition")
+
+    // Needed for repartitionAndSortWithinPartitions below.
+    implicit val ord = Ordering.Tuple3[PartitionIndex, ContigName, Locus]
 
     val partitionedRegions =
       (for {

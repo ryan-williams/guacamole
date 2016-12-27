@@ -4,11 +4,12 @@ import breeze.stats.mean
 import htsjdk.samtools.CigarOperator
 import org.hammerlab.genomics.bases.Bases
 import org.hammerlab.genomics.reads.{ MappedRead, Read }
+import org.hammerlab.genomics.reference.{ KmerLength, Locus, WindowSize }
 import org.hammerlab.guacamole.assembly.DeBruijnGraph.{ Kmer, Sequence, SubKmer }
 
 import scala.collection.mutable.{ HashSet ⇒ MHashSet, Map ⇒ MMap, Set ⇒ MSet, Stack ⇒ MStack }
 
-class DeBruijnGraph(val kmerSize: Int,
+class DeBruijnGraph(val kmerSize: KmerLength,
                     val kmerCounts: MMap[Kmer, Int]) {
 
   // Table to store prefix to kmers that share that prefix
@@ -231,7 +232,7 @@ class DeBruijnGraph(val kmerSize: Int,
         if (currentPath.isEmpty) {
           println(next)
         } else {
-          println(" " * (currentPath.map(_.length).sum - kmerSize + 1) + next)
+          println(" " * (currentPath.map(_.length).foldLeft(0)(_ + _) - kmerSize + 1) + next)
         }
       }
 
@@ -391,14 +392,14 @@ object DeBruijnGraph {
    * TODO(ryan): unused?
    *
    * @param reads  Set of reads to extract sequence from
-   * @param startLocus Start (inclusive) locus on the reference
-   * @param endLocus End (exclusive) locus on the reference
+   * @param start Start (inclusive) locus on the reference
+   * @param length length along the reference
    * @param minOccurrence Minimum number of times a subsequence needs to appear to be included
    * @return List of subsequences overlapping [startLocus, endLocus) that appear at least `minOccurrence` time
    */
   private def getConsensusKmer(reads: Seq[MappedRead],
-                               startLocus: Int,
-                               endLocus: Int,
+                               start: Locus,
+                               length: WindowSize,
                                minOccurrence: Int): Iterable[Bases] = {
 
     // Filter to reads that entirely cover the region.
@@ -407,10 +408,10 @@ object DeBruijnGraph {
       for {
         read <- reads
         if !read.cigarElements.exists(_.getOperator != CigarOperator.M)
-        if read.overlapsLocus(startLocus) && read.overlapsLocus(endLocus - 1)
-        unclippedStart = read.unclippedStart.toInt
+        if read.overlapsLocus(start) && read.overlapsLocus(Locus(start + length - 1))
+        unclippedStart = read.unclippedStart
       } yield {
-        read.sequence.slice(startLocus - unclippedStart, endLocus - unclippedStart)
+        read.sequence.slice((start - unclippedStart).toInt, length)
       }
 
     // Filter to sequences that appear at least `minOccurrence` times
@@ -426,7 +427,6 @@ object DeBruijnGraph {
    *
    * @param reads Reads to use to build the graph
    * @param referenceStart Start of the reference region corresponding to the reads
-   * @param referenceEnd End of the reference region corresponding to the reads
    * @param referenceSequence Reference sequence overlapping [referenceStart, referenceEnd)
    * @param kmerSize Length of kmers to use to traverse the paths
    * @param minOccurrence Minimum number of occurrences of the each kmer
@@ -435,19 +435,18 @@ object DeBruijnGraph {
    * @return List of paths that traverse the region
    */
   def discoverPathsFromReads(reads: Seq[MappedRead],
-                             referenceStart: Int,
-                             referenceEnd: Int,
+                             referenceStart: Locus,
                              referenceSequence: Bases,
-                             kmerSize: Int,
+                             kmerSize: KmerLength,
                              minOccurrence: Int,
                              maxPaths: Int,
                              minMeanKmerBaseQuality: Int,
                              debugPrint: Boolean = false) = {
 
-    val referenceKmerSource = referenceSequence.take(kmerSize)
-    val referenceKmerSink = referenceSequence.takeRight(kmerSize)
+    val referenceKmerSource: Kmer = referenceSequence.take(kmerSize)
+    val referenceKmerSink: Kmer = referenceSequence.takeRight(kmerSize)
 
-    val currentGraph: DeBruijnGraph =
+    val currentGraph =
       DeBruijnGraph(
         reads,
         kmerSize,

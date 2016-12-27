@@ -3,7 +3,7 @@ package org.hammerlab.guacamole.jointcaller.pileup_summarization
 import org.hammerlab.genomics.bases.Bases
 import org.hammerlab.genomics.bases.Bases._
 import org.hammerlab.genomics.reads.MappedRead
-import org.hammerlab.genomics.reference.{ ContigSequence, Locus }
+import org.hammerlab.genomics.reference.{ ContigSequence, Locus, WindowSize }
 import org.hammerlab.guacamole.pileup.PileupElement
 
 /**
@@ -18,13 +18,11 @@ import org.hammerlab.guacamole.pileup.PileupElement
 case class ReadSubsequence(read: MappedRead,
                            startLocus: Locus,
                            endLocus: Locus,
+                           referenceLength: WindowSize,
                            startReadPosition: Int,
                            endReadPosition: Int) {
 
   assume(endLocus > startLocus)
-
-  /** Number of reference bases spanned */
-  def referenceLength: Int = (endLocus - startLocus).toInt
 
   /** The sequenced bases as a string */
   def sequence(): Bases = read.sequence.slice(startReadPosition, endReadPosition)
@@ -52,7 +50,7 @@ case class ReadSubsequence(read: MappedRead,
 
   /** The reference sequence at this locus. */
   def refSequence(contigReferenceSequence: ContigSequence): Bases =
-    contigReferenceSequence.slice(startLocus.toInt, endLocus.toInt)
+    contigReferenceSequence.slice(startLocus, referenceLength)
 }
 
 object ReadSubsequence {
@@ -68,27 +66,33 @@ object ReadSubsequence {
   def ofFixedReferenceLength(element: PileupElement, length: Int): Option[ReadSubsequence] = {
     assume(length > 0)
 
-    if (element.allele.isVariant || element.locus >= element.read.end - 1) {
+    if (element.allele.isVariant || element.locus >= element.read.end - 1)
       None
-    } else {
-      val firstElement = element.advanceToLocus(element.locus + 1)
+    else {
+      val firstElement = element.advanceToLocus(element.locus.next)
       var currentElement = firstElement
-      var refOffset = 1
-      while (currentElement.locus < currentElement.read.end - 1 && refOffset < length) {
-        currentElement = currentElement.advanceToLocus(currentElement.locus + 1)
-        refOffset += 1
+      var refLength = 1
+      var nextLocus = currentElement.locus.next
+
+      while (nextLocus < currentElement.read.end && refLength < length) {
+        currentElement = currentElement.advanceToLocus(currentElement.locus.next)
+        nextLocus = currentElement.locus.next
+        refLength += 1
       }
-      if (currentElement.locus >= currentElement.read.end - 1) {
+
+      if (nextLocus >= currentElement.read.end)
         None
-      } else {
-        val result = ReadSubsequence(
-          element.read,
-          firstElement.locus,
-          currentElement.locus + 1,
-          firstElement.readPosition,
-          currentElement.advanceToLocus(currentElement.locus + 1).readPosition)
-        Some(result)
-      }
+      else
+        Some(
+          ReadSubsequence(
+            element.read,
+            firstElement.locus,
+            nextLocus,
+            refLength,
+            firstElement.readPosition,
+            currentElement.advanceToLocus(nextLocus).readPosition
+          )
+        )
     }
   }
 
@@ -105,32 +109,32 @@ object ReadSubsequence {
    */
   def ofNextAltAllele(element: PileupElement): Option[ReadSubsequence] = {
 
-    def isVariantOrFollowedByDeletion(e: PileupElement): Boolean = {
-      e.allele.isVariant || (
-        e.isFinalCigarBase && e.nextCigarElement.exists(
-          cigar => !cigar.getOperator.consumesReadBases && cigar.getOperator.consumesReferenceBases))
-    }
-
-    if (isVariantOrFollowedByDeletion(element) || element.locus >= element.read.end - 1) {
+    if (element.isVariantOrFollowedByDeletion || element.locus.next >= element.read.end)
       None
-    } else {
-      val firstElement = element.advanceToLocus(element.locus + 1)
+    else {
+      val firstElement = element.advanceToLocus(element.locus.next)
       var currentElement = firstElement
-      while (currentElement.locus < currentElement.read.end - 1 && isVariantOrFollowedByDeletion(currentElement)) {
-        currentElement = currentElement.advanceToLocus(currentElement.locus + 1)
+      var refLength = 1
+
+      while (currentElement.locus.next < currentElement.read.end && currentElement.isVariantOrFollowedByDeletion) {
+        currentElement = currentElement.advanceToLocus(currentElement.locus.next)
+        refLength += 1
       }
-      if (currentElement.locus == firstElement.locus || currentElement.locus == currentElement.read.end) {
+
+      if (currentElement.locus == firstElement.locus || currentElement.locus == currentElement.read.end)
         // We either have no variant here, or we hit the end of the read.
         None
-      } else {
-        val result = ReadSubsequence(
-          element.read,
-          firstElement.locus,
-          currentElement.locus,
-          firstElement.readPosition,
-          currentElement.readPosition)
-        Some(result)
-      }
+      else
+        Some(
+          ReadSubsequence(
+            element.read,
+            firstElement.locus,
+            currentElement.locus,
+            refLength,
+            firstElement.readPosition,
+            currentElement.readPosition
+          )
+        )
     }
   }
 

@@ -1,10 +1,11 @@
 package org.hammerlab.guacamole.variants
 
+import org.bdgenomics.adam.util.PhredUtils.successProbabilityToPhred
 import org.bdgenomics.formats.avro.GenotypeAllele.{ ALT, REF }
 import org.bdgenomics.formats.avro.{ Genotype ⇒ BDGGenotype }
 import org.hammerlab.genomics.readsets.SampleName
 import org.hammerlab.genomics.reference.{ ContigName, Locus, NumLoci }
-import org.hammerlab.genomics.phred.Utils.successProbabilityToPhred
+import org.hammerlab.guacamole.variants.CalledSomaticAllele.alleles
 
 import scala.collection.JavaConversions.seqAsJavaList
 
@@ -31,7 +32,7 @@ case class CalledSomaticAllele(sampleName: SampleName,
                                normalReferenceEvidence: AlleleEvidence,
                                rsID: Option[Int] = None,
                                override val length: NumLoci = 1) extends ReferenceVariant {
-  val end: Locus = start + 1L
+  val end: Locus = start.next
 
   // P ( variant in tumor AND no variant in normal) = P(variant in tumor) * P(reference in normal)
   lazy val phredScaledSomaticLikelihood =
@@ -42,11 +43,11 @@ case class CalledSomaticAllele(sampleName: SampleName,
   def toBDGGenotype: BDGGenotype =
     BDGGenotype
       .newBuilder
-      .setAlleles(seqAsJavaList(Seq(REF, ALT)))
+      .setAlleles(alleles)
       .setSampleId(sampleName)
-      .setContigName(contigName)
-      .setStart(start)
-      .setEnd(end)
+      .setContigName(contigName.name)
+      .setStart(start.locus)
+      .setEnd(end.locus)
       .setGenotypeQuality(phredScaledSomaticLikelihood)
       .setReadDepth(tumorVariantEvidence.readDepth)
       .setExpectedAlleleDosage(
@@ -56,4 +57,8 @@ case class CalledSomaticAllele(sampleName: SampleName,
       .setAlternateReadDepth(tumorVariantEvidence.alleleReadDepth)
       .setVariant(bdgVariant)
       .build
+}
+
+object CalledSomaticAllele {
+  val alleles = seqAsJavaList(Seq(REF, ALT))
 }

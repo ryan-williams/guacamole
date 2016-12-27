@@ -71,7 +71,7 @@ object MultiSampleMultiAlleleEvidence {
    * @param includeFiltered return calls even if they are filtered
    * @return
    */
-  def make(
+  def apply(
     pileups: PerSample[Pileup],
     inputs: InputCollection,
     parameters: Parameters,
@@ -89,7 +89,7 @@ object MultiSampleMultiAlleleEvidence {
     val locus = normalPileups.head.locus
 
     // We only call variants at a site if the reference base is a standard base (i.e. not N).
-    if (!reference.getReferenceBase(contig, locus.toInt + 1).isStandardBase) {
+    if (!reference.getReferenceBase(contig, locus.next).isStandardBase) {
       return None
     }
 
@@ -115,22 +115,28 @@ object MultiSampleMultiAlleleEvidence {
     // We need a MultiplePileupStats instance for each allele. Since PileupStats (and MultiplePileupStats) don't depend
     // on the actual alternate allele, but only its start and end positions, as an optimization we make one
     // MultiplePileupStats per allele (start, end) position.
-    val multiplePileupStatsPerPossibleAlleleLocus = possibleAlleles
-      .map(allele => (allele.start.toInt, allele.end.toInt))
-      .distinct
-      .map(pair => {
-        val referenceSequence = filteredPileups.head.contigSequence.slice(pair._1, pair._2)
-        val stats = filteredPileups.map(pileup => PileupStats(pileup.elements, refSequence = referenceSequence))
-        pair -> MultiplePileupStats(inputs, stats)
-      }).toMap
+    val multiplePileupStatsPerPossibleAlleleLocus =
+      possibleAlleles
+        .map(allele => (allele.start, allele.end, allele.ref.length))
+        .distinct
+        .map {
+          case (start, end, length) ⇒
+            val referenceSequence = filteredPileups.head.contigSequence.slice(start, length)
+            val stats = filteredPileups.map(pileup => PileupStats(pileup.elements, refSequence = referenceSequence))
+            (start, end) -> MultiplePileupStats(inputs, stats)
+        }
+        .toMap
 
     // Create a MultiSampleSingleAlleleEvidence for each alternate allele.
-    val allEvidences = possibleAlleles.map(allele => {
-      MultiSampleSingleAlleleEvidence(
-        parameters,
-        allele,
-        multiplePileupStatsPerPossibleAlleleLocus((allele.start.toInt, allele.end.toInt)))
-    })
+    val allEvidences =
+      possibleAlleles
+        .map(allele =>
+          MultiSampleSingleAlleleEvidence(
+            parameters,
+            allele,
+            multiplePileupStatsPerPossibleAlleleLocus((allele.start, allele.end))
+          )
+        )
 
     val evidencesCalled = allEvidences.filter(_.isCall)
     val evidences = if (evidencesCalled.nonEmpty) evidencesCalled else allEvidences.take(1)
@@ -158,7 +164,7 @@ object MultiSampleMultiAlleleEvidence {
       val allele = evidence.allele
       evidence.annotate(
         calls,
-        multiplePileupStatsPerPossibleAlleleLocus((allele.start.toInt, allele.end.toInt)))
+        multiplePileupStatsPerPossibleAlleleLocus((allele.start, allele.end)))
     })
     val annotatedCalls = calls.copy(singleAlleleEvidences = annotatedEvidences)
 

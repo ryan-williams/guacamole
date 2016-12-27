@@ -14,6 +14,7 @@ import org.hammerlab.guacamole.loci.args.ForceCallLociArgs
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.genomics.readsets.args.{ ReferenceArgs, Arguments ⇒ ReadSetsArguments }
+import org.hammerlab.genomics.reference.Region
 import org.hammerlab.guacamole.readsets.rdd.{ PartitionedRegions, PartitionedRegionsArgs }
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.kohsuke.args4j.spi.StringArrayOptionHandler
@@ -79,7 +80,7 @@ object SomaticJoint {
       if (forceCallLoci.nonEmpty) {
         progress(
           "Force calling %,d loci across %,d contig(s): %s".format(
-            forceCallLoci.count,
+            forceCallLoci.count.num,
             forceCallLoci.contigs.length,
             forceCallLoci.toString(10000)
           )
@@ -140,16 +141,18 @@ object SomaticJoint {
   }
 
   /** Subtract 1 from all loci in a LociSet. */
-  def lociSetMinusOne(loci: LociSet): LociSet = {
+  def lociSetMinusOne(loci: LociSet): LociSet =
     LociSet(
       for {
         contig <- loci.contigs
         range <- contig.ranges
-      } yield {
-        (contig.name, math.max(0, range.start - 1), range.end - 1)
-      }
+      } yield
+        Region(
+          contig.name,
+          range.start.prev,
+          range.end.prev
+        )
     )
-  }
 
   def makeCalls(sc: SparkContext,
                 inputs: InputCollection,
@@ -178,19 +181,18 @@ object SomaticJoint {
         broadcastForceCallLoci
           .value
           .onContig(pileups.head.contigName)
-          .contains(pileups.head.locus + 1)
+          .contains(pileups.head.locus.next)
 
-      MultiSampleMultiAlleleEvidence
-        .make(
-          pileups,
-          inputs,
-          parameters,
-          reference,
-          forceCall,
-          onlySomatic,
-          includeFiltered
-        )
-        .iterator
+      MultiSampleMultiAlleleEvidence(
+        pileups,
+        inputs,
+        parameters,
+        reference,
+        forceCall,
+        onlySomatic,
+        includeFiltered
+      )
+      .iterator
     }
 
     pileupFlatMapMultipleSamples(
@@ -254,10 +256,9 @@ object SomaticJoint {
     }
     if (outDir.nonEmpty) {
       def path(filename: String) = outDir + "/" + filename + ".vcf"
-      def anyForced(evidence: MultiSampleSingleAlleleEvidence): Boolean = {
-        forceCallLoci.onContig(evidence.allele.contigName)
-          .intersects(evidence.allele.start, evidence.allele.end)
-      }
+
+      def anyForced(evidence: MultiSampleSingleAlleleEvidence): Boolean =
+        forceCallLoci.intersects(evidence.allele)
 
       val dir = new java.io.File(outDir)
       val dirCreated = dir.mkdir()

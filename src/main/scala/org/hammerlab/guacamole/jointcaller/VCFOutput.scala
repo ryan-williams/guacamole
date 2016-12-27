@@ -395,9 +395,9 @@ object VCFOutput {
 
     val variantContextBuilder =
       new VariantContextBuilder()
-        .chr(allele.contigName)
-        .start(allele.start + 1)  // +1 for one based based (inclusive)
-        .stop(allele.end)  // +1 for one-based and -1 for inclusive
+        .chr(allele.contigName.name)
+        .start(allele.start.locus + 1)  // +1 for one based based (inclusive)
+        .stop(allele.end.locus)  // +1 for one-based and -1 for inclusive
         .genotypes(JavaConversions.seqAsJavaList(genotypes))
         .alleles(JavaConversions.seqAsJavaList(variantGenotypeAlleles.distinct.map(makeHtsjdkAllele _)))
         .attribute("TRIGGER", if (triggers.nonEmpty) triggers.mkString(",") else "NONE")

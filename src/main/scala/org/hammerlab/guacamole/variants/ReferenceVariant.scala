@@ -18,11 +18,11 @@ trait ReferenceVariant extends Region {
   def bdgVariant: Variant =
     Variant
       .newBuilder
-      .setStart(start)
-      .setEnd(end)
+      .setStart(start.locus)
+      .setEnd(end.locus)
       .setReferenceAllele(allele.refBases.toString)
       .setAlternateAllele(allele.altBases.toString)
-      .setContigName(contigName)
+      .setContigName(contigName.name)
       .build
 
   def rsID: Option[Int]

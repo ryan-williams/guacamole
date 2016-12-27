@@ -3,12 +3,15 @@ package org.hammerlab.guacamole.loci.partitioning
 import org.apache.spark.SparkContext
 import org.hammerlab.genomics.loci.map.LociMap
 import org.hammerlab.genomics.loci.set.LociSet
+import org.hammerlab.genomics.reference.NumLoci
 import org.hammerlab.guacamole.loci.partitioning.MicroRegionPartitioner.NumMicroPartitions
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.spark.NumPartitions
-import org.kohsuke.args4j.{ Option => Args4jOption }
+import org.kohsuke.args4j.{ Option ⇒ Args4jOption }
+import org.scalautils.ConversionCheckedTripleEquals._
 import spire.implicits._
 import spire.math.Integral
+import org.scalautils.ConversionCheckedTripleEquals._
 
 trait UniformPartitionerArgs {
   @Args4jOption(
@@ -71,7 +74,7 @@ private[partitioning] sealed abstract class UniformPartitionerBase[N: Integral](
       var start = range.start
       val end = range.end
       while (start < end) {
-        val length: Long = math.min(remainingForThisPartition, end - start)
+        val length = NumLoci(math.min(remainingForThisPartition, end - start))
         builder.put(contig.name, start, start + length, partition)
         start += length
         lociAssigned += length
@@ -80,8 +83,8 @@ private[partitioning] sealed abstract class UniformPartitionerBase[N: Integral](
     }
 
     val result = builder.result
-    assert(lociAssigned == loci.count)
-    assert(result.count == loci.count)
+    assert(lociAssigned === loci.count)
+    assert(result.count === loci.count)
     result
   }
 }

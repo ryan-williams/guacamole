@@ -11,13 +11,16 @@ class VAFHistogramSuite extends GuacFunSuite {
 
   test("generating the histogram") {
 
-    val loci = sc.parallelize(Seq(
-      VariantLocus(0, "chr1", 1L, 0.25f),
-      VariantLocus(1, "chr1", 2L, 0.35f),
-      VariantLocus(0, "chr1", 3L, 0.4f),
-      VariantLocus(1, "chr1", 4L, 0.5f),
-      VariantLocus(0, "chr1", 5L, 0.55f)
-    ))
+    val loci =
+      sc.parallelize(
+        Seq(
+          VariantLocus(0, "chr1", 1, 0.25f),
+          VariantLocus(1, "chr1", 2, 0.35f),
+          VariantLocus(0, "chr1", 3, 0.4f),
+          VariantLocus(1, "chr1", 4, 0.5f),
+          VariantLocus(0, "chr1", 5, 0.55f)
+        )
+      )
 
     VAFHistogram.generateVAFHistograms(loci, 10) === (
       Map(

@@ -81,6 +81,7 @@ class CappedRegionsPartitioner[R <: Region: ClassTag](regions: RDD[R],
   }
 
   private def printStats(coverageRDD: CoverageRDD[R], lociBroadcast: Broadcast[LociSet]): Unit = {
+
     val (depthRunsRDD, validLoci, invalidLoci) =
       coverageRDD.validLociCounts(halfWindowSize, lociBroadcast, maxRegionsPerPartition)
 
@@ -95,6 +96,8 @@ class CappedRegionsPartitioner[R <: Region: ClassTag](regions: RDD[R],
     val avgRunLength =
       (for {(_, num) <- depthRuns} yield num.toLong * num).sum.toDouble / validLoci
 
+    implicit val contigNameOrdering = implicitly[Ordering[ContigName]]
+
     val depthRunsByContig =
       depthRuns
       .groupBy(_._1._1)
@@ -102,7 +105,7 @@ class CappedRegionsPartitioner[R <: Region: ClassTag](regions: RDD[R],
         case ((_, valid), num) => num -> valid
       })
       .toArray
-      .sorted(new KeyOrdering[ContigName, Array[(NumLoci, Boolean)]](ContigName.ordering))
+      .sorted(KeyOrdering[ContigName])
 
     val overflowMsg =
       if (numDepthRuns > numDepthRunsToTake)

@@ -8,6 +8,7 @@ import org.hammerlab.genomics.bases.Bases
 import org.hammerlab.genomics.reads.MappedRead
 import org.hammerlab.genomics.readsets.args.ReferenceArgs
 import org.hammerlab.genomics.readsets.{ ReadSets, SampleName, SampleRead }
+import org.hammerlab.genomics.reference.{ Locus, WindowSize }
 import org.hammerlab.guacamole.alignment.ReadAlignment
 import org.hammerlab.guacamole.assembly.AssemblyArgs
 import org.hammerlab.guacamole.assembly.AssemblyUtils.{ buildVariantsFromPath, discoverHaplotypes, isActiveRegion }
@@ -85,7 +86,7 @@ object GermlineAssemblyCaller {
     def discoverGermlineVariants(partitionedReads: PartitionedReads,
                                  sampleName: SampleName,
                                  kmerSize: Int,
-                                 assemblyWindowRange: Int,
+                                 assemblyWindowRange: WindowSize,
                                  minOccurrence: Int,
                                  minAreaVaf: Float,
                                  reference: ReferenceBroadcast,
@@ -95,7 +96,7 @@ object GermlineAssemblyCaller {
                                  shortcutAssembly: Boolean = false): RDD[CalledAllele] = {
 
       val genotypes: RDD[CalledAllele] =
-        windowFlatMapWithState[SampleRead, MappedRead, CalledAllele, Option[Long]](
+        windowFlatMapWithState[SampleRead, MappedRead, CalledAllele, Option[Locus]](
           numSamples = 1,
           partitionedReads,
           skipEmpty = true,
@@ -106,14 +107,14 @@ object GermlineAssemblyCaller {
             val contigName = window.contigName
             val locus = window.currentLocus
 
-            val referenceStart = (locus - window.halfWindowSize).toInt
-            val referenceEnd = (locus + window.halfWindowSize).toInt
+            val start: Locus = locus - window.halfWindowSize
+            val referenceLength: WindowSize = 2 * window.halfWindowSize
 
             val currentReference =
               reference.getReferenceSequence(
                 window.contigName,
-                referenceStart,
-                referenceEnd
+                start,
+                referenceLength
               )
 
             val referenceContig = reference.getContig(contigName)
@@ -135,9 +136,9 @@ object GermlineAssemblyCaller {
 
             // Compute the number reads with variant bases from the reads overlapping the currentLocus
             val pileupAltReads = (pileup.depth - pileup.referenceDepth)
-            if (currentLocusReads.isEmpty || pileupAltReads < minAltReads) {
+            if (currentLocusReads.isEmpty || pileupAltReads < minAltReads)
               (lastCalledLocus, Iterator.empty)
-            } else if (shortcutAssembly && !isActiveRegion(currentLocusReads, referenceContig, minAreaVaf)) {
+            else if (shortcutAssembly && !isActiveRegion(currentLocusReads, referenceContig, minAreaVaf)) {
               val variants =
                 callPileupVariant(pileup)
                   .filter(_.evidence.phredScaledLikelihood > minPhredScaledLikelihood)
@@ -160,7 +161,7 @@ object GermlineAssemblyCaller {
                 )
 
               if (paths.nonEmpty) {
-                def buildVariant(variantLocus: Int,
+                def buildVariant(variantLocus: Locus,
                                  referenceBases: Bases,
                                  alternateBases: Bases) = {
                   val allele =
@@ -197,7 +198,7 @@ object GermlineAssemblyCaller {
                     .flatMap(path =>
                       buildVariantsFromPath[CalledAllele](
                         path,
-                        referenceStart,
+                        start,
                         referenceContig,
                         ReadAlignment(_, currentReference),
                         buildVariant
@@ -209,13 +210,18 @@ object GermlineAssemblyCaller {
                         lastCalledLocus.forall(_ < variant.start)  // Filter variants before last called
                     )
 
-                val lastVariantCallLocus = variants.view.map(_.start).reduceOption(_ max _).orElse(lastCalledLocus)
+                val lastVariantCallLocus: Option[Locus] =
+                  variants
+                    .view
+                    .map(_.start)
+                    .reduceOption(_ max _)
+                    .orElse(lastCalledLocus)
+
                 // Jump to the next region
                 window.setCurrentLocus(window.currentLocus + assemblyWindowRange - kmerSize)
                 (lastVariantCallLocus, variants.iterator)
-              } else {
+              } else
                 (lastCalledLocus, Iterator.empty)
-              }
             }
           }
         )

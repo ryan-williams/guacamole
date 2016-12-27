@@ -9,7 +9,7 @@ import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.guacamole.readsets.PartitionedReads
 import org.hammerlab.guacamole.reference.ReferenceGenome
 import org.hammerlab.guacamole.windowing.SlidingWindow
-
+import org.scalautils.ConversionCheckedTripleEquals._
 import scala.reflect.ClassTag
 
 object PileupFlatMapUtils {
@@ -24,7 +24,7 @@ object PileupFlatMapUtils {
                                sampleName: SampleName,
                                window: SlidingWindow[MappedRead],
                                contigSequence: ContigSequence): Pileup = {
-    assume(window.halfWindowSize == 0)
+    assume(window.halfWindowSize === 0)
     existing match {
       case None =>
         Pileup(

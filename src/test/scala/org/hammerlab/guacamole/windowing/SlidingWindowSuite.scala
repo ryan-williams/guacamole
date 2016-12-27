@@ -2,11 +2,12 @@ package org.hammerlab.guacamole.windowing
 
 import org.hammerlab.genomics.loci.set.test.TestLociSet
 import org.hammerlab.genomics.reads.ReadsUtil
-import org.scalatest.{ FunSuite, Matchers }
+import org.hammerlab.genomics.reference.test.LocusUtil
+import org.hammerlab.test.Suite
 
 class SlidingWindowSuite
-  extends FunSuite
-    with Matchers
+  extends Suite
+    with LocusUtil
     with ReadsUtil {
 
   test("test sliding read window, duplicate reads") {

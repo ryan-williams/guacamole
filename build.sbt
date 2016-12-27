@@ -5,44 +5,40 @@ hadoopVersion := "2.7.2"
 
 addSparkDeps
 
-providedDeps ++= Seq(
-  libraries.value('mllib)
+deps ++= Seq(
+  libs.value('adam_core),
+  libs.value('args4j),
+  libs.value('args4s),
+  libs.value('bdg_formats),
+  libs.value('bdg_utils_cli),
+  "org.apache.commons" % "commons-math3" % "3.6.1",
+  libs.value('hadoop_bam),
+  libs.value('htsjdk),
+  libs.value('loci),
+  libs.value('magic_rdds),
+  libs.value('reference),
+  "org.scalautils" %% "scalautils" % "2.1.5",
+  //"org.scalaz" %% "scalaz-core" % "7.2.8",
+  libs.value('slf4j),
+  libs.value('spark_commands),
+  libs.value('spark_util),
+  libs.value('spire)
 )
 
-libraryDependencies ++= Seq(
-  libraries.value('adam_core),
-  libraries.value('args4j),
-  libraries.value('args4s),
-  libraries.value('bdg_formats),
-  libraries.value('bdg_utils_cli),
-  libraries.value('commons_math),
-  libraries.value('hadoop_bam),
-  libraries.value('htsjdk),
-  libraries.value('loci),
-  libraries.value('magic_rdds),
-  libraries.value('reads),
-  libraries.value('readsets),
-  libraries.value('reference),
-  libraries.value('slf4j),
-  libraries.value('spark_commands),
-  libraries.value('spark_util),
-  libraries.value('spire)
+providedDeps ++= Seq(
+  libs.value('mllib)
 )
 
 testDeps ++= Seq(
-  libraries.value('spark_testing_base) exclude("org.apache.hadoop", "hadoop-client")
+  libs.value('spark_testing_base) exclude("org.apache.hadoop", "hadoop-client")
 )
 
-testJarTestDeps ++= Seq(
-  libraries.value('reads),
-  libraries.value('readsets)
+compileAndTestDeps ++= Seq(
+  libs.value('reads),
+  libs.value('readsets)
 )
 
-assemblyMergeStrategy in assembly := {
-  // Two org.bdgenomics deps include the same log4j.properties.
-  case PathList("log4j.properties") => MergeStrategy.first
-  case x => (assemblyMergeStrategy in assembly).value(x)
-}
+takeFirstLog4JProperties
 
 mainClass := Some("org.hammerlab.guacamole.Main")
 

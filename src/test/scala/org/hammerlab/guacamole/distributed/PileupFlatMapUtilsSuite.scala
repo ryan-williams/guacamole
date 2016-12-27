@@ -12,8 +12,7 @@ import org.hammerlab.guacamole.loci.partitioning.UniformPartitioner
 import org.hammerlab.guacamole.pileup.{ Pileup, PileupElement }
 import org.hammerlab.guacamole.readsets.PartitionedReads
 import org.hammerlab.guacamole.readsets.rdd.PartitionedRegionsUtil
-import org.hammerlab.guacamole.reference.ReferenceBroadcast.MapBackedReferenceSequence
-import org.hammerlab.guacamole.reference.ReferenceUtil
+import org.hammerlab.guacamole.reference.{ MapBackedReferenceSequence, ReferenceUtil }
 import org.hammerlab.guacamole.util.{ AssertBases, GuacFunSuite }
 
 private object Util {

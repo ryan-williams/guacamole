@@ -29,7 +29,7 @@ class UniformPartitionerSuite extends GuacFunSuite {
     for (i <- 0 until 100) {
       expectedBuilder4.put("chrM", i + 1000, i + 1001, i)
     }
-    result4.map === (expectedBuilder4.result())
+    result4.map === (expectedBuilder4.result)
 
     val result5 = partition(3, TestLociSet("chrM:0-10"))
     result5.toString === ("chrM:0-3=0,chrM:3-7=1,chrM:7-10=2")

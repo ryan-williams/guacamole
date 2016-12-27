@@ -2,10 +2,13 @@ package org.hammerlab.guacamole.loci.set
 
 import org.hammerlab.genomics.loci.set.test.TestLociSet
 import org.hammerlab.genomics.reference.Position
+import org.hammerlab.genomics.reference.test.LocusUtil
 import org.hammerlab.guacamole.loci.Coverage
-import org.scalatest.{ FunSuite, Matchers }
+import org.hammerlab.test.Suite
 
-class TakeLociIteratorSuite extends FunSuite with Matchers {
+class TakeLociIteratorSuite
+  extends Suite
+    with LocusUtil {
 
   def check(input: ((String, Int), (Int, Int))*)(expectedStrs: String*): Unit =
     check(trimRanges = false, input: _*)(expectedStrs: _*)

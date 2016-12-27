@@ -1,8 +1,9 @@
 package org.hammerlab.guacamole.jointcaller
 
+import org.hammerlab.genomics.bases.Base.N
 import org.hammerlab.genomics.bases.Bases
 import org.hammerlab.genomics.readsets.PerSample
-import org.hammerlab.genomics.reference.{ ContigName, Locus }
+import org.hammerlab.genomics.reference.{ ContigName, Locus, Region }
 import org.hammerlab.guacamole.jointcaller.pileup_summarization.ReadSubsequence
 import org.hammerlab.guacamole.pileup.Pileup
 
@@ -25,19 +26,16 @@ import org.hammerlab.guacamole.pileup.Pileup
  * @param ref reference allele, must be nonempty
  * @param alt alternate allele, may be equal to reference
  */
-case class AlleleAtLocus(contigName: ContigName, start: Locus, ref: Bases, alt: Bases) {
+case class AlleleAtLocus(contigName: ContigName,
+                         start: Locus,
+                         ref: Bases,
+                         alt: Bases)
+  extends Region {
 
   assume(ref.nonEmpty)
   assume(alt.nonEmpty)
 
-  @transient lazy val id =
-    "%s:%d-%d %s>%s".format(
-      contigName,
-      start,
-      end,
-      ref,
-      alt
-    )
+  @transient lazy val id = s"${super.toString} $ref>$alt"
 
   /** Zero-based exclusive end site on the reference genome. */
   @transient lazy val end = start + ref.length
@@ -78,7 +76,7 @@ object AlleleAtLocus {
     val contigSequence = pileups.head.contigSequence
 
     val contig = pileups.head.contigName
-    val variantStart = pileups.head.locus + 1
+    val variantStart = pileups.head.locus.next
     val alleleRequiredReadsActualReads = pileups.flatMap(pileup => {
       val requiredReads = math.max(
         anyAlleleMinSupportingReads,
@@ -121,8 +119,8 @@ object AlleleAtLocus {
           AlleleAtLocus(
             contig,
             variantStart,
-            Bases(contigSequence.apply(variantStart.toInt)),
-            "N"
+            Bases(contigSequence(variantStart)),
+            Bases(N)
           )
         )
       }

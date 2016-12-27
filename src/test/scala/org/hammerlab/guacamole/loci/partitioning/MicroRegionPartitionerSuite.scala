@@ -11,7 +11,7 @@ class MicroRegionPartitionerSuite
 
   test("partition") {
 
-    def pairsToReads(pairs: Seq[(Long, Long)]): RDD[MappedRead] =
+    def pairsToReads(pairs: Seq[(Int, Int)]): RDD[MappedRead] =
       sc.parallelize(
         for {
           (start, length) <- pairs
@@ -26,10 +26,10 @@ class MicroRegionPartitionerSuite
     val reads =
       pairsToReads(
         Seq(
-          (5L, 1L),
-          (6L, 1L),
-          (7L, 1L),
-          (8L, 1L)
+          (5, 1),
+          (6, 1),
+          (7, 1),
+          (8, 1)
         )
       )
 

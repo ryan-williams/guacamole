@@ -8,7 +8,7 @@ import org.hammerlab.commands.Args
 import org.hammerlab.genomics.bases.Bases
 import org.hammerlab.genomics.loci.set.LociSet
 import org.hammerlab.genomics.readsets.{ PerSample, ReadSets, SampleName }
-import org.hammerlab.genomics.reference.{ ContigName, Locus }
+import org.hammerlab.genomics.reference.{ ContigName, Locus, Region }
 import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMapMultipleSamples
 import org.hammerlab.guacamole.pileup.Pileup
 import org.hammerlab.genomics.readsets.args.{ ReferenceArgs, Arguments ⇒ ReadSetsArguments }
@@ -69,7 +69,7 @@ object VariantSupport {
       val loci =
         LociSet(
           variants
-            .map(variant => (variant.getContigName, variant.getStart: Long, variant.getEnd: Long))
+            .map(variant => Region(variant.getContigName, Locus(variant.getStart), Locus(variant.getEnd)))
             .collect()
         )
 

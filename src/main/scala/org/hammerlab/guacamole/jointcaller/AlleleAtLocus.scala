@@ -7,6 +7,8 @@ import org.hammerlab.genomics.reference.{ ContigName, Locus, Region }
 import org.hammerlab.guacamole.jointcaller.pileup_summarization.ReadSubsequence
 import org.hammerlab.guacamole.pileup.Pileup
 
+import scala.math.{ ceil, max }
+
 /**
  * An allele (alt) at a site in the genome. We also keep track of the reference allele (ref) at this site.
  *
@@ -39,6 +41,8 @@ case class AlleleAtLocus(contigName: ContigName,
 
   /** Zero-based exclusive end site on the reference genome. */
   @transient lazy val end = start + ref.length
+
+  override def toString: String = id
 }
 
 object AlleleAtLocus {
@@ -73,34 +77,46 @@ object AlleleAtLocus {
     assume(pileups.forall(_.locus == pileups.head.locus))
     assume(pileups.forall(_.contigName == pileups.head.contigName))
     assume(pileups.nonEmpty)
+
     val contigSequence = pileups.head.contigSequence
 
     val contig = pileups.head.contigName
     val variantStart = pileups.head.locus.next
-    val alleleRequiredReadsActualReads = pileups.flatMap(pileup => {
-      val requiredReads = math.max(
-        anyAlleleMinSupportingReads,
-        pileup.elements.size * anyAlleleMinSupportingPercent / 100.0)
 
-      val subsequenceCounts =
-        ReadSubsequence.nextAlts(pileup.elements)
-          .filter(subsequence => !onlyStandardBases || subsequence.sequenceIsAllStandardBases)
-          .groupBy(x => (x.endLocus, x.sequence))
-          .map(pair => (pair._2.head -> pair._2.length))
-          .toVector
-          .sortBy(-1 * _._2)
+    val alleleRequiredReadsActualReads =
+      pileups.flatMap {
+        pileup =>
+          val requiredReads =
+            max(
+              anyAlleleMinSupportingReads,
+              ceil(pileup.elements.size * anyAlleleMinSupportingPercent / 100.0).toInt
+            )
 
-      def subsequenceToAllele(subsequence: ReadSubsequence): AlleleAtLocus = {
-        AlleleAtLocus(
-          contig, variantStart, subsequence.refSequence(contigSequence), subsequence.sequence)
+          val subsequenceCounts =
+            ReadSubsequence.nextAlts(pileup.elements)
+              .filter(subsequence => !onlyStandardBases || subsequence.sequenceIsAllStandardBases)
+              .groupBy(x => (x.endLocus, x.sequence))
+              .map { case (_, subsequences) ⇒ (subsequences.head → subsequences.length) }
+              .toVector
+              .sortBy(-1 * _._2)
+
+          def subsequenceToAllele(subsequence: ReadSubsequence): AlleleAtLocus =
+            AlleleAtLocus(
+              contig,
+              variantStart,
+              subsequence.refSequence(contigSequence),
+              subsequence.sequence
+            )
+
+          subsequenceCounts.map {
+            case (subsequence, count) ⇒
+              (subsequenceToAllele(subsequence), requiredReads, count)
+          }
       }
-
-      subsequenceCounts.map(pair => (subsequenceToAllele(pair._1), requiredReads, pair._2))
-    })
 
     val result =
       alleleRequiredReadsActualReads
-        .filter(tpl => tpl._3 >= tpl._2)
+        .filter { case (allele, requiredReads, count) ⇒ count >= requiredReads }
         .map(_._1)
         .distinct  // Reduce to distinct alleles
         .toVector
@@ -108,13 +124,13 @@ object AlleleAtLocus {
     if (atLeastOneAllele && result.isEmpty) {
       val allelesSortedByTotal = alleleRequiredReadsActualReads
         .groupBy(_._1)
-        .toSeq
+        .toVector
         .sortBy(-1 * _._2.map(_._3).sum)
         .map(_._1)
 
-      if (allelesSortedByTotal.nonEmpty) {
-        Vector(allelesSortedByTotal.head)
-      } else {
+      if (allelesSortedByTotal.nonEmpty)
+        allelesSortedByTotal.take(1)
+      else
         Vector(
           AlleleAtLocus(
             contig,
@@ -123,12 +139,10 @@ object AlleleAtLocus {
             Bases(N)
           )
         )
-      }
     } else if (maxAlleles.isDefined) {
       assume(maxAlleles.get > 0)
       result.take(maxAlleles.get)
-    } else {
+    } else
       result
-    }
   }
 }

@@ -67,7 +67,7 @@ class LikelihoodSuite
         normalize = false
       )
 
-    assert(result.size == 1)
+    result.size should ===(1)
     result(0)
   }
 
@@ -111,7 +111,7 @@ class LikelihoodSuite
             likelihood / totalExpectedLikelihood
       )
 
-    actualProbabilities.size === (expectedProbabilities.size)
+    actualProbabilities.size should === (expectedProbabilities.size)
 
     val actualProbabilitiesMap = actualProbabilities.toMap
 
@@ -122,7 +122,7 @@ class LikelihoodSuite
       )
     ) {
       case (genotype, expectedProbability) =>
-        actualProbabilitiesMap(genotype) should === (expectedProbability +- epsilon)
+        actualProbabilitiesMap(genotype) should ===(expectedProbability +- epsilon)
     }
   }
 

@@ -114,7 +114,7 @@ object ReadSubsequence {
     else {
       val firstElement = element.advanceToLocus(element.locus.next)
       var currentElement = firstElement
-      var refLength = 1
+      var refLength = 0
 
       while (currentElement.locus.next < currentElement.read.end && currentElement.isVariantOrFollowedByDeletion) {
         currentElement = currentElement.advanceToLocus(currentElement.locus.next)

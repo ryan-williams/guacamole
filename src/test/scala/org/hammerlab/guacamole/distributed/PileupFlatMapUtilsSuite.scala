@@ -1,11 +1,12 @@
 package org.hammerlab.guacamole.distributed
 
 import org.apache.spark.storage.BroadcastBlockId
-import org.hammerlab.genomics.bases.Base.T
-import org.hammerlab.genomics.bases.Bases
+import org.hammerlab.genomics.bases.Base.{ A, C, G, N, T }
+import org.hammerlab.genomics.bases.{ Base, Bases }
 import org.hammerlab.genomics.loci.set.test.TestLociSet
 import org.hammerlab.genomics.readsets.PerSample
 import org.hammerlab.genomics.readsets.rdd.ReadsRDDUtil
+import org.hammerlab.genomics.reference.Locus
 import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.{ pileupFlatMapMultipleSamples, pileupFlatMapOneSample, pileupFlatMapTwoSamples }
 import org.hammerlab.guacamole.distributed.Util.pileupsToElementStrings
 import org.hammerlab.guacamole.loci.partitioning.UniformPartitioner
@@ -13,7 +14,9 @@ import org.hammerlab.guacamole.pileup.{ Pileup, PileupElement }
 import org.hammerlab.guacamole.readsets.PartitionedReads
 import org.hammerlab.guacamole.readsets.rdd.PartitionedRegionsUtil
 import org.hammerlab.guacamole.reference.{ MapBackedReferenceSequence, ReferenceUtil }
-import org.hammerlab.guacamole.util.{ AssertBases, GuacFunSuite }
+import org.hammerlab.guacamole.util.GuacFunSuite
+
+import scala.reflect.ClassTag
 
 private object Util {
   // This helper function is in its own object here to avoid serializing `PileupFlatMapUtilsSuite`, which is not
@@ -45,6 +48,9 @@ class PileupFlatMapUtilsSuite
     // "test pileup flatmap multiple rdds; skip empty pileups" collects an RDD of Arrays
     classOf[Array[PerSample[_]]]
   )
+
+  implicit def convertArray[T, U: ClassTag](a: Array[T])(implicit f: T ⇒ U): Array[U] = a.map(f)//.toArray
+//  implicit def convertArrayToSeq[T, U](a: Array[T])(implicit f: T ⇒ U): Seq[U] = a.map(f)
 
   lazy val reference =
     makeReference(
@@ -92,15 +98,15 @@ class PileupFlatMapUtilsSuite
         reference = reference
       ).collect()
 
-    pileups.length === (8)
+    pileups.length should === (8)
     val firstPileup = pileups.head
-    firstPileup.locus === (1L)
-    firstPileup.referenceBase === (T)
+    firstPileup.locus should === (1L)
+    firstPileup.referenceBase should === (T)
 
-    firstPileup.elements.forall(_.readPosition == 0L) === (true)
-    firstPileup.elements.forall(_.isMatch) === (true)
+    firstPileup.elements.forall(_.readPosition == 0L) should === (true)
+    firstPileup.elements.forall(_.isMatch) should === (true)
 
-    pileups.forall(_.elements.head.isMatch) === (true)
+    pileups.forall(_.elements.head.isMatch) should === (true)
   }
 
   test("test pileup flatmap parallelism 5; create pileups") {
@@ -117,11 +123,14 @@ class PileupFlatMapUtilsSuite
       ).collect()
 
     val firstPileup = pileups.head
-    firstPileup.locus === (1L)
-    firstPileup.referenceBase === (T)
+    firstPileup.locus should === (1L)
+    firstPileup.referenceBase should === (T)
 
-    pileups.forall(_.elements.head.isMatch) === (true)
+    pileups.forall(_.elements.head.isMatch) should === (true)
   }
+
+  // An RDD[Locus] is collected below.
+  kryoRegister(classOf[Array[Locus]])
 
   test("test pileup flatmap parallelism 5; skip empty pileups") {
 
@@ -136,7 +145,7 @@ class PileupFlatMapUtilsSuite
         reference = reference
       ).collect
 
-    loci === (Array(1, 2, 3, 4, 5, 6, 7, 8))
+    loci should === (Array(1, 2, 3, 4, 5, 6, 7, 8))
   }
 
   test("test pileup flatmap two rdds; skip empty pileups") {
@@ -176,7 +185,7 @@ class PileupFlatMapUtilsSuite
         reference = reference
       ).collect
 
-    loci === (Seq(1, 2, 3, 4, 5, 6, 7, 8, 99, 100, 101, 102, 103, 104, 105, 106, 107))
+    loci should === (Array(1, 2, 3, 4, 5, 6, 7, 8, 99, 100, 101, 102, 103, 104, 105, 106, 107))
   }
 
   test("test pileup flatmap multiple rdds; skip empty pileups") {
@@ -220,7 +229,7 @@ class PileupFlatMapUtilsSuite
         skipEmpty = true,
         pileupsToElementStrings,
         reference = reference
-      ).collect.map(_.toList)
+      ).collect.map(_.map(_.toSeq).toSeq)
 
     val resultParallelized =
       pileupFlatMapMultipleSamples[PerSample[Iterable[Bases]]](
@@ -229,7 +238,7 @@ class PileupFlatMapUtilsSuite
         skipEmpty = true,
         pileupsToElementStrings,
         reference = reference
-      ).collect.map(_.toList)
+      ).collect.map(_.map(_.toSeq).toSeq)
 
     val resultWithEmpty =
       pileupFlatMapMultipleSamples[PerSample[Iterable[Bases]]](
@@ -238,24 +247,26 @@ class PileupFlatMapUtilsSuite
         skipEmpty = false,
         pileupsToElementStrings,
         reference = reference
-      ).collect.map(_.toList)
+      ).collect.map(_.map(_.toSeq).toSeq)
 
-    resultPlain === (resultParallelized)
+    resultPlain should === (resultParallelized)
 
-    resultWithEmpty(0) === (resultPlain(0))
-    resultWithEmpty(1) === (resultPlain(1))
-    resultWithEmpty(2) === (resultPlain(2))
-    resultWithEmpty(3) === (resultPlain(3))
-    resultWithEmpty(35) === (Seq(Seq(), Seq(), Seq()))
+    implicit def seqSeqBases(s: Seq[Seq[Base]]): Seq[Seq[Bases]] = s.map(_.map(Bases(_)))
 
-    resultPlain(0) === (Seq(Seq("T", "T", "T"), Seq("A", "C", "T"), Seq("A", "G", "G")))
-    resultPlain(1) === (Seq(Seq("C", "C", "C"), Seq("A", "C", "T"), Seq("A", "G", "G")))
-    resultPlain(2) === (Seq(Seq("G", "G", "G"), Seq("A", "C", "T"), Seq("G", "A", "G")))
-    resultPlain(3) === (Seq(Seq("A", "A", "A"), Seq("A", "C", "T"), Seq("G", "A", "G")))
+    resultWithEmpty(0) should === (resultPlain(0))
+    resultWithEmpty(1) should === (resultPlain(1))
+    resultWithEmpty(2) should === (resultPlain(2))
+    resultWithEmpty(3) should === (resultPlain(3))
+    resultWithEmpty(35) should === (Seq(Seq[Bases](), Seq[Bases](), Seq[Bases]()))
 
-    resultPlain(8) === (Seq(Seq(), Seq("X"), Seq("X")))
-    resultPlain(9) === (Seq(Seq("G", "G", "G"), Seq("Y"), Seq("Z")))
-    resultPlain(10) === (Seq(Seq("G", "G", "G"), Seq("X"), Seq("X")))
+    resultPlain(0) should === (Seq(Seq(T, T, T), Seq(A, C, T), Seq(A, G, G)))
+    resultPlain(1) should === (Seq(Seq(C, C, C), Seq(A, C, T), Seq(A, G, G)))
+    resultPlain(2) should === (Seq(Seq(G, G, G), Seq(A, C, T), Seq(G, A, G)))
+    resultPlain(3) should === (Seq(Seq(A, A, A), Seq(A, C, T), Seq(G, A, G)))
+
+    resultPlain(8) should === (Seq(Seq(), Seq(N), Seq(N)))
+    resultPlain(9) should === (Seq(Seq(G, G, G), Seq(N), Seq(N)))
+    resultPlain(10) should === (Seq(Seq(G, G, G), Seq(N), Seq(N)))
   }
 
   test("test pileup flatmap parallelism 5; create pileup elements") {
@@ -271,8 +282,8 @@ class PileupFlatMapUtilsSuite
         reference = makeReference(sc, "chr1", 1, "TCGATCGA")
       ).collect()
 
-    pileups.length === (24)
-    pileups.forall(_.isMatch) === (true)
+    pileups.length should === (24)
+    pileups.forall(_.isMatch) should === (true)
   }
 
   test("test two-rdd pileup flatmap; create pileup elements") {
@@ -312,9 +323,8 @@ class PileupFlatMapUtilsSuite
         reference = makeReference(sc, "chr1", 0, "ATCGATCGA" + "N"*90 + "AGGGGGGGGGG" + "N"*500)
       ).collect()
 
-    elements.map(_.isMatch) === (List.fill(elements.length)(true))
-    AssertBases(
-      elements.flatMap(_.sequencedBases),
+    elements.map(_.isMatch) should === (Array.fill(elements.length)(true))
+    (elements.flatMap(_.sequencedBases): Bases) should ===(
       "TTTTTTCCCCCCGGGGGGAAAAAATTTTTTCCCCCCGGGGGGAAAAAAAGGGGGGGGGGGGGGGGGGGGGGGGGG"
     )
   }
@@ -340,8 +350,8 @@ class PileupFlatMapUtilsSuite
         reference = makeReference(sc, "chr1", 1, "ATCGATCGATC")
       ).collect()
 
-    pileups.length === (24)
+    pileups.length should === (24)
     val insertionPileups = pileups.filter(_.isInsertion)
-    insertionPileups.length === (1)
+    insertionPileups.length should === (1)
   }
 }

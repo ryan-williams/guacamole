@@ -4,9 +4,15 @@ import org.hammerlab.genomics.loci.set.test.TestLociSet
 import org.hammerlab.genomics.reads.ReadsUtil
 import org.hammerlab.genomics.reference.test.LocusUtil
 import org.hammerlab.test.Suite
+import SlidingWindow.advanceMultipleWindows
+import org.hammerlab.genomics.reference.Locus
+import org.hammerlab.guacamole.util.Implicits
+import org.scalactic.ConversionCheckedTripleEquals
 
 class SlidingWindowSuite
   extends Suite
+    with ConversionCheckedTripleEquals
+    with Implicits
     with LocusUtil
     with ReadsUtil {
 
@@ -21,8 +27,7 @@ class SlidingWindowSuite
 
     val window = SlidingWindow("chr1", 2, reads.iterator)
     window.setCurrentLocus(0)
-    assert(window.currentRegions.size === 3)
-
+    window.currentRegions.size should ===(3)
   }
 
   test("test sliding read window, diff contigs") {
@@ -52,11 +57,10 @@ class SlidingWindowSuite
     val window = SlidingWindow("chr1", 2, reads.iterator)
 
     window.setCurrentLocus(0)
-    assert(window.currentRegions.size === 1)
+    window.currentRegions.size should ===(1)
 
     window.setCurrentLocus(4)
-    assert(window.currentRegions.size === 2)
-
+    window.currentRegions.size should ===(2)
   }
 
   test("test sliding read window, reads are not sorted") {
@@ -90,37 +94,37 @@ class SlidingWindowSuite
     val window = SlidingWindow("chr1", 0, reads.iterator)
 
     window.setCurrentLocus(0)
-    assert(window.currentRegions.size === 0)
+    window.currentRegions.size should ===(0)
 
     window.setCurrentLocus(1)
-    assert(window.currentRegions.size === 1)
+    window.currentRegions.size should ===(1)
 
     window.setCurrentLocus(2)
-    assert(window.currentRegions.size === 2)
+    window.currentRegions.size should ===(2)
 
     window.setCurrentLocus(3)
-    assert(window.currentRegions.size === 2)
+    window.currentRegions.size should ===(2)
 
     window.setCurrentLocus(4)
-    assert(window.currentRegions.size === 2)
+    window.currentRegions.size should ===(2)
 
     window.setCurrentLocus(5)
-    assert(window.currentRegions.size === 3)
+    window.currentRegions.size should ===(3)
 
     window.setCurrentLocus(6)
-    assert(window.currentRegions.size === 3)
+    window.currentRegions.size should ===(3)
 
     window.setCurrentLocus(7)
-    assert(window.currentRegions.size === 3)
+    window.currentRegions.size should ===(3)
 
     window.setCurrentLocus(8)
-    assert(window.currentRegions.size === 2)
+    window.currentRegions.size should ===(2)
 
     window.setCurrentLocus(9)
-    assert(window.currentRegions.size === 1)
+    window.currentRegions.size should ===(1)
 
     window.setCurrentLocus(10)
-    assert(window.currentRegions.size === 0)
+    window.currentRegions.size should ===(0)
   }
 
   test("test sliding read window, slow walk with halfWindowSize=1") {
@@ -139,44 +143,52 @@ class SlidingWindowSuite
     val window = SlidingWindow("chr1", 1, reads.iterator)
 
     window.setCurrentLocus(0)
-    assert(window.currentRegions.size === 0)
+    window.currentRegions.size should ===(0)
 
     window.setCurrentLocus(1)
-    assert(window.currentRegions.size === 1)
+    window.currentRegions.size should ===(1)
 
     window.setCurrentLocus(2)
-    assert(window.currentRegions.size === 2)
+    window.currentRegions.size should ===(2)
 
     window.setCurrentLocus(3)
-    assert(window.currentRegions.size === 2)
+    window.currentRegions.size should ===(2)
 
     window.setCurrentLocus(4)
-    assert(window.currentRegions.size === 2)
+    window.currentRegions.size should ===(2)
 
     window.setCurrentLocus(5)
-    assert(window.currentRegions.size === 3)
+    window.currentRegions.size should ===(3)
 
     window.setCurrentLocus(6)
-    assert(window.currentRegions.size === 3)
+    window.currentRegions.size should ===(3)
 
     window.setCurrentLocus(7)
-    assert(window.currentRegions.size === 3)
+    window.currentRegions.size should ===(3)
 
     window.setCurrentLocus(8)
-    assert(window.currentRegions.size === 3)
+    window.currentRegions.size should ===(3)
 
     window.setCurrentLocus(9)
-    assert(window.currentRegions.size === 3)
+    window.currentRegions.size should ===(3)
 
     window.setCurrentLocus(10)
-    assert(window.currentRegions.size === 2)
+    window.currentRegions.size should ===(2)
 
     window.setCurrentLocus(11)
-    assert(window.currentRegions.size === 1)
+    window.currentRegions.size should ===(1)
 
     window.setCurrentLocus(12)
-    assert(window.currentRegions.size === 0)
+    window.currentRegions.size should ===(0)
   }
+
+  implicit def iToL = implicitly[Int ⇒ Locus]
+  implicit def locusOpt = convertOpt[Int, Locus] _
+  //implicit def locusOpt(intOpt: Option[Int]): Option[Locus] = intOpt.map(Locus(_))
+  implicit def locusSeq = convertSeq[Int, Locus] _
+  implicit def locusOptSeq = convertSeq[Option[Int], Option[Locus]] _
+  implicit def convertNone[T](n: None.type): Option[T] = n
+  implicit def convertNoneLocus = convertNone[Locus] _
 
   test("test sliding window advance multiple windows trivial 1") {
     val reads1 =
@@ -200,14 +212,14 @@ class SlidingWindowSuite
     val loci = TestLociSet("chr1:0-3,chr1:20-30").onContig("chr1").iterator
     val windows = Vector(window1, window2)
 
-    SlidingWindow.advanceMultipleWindows(windows, loci, skipEmpty = false) === (Some(0))
-    windows.map(_.currentLocus) === (Seq(0, 0))
-    windows.map(_.nextLocusWithRegions) === (Seq(Some(2), Some(2)))
+    advanceMultipleWindows(windows, loci, skipEmpty = false) should === (Some(0))
+    windows.map(_.currentLocus) should === (Seq(0, 0))
+    windows.map(_.nextLocusWithRegions) should === (Seq(Some(2), Some(2)))
 
-    SlidingWindow.advanceMultipleWindows(windows, loci, skipEmpty = true) === (Some(2))
-    windows.map(_.currentLocus) === (Seq(2, 2))
+    advanceMultipleWindows(windows, loci, skipEmpty = true) should === (Some(2))
+    windows.map(_.currentLocus) should === (Seq(2, 2))
 
-    SlidingWindow.advanceMultipleWindows(windows, loci, skipEmpty = true) === (None)
+    advanceMultipleWindows(windows, loci, skipEmpty = true) should === (None: Option[Locus])
   }
 
   test("test sliding window advance multiple windows trivial 2") {
@@ -232,17 +244,17 @@ class SlidingWindowSuite
     val loci = TestLociSet("chr1:0-3,chr1:20-30").onContig("chr1").iterator
     val windows = Vector(window1, window2)
 
-    SlidingWindow.advanceMultipleWindows(windows, loci, skipEmpty = true) === (Some(0))
-    windows.map(_.currentLocus) === (Seq(0, 0))
-    windows.map(_.nextLocusWithRegions) === (Seq(Some(1), Some(2)))
+    advanceMultipleWindows(windows, loci, skipEmpty = true) should === (Some(0))
+    windows.map(_.currentLocus) should === (Seq(0, 0))
+    windows.map(_.nextLocusWithRegions) should === (Seq(Some(1), Some(2)))
 
-    SlidingWindow.advanceMultipleWindows(windows, loci, skipEmpty = true) === (Some(1))
-    windows.map(_.currentLocus) === (Seq(1, 1))
+    advanceMultipleWindows(windows, loci, skipEmpty = true) should === (Some(1))
+    windows.map(_.currentLocus) should === (Seq(1, 1))
 
-    SlidingWindow.advanceMultipleWindows(windows, loci, skipEmpty = true) === (Some(2))
-    windows.map(_.currentLocus) === (Seq(2, 2))
+    advanceMultipleWindows(windows, loci, skipEmpty = true) should === (Some(2))
+    windows.map(_.currentLocus) should === (Seq(2, 2))
 
-    SlidingWindow.advanceMultipleWindows(windows, loci, skipEmpty = true) === (None)
+    advanceMultipleWindows(windows, loci, skipEmpty = true) should === (None: Option[Locus])
   }
 
   test("test sliding window advance multiple windows basic") {
@@ -267,40 +279,40 @@ class SlidingWindowSuite
     val loci = TestLociSet("chr1:0-3,chr1:60-101").onContig("chr1").iterator
     val windows = Vector(window1, window2)
 
-    SlidingWindow.advanceMultipleWindows(windows, loci, skipEmpty = false) === (Some(0))
-    windows.map(_.currentLocus) === (Seq(0, 0))
-    windows.map(_.nextLocusWithRegions) === (Seq(Some(2), Some(5)))
+    advanceMultipleWindows(windows, loci, skipEmpty = false) should === (Some(0))
+    windows.map(_.currentLocus) should === (Seq(0, 0))
+    windows.map(_.nextLocusWithRegions) should === (Seq(Some(2), Some(5)))
 
-    SlidingWindow.advanceMultipleWindows(windows, loci, skipEmpty = true) === (Some(2))
-    windows.map(_.currentLocus) === (Seq(2, 2))
-    windows(0).currentRegions.isEmpty === (false)
-    windows(1).currentRegions.isEmpty === (true)
+    advanceMultipleWindows(windows, loci, skipEmpty = true) should === (Some(2))
+    windows.map(_.currentLocus) should === (Seq(2, 2))
+    windows(0).currentRegions.isEmpty should === (false)
+    windows(1).currentRegions.isEmpty should === (true)
 
-    SlidingWindow.advanceMultipleWindows(windows, loci, skipEmpty = true) === (Some(80))
-    windows.map(_.currentLocus) === (Seq(80, 80))
-    windows(0).currentRegions.isEmpty === (true)
-    windows(1).currentRegions.isEmpty === (false)
+    advanceMultipleWindows(windows, loci, skipEmpty = true) should === (Some(80))
+    windows.map(_.currentLocus) should === (Seq(80, 80))
+    windows(0).currentRegions.isEmpty should === (true)
+    windows(1).currentRegions.isEmpty should === (false)
 
-    SlidingWindow.advanceMultipleWindows(windows, loci, skipEmpty = true) === (Some(81))
-    windows.map(_.currentLocus) === (Seq(81, 81))
-    windows(0).currentRegions.isEmpty === (true)
-    windows(1).currentRegions.isEmpty === (false)
+    advanceMultipleWindows(windows, loci, skipEmpty = true) should === (Some(81))
+    windows.map(_.currentLocus) should === (Seq(81, 81))
+    windows(0).currentRegions.isEmpty should === (true)
+    windows(1).currentRegions.isEmpty should === (false)
 
-    SlidingWindow.advanceMultipleWindows(windows, loci, skipEmpty = true) === (Some(82))
-    SlidingWindow.advanceMultipleWindows(windows, loci, skipEmpty = true) === (Some(83))
-    SlidingWindow.advanceMultipleWindows(windows, loci, skipEmpty = true) === (Some(84))
-    SlidingWindow.advanceMultipleWindows(windows, loci, skipEmpty = true) === (Some(85))
-    SlidingWindow.advanceMultipleWindows(windows, loci, skipEmpty = true) === (Some(86))
-    SlidingWindow.advanceMultipleWindows(windows, loci, skipEmpty = true) === (Some(87))
-    windows.map(_.currentLocus) === (Seq(87, 87))
-    windows(0).currentRegions.isEmpty === (true)
-    windows(1).currentRegions.isEmpty === (false)
+    advanceMultipleWindows(windows, loci, skipEmpty = true) should === (Some(82))
+    advanceMultipleWindows(windows, loci, skipEmpty = true) should === (Some(83))
+    advanceMultipleWindows(windows, loci, skipEmpty = true) should === (Some(84))
+    advanceMultipleWindows(windows, loci, skipEmpty = true) should === (Some(85))
+    advanceMultipleWindows(windows, loci, skipEmpty = true) should === (Some(86))
+    advanceMultipleWindows(windows, loci, skipEmpty = true) should === (Some(87))
+    windows.map(_.currentLocus) should === (Seq(87, 87))
+    windows(0).currentRegions.isEmpty should === (true)
+    windows(1).currentRegions.isEmpty should === (false)
 
-    SlidingWindow.advanceMultipleWindows(windows, loci, skipEmpty = true) === (Some(100))
-    windows.map(_.currentLocus) === (Seq(100, 100))
-    windows(0).currentRegions.isEmpty === (true)
-    windows(1).currentRegions.isEmpty === (false)
+    advanceMultipleWindows(windows, loci, skipEmpty = true) should === (Some(100))
+    windows.map(_.currentLocus) should === (Seq(100, 100))
+    windows(0).currentRegions.isEmpty should === (true)
+    windows(1).currentRegions.isEmpty should === (false)
 
-    SlidingWindow.advanceMultipleWindows(windows, loci, skipEmpty = true) === (None)
+    advanceMultipleWindows(windows, loci, skipEmpty = true) should === (None: Option[Locus])
   }
 }

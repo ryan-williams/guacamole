@@ -5,6 +5,7 @@ import org.hammerlab.genomics.loci.parsing.ParsedLoci
 import org.hammerlab.genomics.reads.MappedRead
 import org.hammerlab.genomics.readsets.io.TestInputConfig
 import org.hammerlab.genomics.readsets.rdd.ReadsRDDUtil
+import org.hammerlab.genomics.reference.{ ContigName, Locus }
 import org.hammerlab.guacamole.commands.VariantSupport.Caller.AlleleCount
 import org.hammerlab.guacamole.pileup.{ Pileup, Util ⇒ PileupUtil }
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
@@ -28,7 +29,7 @@ class VariantSupportSuite
     )
 
   def testAlleleCounts(window: SlidingWindow[MappedRead],
-                       variantAlleleLoci: (String, Int, Seq[(String, String, Int)])*) = {
+                       variantAlleleLoci: (ContigName, Locus, Seq[(Bases, Bases, Int)])*) = {
     for {
       (contig, locus, alleleCounts) <- variantAlleleLoci
     } {
@@ -43,7 +44,7 @@ class VariantSupportSuite
     }
   }
 
-  def assertAlleleCounts(pileup: Pileup, alleleCounts: (String, String, Int)*): Unit = {
+  def assertAlleleCounts(pileup: Pileup, alleleCounts: (Bases, Bases, Int)*): Unit = {
     import org.hammerlab.genomics.bases.Bases.BasesOrdering
 
     implicit val bo = implicitly[Ordering[Bases]]
@@ -58,7 +59,7 @@ class VariantSupportSuite
       .toArray
       .sortBy(x => x)
 
-    computedAlleleCounts === (alleleCounts.sortBy(x => x))
+    computedAlleleCounts should === (alleleCounts.toArray.sortBy(x => x))
   }
 
   def gatkReads(loci: String) =
@@ -102,6 +103,11 @@ class VariantSupportSuite
     val pileup = makePileup(reads, "20", 10000624)
     assertAlleleCounts(pileup, ("T", "T", 6), ("T", "C", 1))
   }
+
+  implicit def convertVariant = liftImplicitTuple3[String, String, Int, Bases, Bases, Int] _
+  implicit def convertVariants = convertSeq[(String, String, Int), (Bases, Bases, Int)] _
+  implicit def convertPosition = liftImplicitTuple3[String, Int, Seq[(String, String, Int)], ContigName, Locus, Seq[(Bases, Bases, Int)]] _
+  implicit def convertPositions = convertSeq[(String, Int, Seq[(String, String, Int)]), (ContigName, Locus, Seq[(Bases, Bases, Int)])] _
 
   test("read evidence for simple snvs no filters") {
     val loci =

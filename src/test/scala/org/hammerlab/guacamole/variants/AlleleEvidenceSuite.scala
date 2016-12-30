@@ -29,9 +29,9 @@ class AlleleEvidenceSuite
       variantPileup
     )
 
-    variantEvidence.meanMappingQuality === (40.0)
-    variantEvidence.medianMappingQuality === (30)
-    variantEvidence.medianMismatchesPerRead === (1)
+    variantEvidence.meanMappingQuality should === (40.0)
+    variantEvidence.medianMappingQuality should === (30)
+    variantEvidence.medianMismatchesPerRead should === (1)
   }
 
   test("allele evidence from pileup, one read supports") {
@@ -50,9 +50,9 @@ class AlleleEvidenceSuite
       variantPileup
     )
 
-    variantEvidence.meanMappingQuality === (60.0)
-    variantEvidence.medianMappingQuality === (60)
-    variantEvidence.medianMismatchesPerRead === (1)
+    variantEvidence.meanMappingQuality should === (60.0)
+    variantEvidence.medianMappingQuality should === (60)
+    variantEvidence.medianMismatchesPerRead should === (1)
   }
 
   test("allele evidence from pileup, no read supports") {
@@ -71,8 +71,8 @@ class AlleleEvidenceSuite
       variantPileup
     )
 
-    variantEvidence.meanMappingQuality.toString === ("NaN")
-    variantEvidence.medianMappingQuality.toString === ("NaN")
-    variantEvidence.medianMismatchesPerRead.toString === ("NaN")
+    variantEvidence.meanMappingQuality.toString should === ("NaN")
+    variantEvidence.medianMappingQuality.toString should === ("NaN")
+    variantEvidence.medianMismatchesPerRead.toString should === ("NaN")
   }
 }

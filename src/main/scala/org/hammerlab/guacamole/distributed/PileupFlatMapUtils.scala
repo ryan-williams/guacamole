@@ -62,7 +62,7 @@ object PileupFlatMapUtils {
       halfWindowSize = 0,
       initialState = None,
       (maybePileup: Option[Pileup], windows: PerSample[SlidingWindow[MappedRead]]) => {
-        assert(windows.length == 1)
+        assert(windows.length === 1)
         val pileup = initOrMovePileup(maybePileup, sampleName, windows(0), reference.getContig(windows(0).contigName))
         (Some(pileup), function(pileup))
       }
@@ -90,7 +90,7 @@ object PileupFlatMapUtils {
       halfWindowSize = 0,
       initialState = None,
       function = (maybePileups: Option[(Pileup, Pileup)], windows: PerSample[SlidingWindow[MappedRead]]) => {
-        assert(windows.length == 2)
+        assert(windows.length === 2)
         val contigSequence = reference.getContig(windows(0).contigName)
         val pileup1 = initOrMovePileup(maybePileups.map(_._1), sample1Name, windows(0), contigSequence)
         val pileup2 = initOrMovePileup(maybePileups.map(_._2), sample2Name, windows(1), contigSequence)

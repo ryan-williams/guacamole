@@ -3,10 +3,10 @@ package org.hammerlab.guacamole.jointcaller.evidence
 import org.hammerlab.genomics.bases.Bases
 import org.hammerlab.genomics.readsets.{ PerSample, SampleId }
 import org.hammerlab.guacamole.jointcaller.Input.{ Analyte, TissueType }
-import org.hammerlab.guacamole.jointcaller.{ AlleleAtLocus, InputCollection, Parameters }
 import org.hammerlab.guacamole.jointcaller.annotation.{ MultiSampleAnnotations, SingleSampleAnnotations }
-import org.hammerlab.guacamole.jointcaller.pileup_summarization.MultiplePileupStats
-import org.hammerlab.guacamole.jointcaller.pileup_summarization.PileupStats.AlleleMixture
+import org.hammerlab.guacamole.jointcaller.pileup_summarization.{ AlleleMixture, MultiplePileupStats }
+import org.hammerlab.guacamole.jointcaller.{ AlleleAtLocus, InputCollection, Parameters }
+import org.scalautils.ConversionCheckedTripleEquals._
 
 import scala.collection.Set
 
@@ -290,7 +290,7 @@ case class MultiSampleSingleAlleleEvidence(parameters: Parameters,
     assume(
       multipleStats
         .singleSampleStats
-        .forall(_.referenceSequence.length == allele.end - allele.start)
+        .forall(allele.start + _.referenceSequence.length === allele.end)
     )
 
     copy(
@@ -322,7 +322,7 @@ case class MultiSampleSingleAlleleEvidence(parameters: Parameters,
           .zip(multipleStats.singleSampleStats)
           .zip(sampleEvidences)
           .map {
-            case ((input, stats), evidence) =>
+            case ((_, stats), evidence) =>
               evidence
                 .withAnnotations(
                   SingleSampleAnnotations(

@@ -73,7 +73,7 @@ class SomaticStandardCallerRealDataSuite
             minLikelihood = minLikelihood
           ).nonEmpty
 
-        foundVariant === (shouldFindVariant)
+        foundVariant should === (shouldFindVariant)
     }
   }
 

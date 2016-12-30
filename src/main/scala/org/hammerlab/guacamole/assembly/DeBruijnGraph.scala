@@ -6,6 +6,7 @@ import org.hammerlab.genomics.bases.Bases
 import org.hammerlab.genomics.reads.{ MappedRead, Read }
 import org.hammerlab.genomics.reference.{ KmerLength, Locus, WindowSize }
 import org.hammerlab.guacamole.assembly.DeBruijnGraph.{ Kmer, Sequence, SubKmer }
+import org.scalautils.ConversionCheckedTripleEquals._
 
 import scala.collection.mutable.{ HashSet ⇒ MHashSet, Map ⇒ MMap, Set ⇒ MSet, Stack ⇒ MStack }
 
@@ -59,7 +60,7 @@ class DeBruijnGraph(val kmerSize: KmerLength,
                         table: MMap[Kmer, List[Kmer]],
                         keyFunc: Kmer => SubKmer) = {
       val key = keyFunc(kmer)
-      val otherNodes = table(key).filterNot(_ == kmer)
+      val otherNodes = table(key).filterNot(_ === kmer)
       if (otherNodes.nonEmpty) {
         table.update(key, otherNodes)
       } else {
@@ -186,8 +187,8 @@ class DeBruijnGraph(val kmerSize: KmerLength,
                        avoidLoops: Boolean = true,
                        debugPrint: Boolean = false): List[Path] = {
 
-    assume(source.length == kmerSize, s"Source kmer ${source} has size ${source.length} != $kmerSize")
-    assume(sink.length == kmerSize, s"Sink kmer $sink has size ${sink.length} != $kmerSize")
+    assume(source.length === kmerSize, s"Source kmer ${source} has size ${source.length} != $kmerSize")
+    assume(sink.length === kmerSize, s"Sink kmer $sink has size ${sink.length} != $kmerSize")
 
     var paths = List.empty[Path]
     var visited: MSet[Kmer] = MSet.empty
@@ -199,7 +200,7 @@ class DeBruijnGraph(val kmerSize: KmerLength,
 
         // Check if merged node contains the sink, if so shortcut the search as this is the only path
         val mergedSink = mergeIndex.get(sink)
-        if (mergedSink.exists(node => node._1 == mergedNode && node._2 > pathIndex)) {
+        if (mergedSink.exists(node => node._1 === mergedNode && node._2 > pathIndex)) {
           val path: Path = List(mergedNode.slice(pathIndex, mergedSink.get._2 + kmerSize))
           return List(path)
         }
@@ -240,10 +241,15 @@ class DeBruijnGraph(val kmerSize: KmerLength,
       currentPath = next :: currentPath
 
       // Check if the source node was merged into the current one
-      lazy val foundMergedSink = nodeContainingSink.exists(_._1 == next)
-      val foundSink = (next == sink || foundMergedSink)
+      lazy val foundMergedSink = nodeContainingSink.exists(_._1 === next)
+      val foundSink = (next === sink || foundMergedSink)
       val nextNodes = children(next)
-      val filteredNextNodes = (if (avoidLoops) nextNodes.filterNot(visited.contains) else nextNodes)
+      val filteredNextNodes =
+        if (avoidLoops)
+          nextNodes.filterNot(visited.contains)
+        else
+          nextNodes
+
       if (!foundSink && filteredNextNodes.nonEmpty && currentPath.size < maxPathLength) {
 
         // Track if this is a branching node
@@ -346,8 +352,8 @@ object DeBruijnGraph {
 
     val kmerCounts = MMap.empty[Kmer, Int]
 
-    reads.foreach(
-      read => {
+    reads.zipWithIndex.foreach {
+      case (read, readIdx) =>
         read.sequence
           .sliding(kmerSize)
           .zipWithIndex
@@ -361,8 +367,7 @@ object DeBruijnGraph {
               }
             }
           )
-      }
-    )
+    }
 
     val graph = new DeBruijnGraph(kmerSize, kmerCounts.filter(_._2 >= minOccurrence))
 

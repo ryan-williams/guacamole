@@ -3,8 +3,7 @@ package org.hammerlab.guacamole.jointcaller.evidence
 import org.hammerlab.genomics.bases.Bases
 import org.hammerlab.guacamole.jointcaller._
 import org.hammerlab.guacamole.jointcaller.annotation.SingleSampleAnnotations
-import org.hammerlab.guacamole.jointcaller.pileup_summarization.PileupStats
-import org.hammerlab.guacamole.jointcaller.pileup_summarization.PileupStats.AlleleMixture
+import org.hammerlab.guacamole.jointcaller.pileup_summarization.{ AlleleMixture, PileupStats }
 
 /**
  * Summary of evidence for a particular germline allele in a single normal DNA sample.
@@ -14,7 +13,7 @@ import org.hammerlab.guacamole.jointcaller.pileup_summarization.PileupStats.Alle
  * @param logLikelihoods Map from germline genotypes to log10 likelihoods
  */
 case class NormalDNASingleSampleSingleAlleleEvidence(allele: AlleleAtLocus,
-                                                     allelicDepths: Map[Bases, Int],
+                                                     allelicDepths: AllelicDepths,
                                                      logLikelihoods: Map[(Bases, Bases), Double],
                                                      annotations: Option[SingleSampleAnnotations] = None)
     extends SingleSampleSingleAlleleEvidence {
@@ -56,7 +55,12 @@ object NormalDNASingleSampleSingleAlleleEvidence {
         )
         .toMap
 
-    val truncatedAllelicDepths = stats.truncatedAllelicDepths(parameters.maxAllelesPerSite + 1) // +1 for ref allele
-    NormalDNASingleSampleSingleAlleleEvidence(allele, truncatedAllelicDepths, logLikelihoods)
+    val truncatedAllelicDepths = stats.takeAllelicDepths(parameters.maxAllelesPerSite + 1)  // +1 for ref allele
+
+    NormalDNASingleSampleSingleAlleleEvidence(
+      allele,
+      truncatedAllelicDepths,
+      logLikelihoods
+    )
   }
 }

@@ -168,7 +168,7 @@ object AssemblyUtils extends Logging {
             case (CigarOperator.I | CigarOperator.D) if cigarIdx != 0 && cigarIdx != (numCigarElements - 1) =>
               // For insertions and deletions, report the variant with the last reference base attached
               val referenceAllele = referenceContig.slice(locus.prev, referenceLength + 1)
-              val alternateAllele: Bases = path.slice(pathIndex, pathIndex + pathLength)
+              val alternateAllele: Bases = path.slice(pathIndex - 1, pathIndex + pathLength)
 
               if (referenceAllele.nonEmpty &&
                 alternateAllele.nonEmpty &&

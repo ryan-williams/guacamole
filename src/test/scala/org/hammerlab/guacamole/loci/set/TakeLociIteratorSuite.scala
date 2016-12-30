@@ -22,7 +22,7 @@ class TakeLociIteratorSuite
 
     val expected = expectedStrs.map(TestLociSet.apply)
 
-    new TakeLociIterator(depths.iterator.buffered, 15, trimRanges).toList === (expected)
+    new TakeLociIterator(depths.iterator.buffered, 15, trimRanges).toList should === (expected)
   }
 
   test("simple") {

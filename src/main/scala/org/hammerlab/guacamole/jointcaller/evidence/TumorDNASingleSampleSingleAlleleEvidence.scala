@@ -1,10 +1,8 @@
 package org.hammerlab.guacamole.jointcaller.evidence
 
-import org.hammerlab.genomics.bases.Bases
 import org.hammerlab.guacamole.jointcaller._
 import org.hammerlab.guacamole.jointcaller.annotation.SingleSampleAnnotations
-import org.hammerlab.guacamole.jointcaller.pileup_summarization.PileupStats
-import org.hammerlab.guacamole.jointcaller.pileup_summarization.PileupStats.AlleleMixture
+import org.hammerlab.guacamole.jointcaller.pileup_summarization.{ AlleleMixture, PileupStats }
 
 /**
  *
@@ -15,7 +13,7 @@ import org.hammerlab.guacamole.jointcaller.pileup_summarization.PileupStats.Alle
  * @param logLikelihoods Map from allelic mixtures to log10 likelihoods
  */
 case class TumorDNASingleSampleSingleAlleleEvidence(allele: AlleleAtLocus,
-                                                    allelicDepths: Map[Bases, Int],
+                                                    allelicDepths: AllelicDepths,
                                                     logLikelihoods: Map[AlleleMixture, Double],
                                                     annotations: Option[SingleSampleAnnotations] = None)
     extends SingleSampleSingleAlleleEvidence {
@@ -30,6 +28,7 @@ case class TumorDNASingleSampleSingleAlleleEvidence(allele: AlleleAtLocus,
     copy(annotations = Some(newAnnotations))
   }
 }
+
 object TumorDNASingleSampleSingleAlleleEvidence {
 
   /** Create a (serializable) TumorDNASampleAlleleEvidence instance from (non-serializable) pileup statistics. */
@@ -42,13 +41,17 @@ object TumorDNASingleSampleSingleAlleleEvidence {
         stats.vaf(allele.alt)
       )
 
-    val possibleMixtures = Seq(Map(allele.ref -> 1.0)) ++ (
-      if (allele.ref != allele.alt)
-        Seq(Map(allele.alt -> altVaf, allele.ref -> (1.0 - altVaf)))
-      else
-        Seq.empty)
+    val possibleMixtures =
+      Seq(AlleleMixture(allele.ref -> 1.0)) ++
+      (
+        if (allele.ref != allele.alt)
+          Seq(AlleleMixture(allele.alt -> altVaf, allele.ref -> (1.0 - altVaf)))
+        else
+          Seq.empty
+      )
+
     val logLikelihoods = possibleMixtures.map(mixture => mixture -> stats.logLikelihoodPileup(mixture)).toMap
-    val truncatedAllelicDepths = stats.truncatedAllelicDepths(parameters.maxAllelesPerSite + 1) // +1 for ref allele
+    val truncatedAllelicDepths = stats.takeAllelicDepths(parameters.maxAllelesPerSite + 1)  // +1 for ref allele
     TumorDNASingleSampleSingleAlleleEvidence(allele, truncatedAllelicDepths, logLikelihoods)
   }
 }

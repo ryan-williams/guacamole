@@ -8,7 +8,7 @@ import org.bdgenomics.adam.serialization.ADAMKryoRegistrator
 import org.hammerlab.genomics.bases.Base
 import org.hammerlab.genomics.loci.map.{ Contig, ContigSerializer, LociMap, Serializer }
 import org.hammerlab.genomics.reference.{ ContigLengths, Position }
-import org.hammerlab.genomics.{ bases, readsets }
+import org.hammerlab.genomics.{ bases, readsets, reference }
 import org.hammerlab.guacamole.jointcaller.kryo.{ Registrar ⇒ JointCallerRegistrar }
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.loci.partitioning.LociPartitioning
@@ -75,6 +75,6 @@ class Registrar extends KryoRegistrator {
 
     kryo.register(classOf[Allele])
 
-    //new readsets.Registrar().registerClasses(kryo)
+    new reference.Registrar().registerClasses(kryo)
   }
 }

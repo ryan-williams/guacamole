@@ -39,16 +39,14 @@ case class PileupElement(
   val referenceBase: Base = contigSequence(locus)
 
   def cigarElement = read.cigarElements(cigarElementIndex)
-  def nextCigarElement =
-    if (cigarElementIndex + 1 < read.cigarElements.size) {
-      Some(read.cigarElements(cigarElementIndex + 1))
-    } else {
-      None
-    }
 
-  def referenceStringIndex =
-    (cigarElementLocus - read.start).toInt +
-      (if (cigarElement.getOperator.consumesReferenceBases()) indexWithinCigarElement else 0)
+  def nextCigarElement =
+    if (cigarElementIndex + 1 < read.cigarElements.size)
+      Some(read.cigarElements(cigarElementIndex + 1))
+    else
+      None
+
+  def referenceStringIndex = (cigarElementLocus - read.start).toInt + cigarElement.getReferenceLength
 
   def cigarElementReadLength = cigarElement.getReadLength
   def cigarElementReferenceLength = cigarElement.getReferenceLength

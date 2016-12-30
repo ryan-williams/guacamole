@@ -6,15 +6,16 @@ import org.apache.spark.rdd.RDD
 import org.hammerlab.commands.Args
 import org.hammerlab.genomics.loci.parsing.ParsedLoci
 import org.hammerlab.genomics.loci.set.LociSet
+import org.hammerlab.genomics.readsets.args.{ ReferenceArgs, Arguments ⇒ ReadSetsArguments }
 import org.hammerlab.genomics.readsets.{ PerSample, ReadSets }
+import org.hammerlab.genomics.reference.Region
 import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.pileupFlatMapMultipleSamples
+import org.hammerlab.guacamole.jointcaller.VCFOutput.writeVcf
 import org.hammerlab.guacamole.jointcaller.evidence.{ MultiSampleMultiAlleleEvidence, MultiSampleSingleAlleleEvidence }
-import org.hammerlab.guacamole.jointcaller.{ Input, InputCollection, Parameters, VCFOutput }
+import org.hammerlab.guacamole.jointcaller.{ Input, InputCollection, Parameters }
 import org.hammerlab.guacamole.loci.args.ForceCallLociArgs
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.guacamole.pileup.Pileup
-import org.hammerlab.genomics.readsets.args.{ ReferenceArgs, Arguments ⇒ ReadSetsArguments }
-import org.hammerlab.genomics.reference.Region
 import org.hammerlab.guacamole.readsets.rdd.{ PartitionedRegions, PartitionedRegionsArgs }
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.kohsuke.args4j.spi.StringArrayOptionHandler
@@ -237,7 +238,7 @@ object SomaticJoint {
         )
       )
 
-      VCFOutput.writeVcf(
+      writeVcf(
         path = out,
         calls = filteredCalls,
         inputs = InputCollection(filteredInputs),

@@ -8,6 +8,7 @@ import org.hammerlab.guacamole.loci.partitioning.MicroRegionPartitioner.{ MicroP
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
 import org.hammerlab.spark.{ NumPartitions, PartitionIndex }
 import org.kohsuke.args4j.{ Option ⇒ Args4jOption }
+import org.scalautils.ConversionCheckedTripleEquals._
 
 import scala.collection.Map
 import scala.reflect.ClassTag
@@ -185,7 +186,7 @@ class MicroRegionPartitioner[R <: Region: ClassTag](regions: RDD[R],
       microPartition += 1
     }
     val result = builder.result
-    assert(result.count == loci.count, s"Expected ${loci.count} loci, got ${result.count}")
+    assert(result.count === loci.count, s"Expected ${loci.count} loci, got ${result.count}")
     result
   }
 }

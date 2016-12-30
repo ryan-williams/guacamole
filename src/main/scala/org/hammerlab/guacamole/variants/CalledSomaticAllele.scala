@@ -31,7 +31,9 @@ case class CalledSomaticAllele(sampleName: SampleName,
                                tumorVariantEvidence: AlleleEvidence,
                                normalReferenceEvidence: AlleleEvidence,
                                rsID: Option[Int] = None,
-                               override val length: NumLoci = 1) extends ReferenceVariant {
+                               override val length: NumLoci = 1)
+  extends ReferenceVariant {
+
   val end: Locus = start.next
 
   // P ( variant in tumor AND no variant in normal) = P(variant in tumor) * P(reference in normal)

@@ -5,7 +5,7 @@ import org.hammerlab.genomics.loci.set.LociSet
 import org.hammerlab.genomics.loci.set.test.TestLociSet
 import org.hammerlab.genomics.readsets.rdd.RegionsRDDUtil
 import org.hammerlab.genomics.reference.test.{ ContigLengthsUtil, TestRegion }
-import org.hammerlab.genomics.reference.{ ContigLengths, Position }
+import org.hammerlab.genomics.reference.{ ContigLengths, ContigName, Position }
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.util.GuacFunSuite
 import org.hammerlab.magic.rdd.cmp.CmpStats
@@ -23,7 +23,7 @@ class CoverageRDDSuite
     classOf[CmpStats],
     "scala.Tuple2$mcIZ$sp",
     classOf[scala.collection.mutable.Queue[_]],
-    classOf[scala.collection.mutable.LinkedList[_]],
+//    classOf[scala.collection.mutable.LinkedList[_]],
     classOf[Array[Int]]
   )
 
@@ -41,11 +41,13 @@ class CoverageRDDSuite
 
   lazy val coverageRDD = new CoverageRDD(readsRDD)
 
+  implicit def ttcl(t: (String, Int)): (ContigName, Int) = (t._1, t._2)
+
   val contigLengths: ContigLengths =
     makeContigLengths(
-      "chr1" -> 1000,
-      "chr2" -> 1000,
-      "chr5" -> 1000
+      "chr1" → 1000,
+      "chr2" → 1000,
+      "chr5" → 1000
     )
 
   test("all loci") {
@@ -58,26 +60,26 @@ class CoverageRDDSuite
 
     val expected =
       List(
-        "chr1:100" -> ( 1,  1),
-        "chr1:101" -> ( 2,  1),
-        "chr1:102" -> ( 2,  0),
-        "chr1:103" -> ( 2,  0),
-        "chr1:104" -> ( 2,  0),
-        "chr1:105" -> ( 1,  0),
-        "chr2:8"   -> ( 1,  1),
-        "chr2:9"   -> ( 1,  1),
-        "chr2:10"  -> ( 1,  0),
-        "chr2:102" -> ( 1,  1),
-        "chr2:103" -> (11, 10),
-        "chr2:104" -> (11,  0),
-        "chr2:105" -> (10,  0),
-        "chr5:90"  -> (10, 10)
+        "chr1:100" → ( 1,  1),
+        "chr1:101" → ( 2,  1),
+        "chr1:102" → ( 2,  0),
+        "chr1:103" → ( 2,  0),
+        "chr1:104" → ( 2,  0),
+        "chr1:105" → ( 1,  0),
+        "chr2:8"   → ( 1,  1),
+        "chr2:9"   → ( 1,  1),
+        "chr2:10"  → ( 1,  0),
+        "chr2:102" → ( 1,  1),
+        "chr2:103" → (11, 10),
+        "chr2:104" → (11,  0),
+        "chr2:105" → (10,  0),
+        "chr5:90"  → (10, 10)
       )
 
     checkCoverage(traversalCoverage, expected)
     checkCoverage(explodedCoverage, expected)
 
-    traversalCoverage.compare(explodedCoverage).stats === (CmpStats(14))
+    traversalCoverage.compare(explodedCoverage).stats should === (CmpStats(14))
   }
 
   test("some loci, half-window") {
@@ -105,7 +107,7 @@ class CoverageRDDSuite
     checkCoverage(traversalCoverage, expected)
     checkCoverage(explodedCoverage, expected)
 
-    traversalCoverage.compare(explodedCoverage).stats === (CmpStats(10))
+    traversalCoverage.compare(explodedCoverage).stats should === (CmpStats(10))
   }
 
   def checkCoverage(rdd: RDD[(Position, Coverage)], expected: List[(String, (Int, Int))]): Unit = {

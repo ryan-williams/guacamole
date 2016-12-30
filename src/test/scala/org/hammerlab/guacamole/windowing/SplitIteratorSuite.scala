@@ -28,16 +28,16 @@ class SplitIteratorSuite extends FunSuite with Matchers {
     val split = splitIterators.map(_.toList.map(_._2))
     assert(!iterator.hasNext)
 
-    split(0) === (Seq("a", "b", "f", "m", "n", "o"))
-    split(1) === (Seq("g", "h", "l"))
-    split(2) === (Seq("d", "j"))
-    split(3) === (Seq("c", "e", "i", "k"))
+    split(0) should === (Seq("a", "b", "f", "m", "n", "o"))
+    split(1) should === (Seq("g", "h", "l"))
+    split(2) should === (Seq("d", "j"))
+    split(3) should === (Seq("c", "e", "i", "k"))
 
   }
 
   test("test split iterator head") {
     val split = SplitIterator.split[(Int, String)](4, data1.iterator, _._1).map(_.head._2)
-    split === (Seq("a", "g", "d", "c"))
+    split should === (Seq("a", "g", "d", "c"))
   }
 
   test("test split iterator hasNext") {
@@ -45,13 +45,13 @@ class SplitIteratorSuite extends FunSuite with Matchers {
     val iterators = SplitIterator.split[(Int, String)](5, iterator, _._1)
     assert(iterator.hasNext)
     val nexts = iterators.map(_.hasNext)
-    nexts === (Seq(true, true, true, true, false))
+    nexts should === (Seq(true, true, true, true, false))
 
     assert(!iterator.hasNext) // should have forced a buffering of all elements.
     val split = iterators.map(_.toList.map(_._2))
-    split(0) === (Seq("a", "b", "f", "m", "n", "o"))
-    split(1) === (Seq("g", "h", "l"))
-    split(2) === (Seq("d", "j"))
-    split(3) === (Seq("c", "e", "i", "k"))
+    split(0) should === (Seq("a", "b", "f", "m", "n", "o"))
+    split(1) should === (Seq("g", "h", "l"))
+    split(2) should === (Seq("d", "j"))
+    split(3) should === (Seq("c", "e", "i", "k"))
   }
 }

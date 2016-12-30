@@ -11,7 +11,8 @@ import org.kohsuke.args4j.{ Option ⇒ Args4jOption }
 import org.scalautils.ConversionCheckedTripleEquals._
 import spire.implicits._
 import spire.math.Integral
-import org.scalautils.ConversionCheckedTripleEquals._
+
+import scala.math.{ max, min, round }
 
 trait UniformPartitionerArgs {
   @Args4jOption(
@@ -52,18 +53,18 @@ private[partitioning] sealed abstract class UniformPartitionerBase[N: Integral](
 
     assume(numPartitions >= 1, "`numPartitions` (--parallelism) should be >= 1")
 
-    val lociPerPartition = math.max(1, loci.count.toDouble / numPartitions.toDouble())
+    val lociPerPartition = max(1, loci.count.num.toDouble / numPartitions.toDouble)
 
     progress(
       "Splitting loci evenly among %,d numPartitions = ~%,.0f loci per partition"
       .format(numPartitions.toLong(), lociPerPartition)
     )
 
-    var lociAssigned = 0L
+    var lociAssigned = NumLoci(0)
 
     var partition = Integral[N].zero
 
-    def remainingForThisPartition = math.round(((partition + 1).toDouble * lociPerPartition) - lociAssigned)
+    def remainingForThisPartition = round(((partition + 1).toDouble * lociPerPartition) - lociAssigned)
 
     val builder = LociMap.newBuilder[N]
 
@@ -74,7 +75,7 @@ private[partitioning] sealed abstract class UniformPartitionerBase[N: Integral](
       var start = range.start
       val end = range.end
       while (start < end) {
-        val length = NumLoci(math.min(remainingForThisPartition, end - start))
+        val length = NumLoci(min(remainingForThisPartition, end - start))
         builder.put(contig.name, start, start + length, partition)
         start += length
         lociAssigned += length

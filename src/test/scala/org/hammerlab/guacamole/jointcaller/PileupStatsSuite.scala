@@ -1,12 +1,12 @@
 package org.hammerlab.guacamole.jointcaller
 
-import org.hammerlab.genomics.bases.Bases
+import org.hammerlab.genomics.bases.Base.{ A, C, G, N, T }
+import org.hammerlab.genomics.bases.{ Base, Bases }
+import org.hammerlab.genomics.bases.Bases._
 import org.hammerlab.genomics.reads.ReadsUtil
-import org.hammerlab.guacamole.jointcaller.pileup_summarization.PileupStats
+import org.hammerlab.guacamole.jointcaller.pileup_summarization.{ AlleleMixture, PileupStats }
 import org.hammerlab.guacamole.pileup.{ Util ⇒ PileupUtil }
 import org.hammerlab.guacamole.reference.{ ReferenceBroadcast, ReferenceUtil }
-import org.hammerlab.genomics.bases.Bases._
-import org.hammerlab.guacamole.jointcaller.pileup_summarization.PileupStats.AlleleMixture
 import org.hammerlab.guacamole.util.GuacFunSuite
 import org.hammerlab.guacamole.util.TestUtil.resourcePath
 
@@ -35,6 +35,14 @@ class PileupStatsSuite
   val refString = "NTCGATCGA"
   override lazy val reference = makeReference(sc, "chr1", 0, refString)
 
+  implicit def makeSimpleMixture(m: Map[Base, Double]): AlleleMixture = m.map(t => Bases(t._1) → t._2)
+  implicit def makeAllelicDepthsFromBaseMap(m: Map[Base, Int]): AllelicDepths = m.map(t => Bases(t._1) → t._2)
+  implicit def makeAllelicDepthsFromStringMap(m: Map[String, Int]): AllelicDepths = m.map(t => (t._1: Bases) → t._2)
+
+  implicit def s2v[T](s: Seq[T]): Vector[T] = s.toVector
+
+  implicit val m2m = liftMap[String, Int, Bases, Int] _
+
   test("pileupstats likelihood computation") {
 
     val reads =
@@ -49,25 +57,25 @@ class PileupStatsSuite
 
     val pileups = (1 until refString.length).map(locus => makePileup(reads, "chr1", locus))
 
-    val stats1 = PileupStats.apply(pileups(1).elements, "G")
-    stats1.totalDepthIncludingReadsContributingNoAlleles === (6)
-    stats1.allelicDepths === (Map("G" -> 6))
-    stats1.nonRefAlleles === (Seq.empty)
-    stats1.topAlt === ("N")
-    stats1.logLikelihoodPileup(Map("G" -> 1.0)) should be > stats1.logLikelihoodPileup(Map("G" -> .99, "C" -> .01))
-    //assert(stats1.logLikelihoodPileup(Map("G" -> 1.0)) > stats1.logLikelihoodPileup(Map("G" -> .99, "C" -> .01)))
-    assert(stats1.logLikelihoodPileup(Map("T" -> 1.0)) < stats1.logLikelihoodPileup(Map("G" -> .99, "C" -> .01)))
+    val stats1 = PileupStats.apply(pileups(1).elements, G)
+    stats1.totalDepthIncludingReadsContributingNoAlleles should === (6)
+    stats1.allelicDepths should === (Map(G -> 6))
+    stats1.nonRefAlleles should === (Seq.empty)
+    stats1.topAlt should === (N)
+    stats1.logLikelihoodPileup(Map(G -> 1.0)) should be > stats1.logLikelihoodPileup(Map(G → .99, C -> .01))
+    //stats1.logLikelihoodPileup(Map(G -> 1.0)) should be > stats1.logLikelihoodPileup(Map(G -> .99, C -> .01))
+    stats1.logLikelihoodPileup(Map(T -> 1.0)) should be < stats1.logLikelihoodPileup(Map(G -> .99, C -> .01))
 
-    val stats2 = PileupStats.apply(pileups(2).elements, "A")
-    stats2.allelicDepths === (Map("A" -> 2, "C" -> 3, "ACCC" -> 1))
-    stats2.nonRefAlleles === (Seq("C", "ACCC"))
-    assert(stats2.logLikelihoodPileup(Map("A" -> 0.5, "C" -> 0.5)) > stats2.logLikelihoodPileup(Map("A" -> 1.0)))
+    val stats2 = PileupStats.apply(pileups(2).elements, A)
+    stats2.allelicDepths should === (Map("A" -> 2, "C" -> 3, "ACCC" -> 1))
+    stats2.nonRefAlleles should === (Seq[Bases](C, "ACCC"))
+    assert(stats2.logLikelihoodPileup(Map(A -> 0.5, C -> 0.5)) > stats2.logLikelihoodPileup(Map(A -> 1.0)))
 
     // True because of the higher base qualities on the C allele:
-    assert(stats2.logLikelihoodPileup(Map("C" -> 1.0)) > stats2.logLikelihoodPileup(Map("A" -> 1.0)))
+    assert(stats2.logLikelihoodPileup(Map(C -> 1.0)) > stats2.logLikelihoodPileup(Map(A -> 1.0)))
 
-    val stats3 = PileupStats.apply(pileups(3).elements, "T")
-    stats3.totalDepthIncludingReadsContributingNoAlleles === (6)
-    stats3.allelicDepths === (Map("T" -> 2)) // reads with an SNV at position 4 don't count
+    val stats3 = PileupStats.apply(pileups(3).elements, T)
+    stats3.totalDepthIncludingReadsContributingNoAlleles should === (6)
+    stats3.allelicDepths should === (Map(T -> 2)) // reads with an SNV at position 4 don't count
   }
 }

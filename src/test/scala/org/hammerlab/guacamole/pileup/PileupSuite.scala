@@ -4,7 +4,7 @@ import org.hammerlab.genomics.bases.Base.{ A, C, G, T }
 import org.hammerlab.genomics.reads.{ MappedRead, ReadsUtil }
 import org.hammerlab.genomics.reference.Locus
 import org.hammerlab.guacamole.reference.ReferenceUtil
-import org.hammerlab.guacamole.util.{ AssertBases, GuacFunSuite }
+import org.hammerlab.guacamole.util.GuacFunSuite
 import org.hammerlab.guacamole.variants.Allele
 import org.scalatest.prop.TableDrivenPropertyChecks
 
@@ -42,16 +42,16 @@ class PileupSuite
       )
 
     val firstPileup = makePileup(reads, "chr1", 1)
-    firstPileup.elements.forall(_.isMatch) === (true)
-    firstPileup.elements.forall(_.qualityScore == 31) === (true)
+    firstPileup.elements.forall(_.isMatch) should === (true)
+    firstPileup.elements.forall(_.qualityScore == 31) should === (true)
 
     val insertPileup = makePileup(reads, "chr1", 4)
-    insertPileup.elements.exists(_.isInsertion) === (true)
-    insertPileup.elements.forall(_.qualityScore == 31) === (true)
+    insertPileup.elements.exists(_.isInsertion) should === (true)
+    insertPileup.elements.forall(_.qualityScore == 31) should === (true)
 
-    insertPileup.elements(0).alignment === (Match(A, 31.toByte))
-    insertPileup.elements(1).alignment === (Match(A, 31.toByte))
-    insertPileup.elements(2).alignment === (Insertion("ACCC", Seq(31, 31, 31, 31).map(_.toByte)))
+    insertPileup.elements(0).alignment should === (Match(A, 31.toByte))
+    insertPileup.elements(1).alignment should === (Match(A, 31.toByte))
+    insertPileup.elements(2).alignment should === (Insertion("ACCC", Seq(31, 31, 31, 31).map(_.toByte)))
   }
 
   test("create pileup from long insert reads; different qualities in insertion") {
@@ -63,13 +63,13 @@ class PileupSuite
       )
 
     val insertPileup = makePileup(reads, "chr1", 4)
-    insertPileup.elements.exists(_.isInsertion) === (true)
-    insertPileup.elements.exists(_.qualityScore == 5) === (true)
+    insertPileup.elements.exists(_.isInsertion) should === (true)
+    insertPileup.elements.exists(_.qualityScore == 5) should === (true)
 
     insertPileup.elements.foreach(
       _.alignment match {
-        case Match(_, quality)       => quality === (25)
-        case Insertion(_, qualities) => qualities === (Seq(25, 5, 5, 5))
+        case Match(_, quality)       => quality should === (25)
+        case Insertion(_, qualities) => qualities should === (Seq[Byte](25, 5, 5, 5))
         case a                       => assert(false, s"Unexpected Alignment: $a")
       })
   }
@@ -83,8 +83,8 @@ class PileupSuite
       )
 
     val pastInsertPileup = makePileup(reads, "chr1", 5)
-    pastInsertPileup.elements.foreach(_.isMatch === (true))
-    pastInsertPileup.elements.foreach(_.qualityScore === (10))
+    pastInsertPileup.elements.foreach(_.isMatch should === (true))
+    pastInsertPileup.elements.foreach(_.qualityScore should === (10))
   }
 
   test("create pileup from long insert reads; after insertion") {
@@ -96,8 +96,8 @@ class PileupSuite
       )
 
     val lastPileup = makePileup(reads, "chr1", 7)
-    lastPileup.elements.foreach(e => AssertBases(e.sequencedBases, "G"))
-    lastPileup.elements.forall(_.isMatch) === (true)
+    lastPileup.elements.foreach(e => e.sequencedBases should ===("G"))
+    lastPileup.elements.forall(_.isMatch) should === (true)
   }
 
   test("create pileup from long insert reads; end of read") {
@@ -110,23 +110,23 @@ class PileupSuite
       )
 
     val lastPileup = makePileup(reads, "chr1", 8)
-    lastPileup.elements.foreach(e => AssertBases(e.sequencedBases, "A"))
-    lastPileup.elements.forall(_.sequencedBases.headOption.exists(_ == A)) === (true)
+    lastPileup.elements.foreach(e => e.sequencedBases should ===("A"))
+    lastPileup.elements.forall(_.sequencedBases.headOption.exists(_ === A)) should === (true)
 
-    lastPileup.elements.forall(_.isMatch) === (true)
-    lastPileup.elements.forall(_.qualityScore == 25) === (true)
+    lastPileup.elements.forall(_.isMatch) should === (true)
+    lastPileup.elements.forall(_.qualityScore == 25) should === (true)
   }
 
   test("Load pileup from SAM file") {
     val pileup = loadPileup(sc, "same_start_reads.sam", locus = 0)
-    pileup.elements.length === (10)
+    pileup.elements.length should === (10)
   }
 
   test("First 60 loci should have all 10 reads") {
     val pileup = loadPileup(sc, "same_start_reads.sam", locus = 0)
     for (i <- 1 to 59) {
       val nextPileup = pileup.atGreaterLocus(i, Seq.empty.iterator)
-      nextPileup.elements.length === (10)
+      nextPileup.elements.length should === (10)
     }
   }
 
@@ -134,16 +134,16 @@ class PileupSuite
     val read = makeRead("AATTG", "5M", 0, "chr2")
     val firstElement = pileupElementFromRead(read, 0)
 
-    firstElement.isMatch === (true)
-    firstElement.indexWithinCigarElement === (0L)
+    firstElement.isMatch should === (true)
+    firstElement.indexWithinCigarElement should === (0L)
 
     val secondElement = firstElement.advanceToLocus(1L)
-    secondElement.isMatch === (true)
-    secondElement.indexWithinCigarElement === (1L)
+    secondElement.isMatch should === (true)
+    secondElement.indexWithinCigarElement should === (1L)
 
     val thirdElement = secondElement.advanceToLocus(2L)
-    thirdElement.isMatch === (true)
-    thirdElement.indexWithinCigarElement === (2L)
+    thirdElement.isMatch should === (true)
+    thirdElement.indexWithinCigarElement should === (2L)
 
   }
 
@@ -151,19 +151,19 @@ class PileupSuite
     val read = makeRead("AAATTT", "3M3M", 0, "chr3")
 
     val secondMatch = pileupElementFromRead(read, 3)
-    secondMatch.isMatch === (true)
-    secondMatch.indexWithinCigarElement === (0L)
+    secondMatch.isMatch should === (true)
+    secondMatch.indexWithinCigarElement should === (0L)
 
     val secondMatchSecondElement = pileupElementFromRead(read, 4)
-    secondMatchSecondElement.isMatch === (true)
-    secondMatchSecondElement.indexWithinCigarElement === (1L)
+    secondMatchSecondElement.isMatch should === (true)
+    secondMatchSecondElement.indexWithinCigarElement should === (1L)
 
   }
 
   test("insertion at contig start includes trailing base") {
     val contigStartInsertionRead = makeRead("AAAAAACGT", "5I4M", 0, "chr1")
     val pileup = pileupElementFromRead(contigStartInsertionRead, 0)
-    pileup.alignment === (Insertion("AAAAAA", List(31, 31, 31, 31, 31, 31)))
+    pileup.alignment should === (Insertion("AAAAAA", List(31, 31, 31, 31, 31, 31)))
   }
 
   test("pileup alignment at insertion cigar-element throws") {
@@ -184,25 +184,25 @@ class PileupSuite
     val read = makeRead("AATTGAATTG", "5M1D5M", 0, "chr4")
     val firstElement = pileupElementFromRead(read, 0)
 
-    firstElement.isMatch === (true)
-    firstElement.indexWithinCigarElement === (0L)
+    firstElement.isMatch should === (true)
+    firstElement.indexWithinCigarElement should === (0L)
 
     val deletionElement = firstElement.advanceToLocus(4L)
-    deletionElement.alignment === (Deletion("GC", 1.toByte))
-    deletionElement.isDeletion === (true)
-    deletionElement.indexWithinCigarElement === (4L)
+    deletionElement.alignment should === (Deletion("GC", 1.toByte))
+    deletionElement.isDeletion should === (true)
+    deletionElement.indexWithinCigarElement should === (4L)
 
     val midDeletionElement = deletionElement.advanceToLocus(5L)
-    midDeletionElement.isMidDeletion === (true)
-    midDeletionElement.indexWithinCigarElement === (0L)
+    midDeletionElement.isMidDeletion should === (true)
+    midDeletionElement.indexWithinCigarElement should === (0L)
 
     val pastDeletionElement = midDeletionElement.advanceToLocus(6L)
-    pastDeletionElement.isMatch === (true)
-    pastDeletionElement.indexWithinCigarElement === (0L)
+    pastDeletionElement.isMatch should === (true)
+    pastDeletionElement.indexWithinCigarElement should === (0L)
 
     val continuePastDeletionElement = pastDeletionElement.advanceToLocus(9L)
-    continuePastDeletionElement.isMatch === (true)
-    continuePastDeletionElement.indexWithinCigarElement === (3L)
+    continuePastDeletionElement.isMatch should === (true)
+    continuePastDeletionElement.indexWithinCigarElement should === (3L)
 
   }
 
@@ -212,15 +212,15 @@ class PileupSuite
 
     deletionPileup.elements.map(_.alignment).count {
       case Deletion(bases, _) => {
-        AssertBases(bases, "AAAAAAAAAAA")
+        bases should ===("AAAAAAAAAAA")
         true
       }
       case _ => false
-    } === (5)
+    } should === (5)
 
     for (i <- 10 to 19) {
       val nextPileup = pileup.atGreaterLocus(i, Seq.empty.iterator)
-      nextPileup.elements.count(_.isMidDeletion) === (5)
+      nextPileup.elements.count(_.isMidDeletion) should === (5)
     }
   }
 
@@ -228,7 +228,7 @@ class PileupSuite
     val pileup = loadPileup(sc, "same_start_reads.sam", locus = 0)
     for (i <- 60 to 69) {
       val nextPileup = pileup.atGreaterLocus(i, Seq.empty.iterator)
-      nextPileup.elements.length === (5)
+      nextPileup.elements.length should === (5)
     }
   }
 
@@ -269,7 +269,7 @@ class PileupSuite
     }
     val at5 = pileupElementFromRead(decadentRead1, 5)
     assert(at5 != null)
-    AssertBases(at5.sequencedBases, "A")
+    at5.sequencedBases should ===("A")
 
     // At the end of the read:
     assert(pileupElementFromRead(decadentRead1, 74) != null)
@@ -279,21 +279,21 @@ class PileupSuite
 
     // Just before the deletion
     val deletionPileup = pileupElementFromRead(decadentRead1, 5 + 28)
-    deletionPileup.alignment === (Deletion("AGGGGGGGGGG", 1.toByte))
+    deletionPileup.alignment should === (Deletion("AGGGGGGGGGG", 1.toByte))
 
     // Inside the deletion
     val at29 = pileupElementFromRead(decadentRead1, 5 + 29)
-    assert(at29.sequencedBases.size === 0)
+    at29.sequencedBases.size should ===(0)
     val at38 = pileupElementFromRead(decadentRead1, 5 + 38)
-    assert(at38.sequencedBases.size === 0)
+    at38.sequencedBases.size should ===(0)
     // Just after the deletion
-    AssertBases(pileupElementFromRead(decadentRead1, 5 + 39).sequencedBases, "A")
+    pileupElementFromRead(decadentRead1, 5 + 39).sequencedBases should ===(A)
 
     // advanceToLocus is a no-op on the same locus,
     // and fails in lower loci
     forAll(Table("locus", List(5, 33, 34, 43, 44, 74): _*)) { locus =>
       val elt = pileupElementFromRead(decadentRead1, locus)
-      assert(elt.advanceToLocus(locus) === elt)
+      elt.advanceToLocus(locus) should ===(elt)
       intercept[AssertionError] {
         elt.advanceToLocus(locus - 1)
       }
@@ -305,11 +305,11 @@ class PileupSuite
     val read3Record = testAdamRecords(2) // read3
     val read3At15 = pileupElementFromRead(read3Record, 15)
     assert(read3At15 != null)
-    AssertBases(read3At15.sequencedBases, "A")
-    AssertBases(read3At15.advanceToLocus(16).sequencedBases, "T")
-    AssertBases(read3At15.advanceToLocus(17).sequencedBases, "C")
-    AssertBases(read3At15.advanceToLocus(16).advanceToLocus(17).sequencedBases, "C")
-    AssertBases(read3At15.advanceToLocus(18).sequencedBases, "G")
+    read3At15.sequencedBases should ===("A")
+    read3At15.advanceToLocus(16).sequencedBases should ===("T")
+    read3At15.advanceToLocus(17).sequencedBases should ===("C")
+    read3At15.advanceToLocus(16).advanceToLocus(17).sequencedBases should ===("C")
+    read3At15.advanceToLocus(18).sequencedBases should ===("G")
   }
 
   test("Read4 has CIGAR: 10M10I10D40M. It's ACGT repeated 15 times") {
@@ -317,15 +317,15 @@ class PileupSuite
     val read4At20 = pileupElementFromRead(decadentRead4, 20)
     assert(read4At20 != null)
     for (i <- 0 until 2) {
-      assert(read4At20.advanceToLocus(20 + i * 4 + 0).sequencedBases(0) == A)
-      assert(read4At20.advanceToLocus(20 + i * 4 + 1).sequencedBases(0) == C)
-      assert(read4At20.advanceToLocus(20 + i * 4 + 2).sequencedBases(0) == G)
-      assert(read4At20.advanceToLocus(20 + i * 4 + 3).sequencedBases(0) == T)
+      read4At20.advanceToLocus(20 + i * 4 + 0).sequencedBases(0) should ===(A)
+      read4At20.advanceToLocus(20 + i * 4 + 1).sequencedBases(0) should ===(C)
+      read4At20.advanceToLocus(20 + i * 4 + 2).sequencedBases(0) should ===(G)
+      read4At20.advanceToLocus(20 + i * 4 + 3).sequencedBases(0) should ===(T)
     }
 
     val read4At30 = read4At20.advanceToLocus(20 + 9)
-    read4At30.isInsertion === (true)
-    AssertBases(read4At30.sequencedBases, "CGTACGTACGT")
+    read4At30.isInsertion should === (true)
+    read4At30.sequencedBases should ===("CGTACGTACGT")
   }
 
   test("Read5: ACGTACGTACGTACG, 5M4=1X5=") {
@@ -334,14 +334,14 @@ class PileupSuite
     val decadentRead5 = testAdamRecords(4)
     val read5At10 = pileupElementFromRead(decadentRead5, 10)
     assert(read5At10 != null)
-    AssertBases(read5At10.advanceToLocus(10).sequencedBases, A)
-    AssertBases(read5At10.advanceToLocus(14).sequencedBases, A)
-    AssertBases(read5At10.advanceToLocus(18).sequencedBases, A)
-    AssertBases(read5At10.advanceToLocus(19).sequencedBases, C)
-    AssertBases(read5At10.advanceToLocus(20).sequencedBases, G)
-    AssertBases(read5At10.advanceToLocus(21).sequencedBases, T)
-    AssertBases(read5At10.advanceToLocus(22).sequencedBases, A)
-    AssertBases(read5At10.advanceToLocus(24).sequencedBases, G)
+    read5At10.advanceToLocus(10).sequencedBases should ===(A)
+    read5At10.advanceToLocus(14).sequencedBases should ===(A)
+    read5At10.advanceToLocus(18).sequencedBases should ===(A)
+    read5At10.advanceToLocus(19).sequencedBases should ===(C)
+    read5At10.advanceToLocus(20).sequencedBases should ===(G)
+    read5At10.advanceToLocus(21).sequencedBases should ===(T)
+    read5At10.advanceToLocus(22).sequencedBases should ===(A)
+    read5At10.advanceToLocus(24).sequencedBases should ===(G)
   }
 
   test("read6: ACGTACGTACGT 4=1N4=4S") {
@@ -351,13 +351,13 @@ class PileupSuite
     val read6At99 = pileupElementFromRead(decadentRead6, 99)
 
     assert(read6At99 != null)
-    AssertBases(read6At99.advanceToLocus(99).sequencedBases, A)
-    AssertBases(read6At99.advanceToLocus(100).sequencedBases, C)
-    AssertBases(read6At99.advanceToLocus(101).sequencedBases, G)
-    AssertBases(read6At99.advanceToLocus(102).sequencedBases, T)
-    AssertBases(read6At99.advanceToLocus(103).sequencedBases, "")
-    AssertBases(read6At99.advanceToLocus(104).sequencedBases, A)
-    AssertBases(read6At99.advanceToLocus(107).sequencedBases, T)
+    read6At99.advanceToLocus(99).sequencedBases should ===(A)
+    read6At99.advanceToLocus(100).sequencedBases should ===(C)
+    read6At99.advanceToLocus(101).sequencedBases should ===(G)
+    read6At99.advanceToLocus(102).sequencedBases should ===(T)
+    read6At99.advanceToLocus(103).sequencedBases should ===("")
+    read6At99.advanceToLocus(104).sequencedBases should ===(A)
+    read6At99.advanceToLocus(107).sequencedBases should ===(T)
     intercept[AssertionError] {
       read6At99.advanceToLocus(49).sequencedBases
     }
@@ -367,13 +367,13 @@ class PileupSuite
     val decadentRead7 = testAdamRecords(6)
     val read7At99 = pileupElementFromRead(decadentRead7, 99)
     assert(read7At99 != null)
-    AssertBases(read7At99.advanceToLocus(99).sequencedBases, A)
-    AssertBases(read7At99.advanceToLocus(100).sequencedBases, C)
-    AssertBases(read7At99.advanceToLocus(101).sequencedBases, G)
-    AssertBases(read7At99.advanceToLocus(102).sequencedBases, T)
-    AssertBases(read7At99.advanceToLocus(103).sequencedBases, "")
-    AssertBases(read7At99.advanceToLocus(104).sequencedBases, A)
-    AssertBases(read7At99.advanceToLocus(107).sequencedBases, T)
+    read7At99.advanceToLocus(99).sequencedBases should ===(A)
+    read7At99.advanceToLocus(100).sequencedBases should ===(C)
+    read7At99.advanceToLocus(101).sequencedBases should ===(G)
+    read7At99.advanceToLocus(102).sequencedBases should ===(T)
+    read7At99.advanceToLocus(103).sequencedBases should ===("")
+    read7At99.advanceToLocus(104).sequencedBases should ===(A)
+    read7At99.advanceToLocus(107).sequencedBases should ===(T)
     intercept[AssertionError] {
       read7At99.advanceToLocus(49).sequencedBases
     }
@@ -392,16 +392,16 @@ class PileupSuite
     val rnaPileupElement = PileupElement(rnaRead, start, reference.getContig("1"))
 
     // Second base
-    AssertBases(rnaPileupElement.advanceToLocus(start + 1).sequencedBases, "C")
+    rnaPileupElement.advanceToLocus(start + 1).sequencedBases should ===("C")
 
     // Third base
-    AssertBases(rnaPileupElement.advanceToLocus(start + 2).sequencedBases, "G")
+    rnaPileupElement.advanceToLocus(start + 2).sequencedBases should ===("G")
 
     // In intron
-    AssertBases(rnaPileupElement.advanceToLocus(start + 100).sequencedBases, "")
+    rnaPileupElement.advanceToLocus(start + 100).sequencedBases should ===("")
 
     // Last base
-    AssertBases(rnaPileupElement.advanceToLocus(start + 1049).sequencedBases, "C")
+    rnaPileupElement.advanceToLocus(start + 1049).sequencedBases should ===("C")
   }
 
   test("create pileup from RNA reads") {
@@ -409,12 +409,12 @@ class PileupSuite
 
     // 94 reads in the testrna.sam
     // 3 reads end at 229580707 and 1 extends further
-    rnaReadsPileup.depth === (94)
+    rnaReadsPileup.depth should === (94)
 
     val movedRnaReadsPileup = rnaReadsPileup.atGreaterLocus(229580706, Iterator.empty)
-    movedRnaReadsPileup.depth === (4)
+    movedRnaReadsPileup.depth should === (4)
 
-    movedRnaReadsPileup.atGreaterLocus(229580707, Iterator.empty).depth === (1)
+    movedRnaReadsPileup.atGreaterLocus(229580707, Iterator.empty).depth should === (1)
   }
 
   test("pileup in the middle of a deletion") {
@@ -427,13 +427,13 @@ class PileupSuite
 
     val deletionPileup = makePileup(reads, "chr1", 4)
     val deletionAlleles = deletionPileup.distinctAlleles
-    deletionAlleles.size === (1)
-    deletionAlleles(0) === (Allele("ATCGACG", "A"))
+    deletionAlleles.size should === (1)
+    deletionAlleles(0) should === (Allele("ATCGACG", "A"))
 
     val midDeletionPileup = makePileup(reads, "chr1", 5)
     val midAlleles = midDeletionPileup.distinctAlleles
-    midAlleles.size === (1)
-    midAlleles(0) === (Allele("T", ""))
+    midAlleles.size should === (1)
+    midAlleles(0) should === (Allele("T", ""))
   }
 }
 

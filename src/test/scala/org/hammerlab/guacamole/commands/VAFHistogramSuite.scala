@@ -2,6 +2,8 @@ package org.hammerlab.guacamole.commands
 
 import org.hammerlab.guacamole.util.GuacFunSuite
 
+import VAFHistogram.generateVAFHistograms
+
 class VAFHistogramSuite extends GuacFunSuite {
 
   kryoRegister(
@@ -22,50 +24,50 @@ class VAFHistogramSuite extends GuacFunSuite {
         )
       )
 
-    VAFHistogram.generateVAFHistograms(loci, 10) === (
+    generateVAFHistograms(loci, 10) should === (
       Map(
         0 ->
           Vector(
-            20 -> 1,
-            40 -> 1,
-            50 -> 1
+            20 -> 1L,
+            40 -> 1L,
+            50 -> 1L
           ),
         1 ->
           Vector(
-            30 -> 1,
-            50 -> 1
+            30 -> 1L,
+            50 -> 1L
           )
       )
     )
 
-    VAFHistogram.generateVAFHistograms(loci, 20) === (
+    generateVAFHistograms(loci, 20) should === (
       Map(
         0 ->
           Vector(
-            25 -> 1,
-            40 -> 1,
-            55 -> 1
+            25 -> 1L,
+            40 -> 1L,
+            55 -> 1L
           ),
         1 ->
           Vector(
-            35 -> 1,
-            50 -> 1
+            35 -> 1L,
+            50 -> 1L
           )
       )
     )
 
-    VAFHistogram.generateVAFHistograms(loci, 100) === (
+    generateVAFHistograms(loci, 100) should === (
       Map(
         0 ->
           Vector(
-            25 -> 1,
-            40 -> 1,
-            55 -> 1
+            25 -> 1L,
+            40 -> 1L,
+            55 -> 1L
           ),
         1 ->
           Vector(
-            35 -> 1,
-            50 -> 1
+            35 -> 1L,
+            50 -> 1L
           )
       )
     )

@@ -1,8 +1,8 @@
 package org.hammerlab.guacamole.readsets.iterator
 
 import org.hammerlab.genomics.loci.iterator.LociIterator
-import org.hammerlab.genomics.reference.test.{ LocusUtil, TestRegion }
-import org.hammerlab.genomics.reference.{ ContigIterator, Interval, Locus }
+import org.hammerlab.genomics.reference.test.LocusUtil
+import org.hammerlab.genomics.reference.{ ContigIterator, Interval, Locus, Region }
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.test.Suite
 
@@ -19,7 +19,7 @@ class ContigCoverageIteratorSuite
       (for {
         (start, end) <- intervals
       } yield
-        TestRegion("foo", start, end)
+        Region("foo", start, end)
       ).iterator.buffered
 
     val expected =
@@ -74,10 +74,10 @@ class ContigCoverageIteratorSuite
   def reads =
     ContigIterator(
       Iterator(
-        TestRegion("chr1", 10, 20),
-        TestRegion("chr1", 11, 21),
-        TestRegion("chr1", 11, 21),
-        TestRegion("chr1", 30, 40)
+        Region("chr1", 10, 20),
+        Region("chr1", 11, 21),
+        Region("chr1", 11, 21),
+        Region("chr1", 30, 40)
       ).buffered
     )
 
@@ -148,10 +148,10 @@ class ContigCoverageIteratorSuite
     val reads =
       ContigIterator(
         Iterator(
-          TestRegion("chr1",  0, 10),
-          TestRegion("chr1",  1,  9),
-          TestRegion("chr1",  2, 21),
-          TestRegion("chr1",  1, 31)
+          Region("chr1",  0, 10),
+          Region("chr1",  1,  9),
+          Region("chr1",  2, 21),
+          Region("chr1",  1, 31)
         ).buffered
       )
 

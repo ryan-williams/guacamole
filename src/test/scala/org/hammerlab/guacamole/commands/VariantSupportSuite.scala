@@ -12,6 +12,7 @@ import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.hammerlab.guacamole.util.GuacFunSuite
 import org.hammerlab.guacamole.util.TestUtil.resourcePath
 import org.hammerlab.guacamole.windowing.SlidingWindow
+import org.hammerlab.test.implicits.{ convertTuple3, toSeq }
 import org.scalatest.prop.TableDrivenPropertyChecks
 
 class VariantSupportSuite
@@ -104,10 +105,10 @@ class VariantSupportSuite
     assertAlleleCounts(pileup, ("T", "T", 6), ("T", "C", 1))
   }
 
-  implicit def convertVariant = liftImplicitTuple3[String, String, Int, Bases, Bases, Int] _
-  implicit def convertVariants = convertSeq[(String, String, Int), (Bases, Bases, Int)] _
-  implicit def convertPosition = liftImplicitTuple3[String, Int, Seq[(String, String, Int)], ContigName, Locus, Seq[(Bases, Bases, Int)]] _
-  implicit def convertPositions = convertSeq[(String, Int, Seq[(String, String, Int)]), (ContigName, Locus, Seq[(Bases, Bases, Int)])] _
+  implicit def convertVariant = convertTuple3[String, String, Int, Bases, Bases, Int] _
+  implicit def convertVariants = toSeq[(String, String, Int), (Bases, Bases, Int)] _
+  implicit def convertPosition = convertTuple3[String, Int, Seq[(String, String, Int)], ContigName, Locus, Seq[(Bases, Bases, Int)]] _
+  implicit def convertPositions = toSeq[(String, Int, Seq[(String, String, Int)]), (ContigName, Locus, Seq[(Bases, Bases, Int)])] _
 
   test("read evidence for simple snvs no filters") {
     val loci =

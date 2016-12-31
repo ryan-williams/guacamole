@@ -4,7 +4,7 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.hammerlab.genomics.loci.iterator.LociIterator
 import org.hammerlab.genomics.loci.set.LociSet
-import org.hammerlab.genomics.reference.Position.ordering
+import org.hammerlab.genomics.reference.Position
 import org.hammerlab.genomics.reference.{ ContigName, ContigsIterator, Interval, NumLoci, Position, Region, WindowSize }
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.loci.set.TakeLociIterator
@@ -24,6 +24,11 @@ class CoverageRDD[R <: Region: ClassTag](rdd: RDD[R])
 
   // Cache of [[coverage]]s computed below.
   private val _coveragesCache = mutable.HashMap[(Int, LociSet), RDD[(Position, Coverage)]]()
+
+  implicit val positionOrdering = Position.totalOrdering
+
+  // Used by sortByKey below.
+  implicit val ord = Ordering.Tuple2[ContigName, Boolean]
 
   /**
    * Compute a PositionCoverage for every position in @loci, allowing a half-window of @halfWindowSize.
@@ -79,9 +84,6 @@ class CoverageRDD[R <: Region: ClassTag](rdd: RDD[R])
           trimRanges
         )
     )
-
-  // Used for mapValues below.
-  implicit val ord = Ordering.Tuple2[ContigName, Boolean]
 
   /**
    * Compute the depth at each locus in @rdd, then group loci into runs that are uniformly below (true) or above (false)

@@ -2,17 +2,14 @@ package org.hammerlab.guacamole.windowing
 
 import org.hammerlab.genomics.loci.set.test.TestLociSet
 import org.hammerlab.genomics.reads.ReadsUtil
-import org.hammerlab.genomics.reference.test.LocusUtil
-import org.hammerlab.test.Suite
-import SlidingWindow.advanceMultipleWindows
 import org.hammerlab.genomics.reference.Locus
-import org.hammerlab.guacamole.util.Implicits
-import org.scalactic.ConversionCheckedTripleEquals
+import org.hammerlab.genomics.reference.test.LocusUtil
+import org.hammerlab.guacamole.windowing.SlidingWindow.advanceMultipleWindows
+import org.hammerlab.test.Suite
+import org.hammerlab.test.implicits.{ convertOpt, toVector }
 
 class SlidingWindowSuite
   extends Suite
-    with ConversionCheckedTripleEquals
-    with Implicits
     with LocusUtil
     with ReadsUtil {
 
@@ -184,9 +181,9 @@ class SlidingWindowSuite
 
   implicit def iToL = implicitly[Int ⇒ Locus]
   implicit def locusOpt = convertOpt[Int, Locus] _
-  //implicit def locusOpt(intOpt: Option[Int]): Option[Locus] = intOpt.map(Locus(_))
-  implicit def locusSeq = convertSeq[Int, Locus] _
-  implicit def locusOptSeq = convertSeq[Option[Int], Option[Locus]] _
+
+  implicit def locusSeq = toVector[Int, Locus] _
+  implicit def locusOptSeq = toVector[Option[Int], Option[Locus]] _
   implicit def convertNone[T](n: None.type): Option[T] = n
   implicit def convertNoneLocus = convertNone[Locus] _
 

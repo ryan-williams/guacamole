@@ -49,8 +49,7 @@ class PileupFlatMapUtilsSuite
     classOf[Array[PerSample[_]]]
   )
 
-  implicit def convertArray[T, U: ClassTag](a: Array[T])(implicit f: T ⇒ U): Array[U] = a.map(f)//.toArray
-//  implicit def convertArrayToSeq[T, U](a: Array[T])(implicit f: T ⇒ U): Seq[U] = a.map(f)
+  implicit def convertArray[T, U: ClassTag](a: Array[T])(implicit f: T ⇒ U): Array[U] = a.map(f)
 
   lazy val reference =
     makeReference(

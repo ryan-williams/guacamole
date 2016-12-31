@@ -31,7 +31,7 @@ case class CalledSomaticAllele(sampleName: SampleName,
                                tumorVariantEvidence: AlleleEvidence,
                                normalReferenceEvidence: AlleleEvidence,
                                rsID: Option[Int] = None,
-                               override val length: NumLoci = 1)
+                               override val length: NumLoci = NumLoci(1))
   extends ReferenceVariant {
 
   val end: Locus = start.next

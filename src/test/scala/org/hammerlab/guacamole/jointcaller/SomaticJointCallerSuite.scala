@@ -1,14 +1,14 @@
 package org.hammerlab.guacamole.jointcaller
 
-import org.hammerlab.genomics.bases.Base.{ A, C, G, N, T }
+import org.hammerlab.genomics.bases.Base.{ A, C, G, T }
 import org.hammerlab.genomics.bases.{ Base, Bases }
 import org.hammerlab.genomics.loci.set.LociSet
 import org.hammerlab.genomics.readsets.ReadSetsUtil
 import org.hammerlab.guacamole.commands.SomaticJoint.makeCalls
-import org.hammerlab.guacamole.jointcaller.pileup_summarization.AlleleMixture
 import org.hammerlab.guacamole.reference.{ ReferenceBroadcast, ReferenceUtil }
 import org.hammerlab.guacamole.util.GuacFunSuite
 import org.hammerlab.guacamole.util.TestUtil.resourcePath
+import org.hammerlab.test.implicits.convertTuple2
 
 class SomaticJointCallerSuite
   extends GuacFunSuite
@@ -138,8 +138,7 @@ class SomaticJointCallerSuite
     calls.length should === (0)
   }
 
-//  implicit val stringsTupleToBases = liftImplicitTuple2[String, String, Bases, Bases] _
-  implicit val baseTupleToBases = liftImplicitTuple2[Base, Base, Bases, Bases] _
+  implicit val baseTupleToBases = convertTuple2[Base, Base, Bases, Bases] _
   implicit def makeAllelicDepths(map: Map[Base, Int]): AllelicDepths = map.map(t ⇒ Bases(t._1) → t._2)
 
   test("call a somatic variant using RNA evidence") {

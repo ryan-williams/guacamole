@@ -41,7 +41,7 @@ trait Util
 
   def loadPileup(sc: SparkContext,
                  filename: String,
-                 locus: Locus = 0,
+                 locus: Locus = Locus(0),
                  maybeContig: Option[ContigName] = None,
                  reference: ReferenceBroadcast = reference): Pileup = {
     val records =

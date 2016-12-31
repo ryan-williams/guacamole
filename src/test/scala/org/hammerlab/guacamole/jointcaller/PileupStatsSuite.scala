@@ -9,6 +9,7 @@ import org.hammerlab.guacamole.pileup.{ Util ⇒ PileupUtil }
 import org.hammerlab.guacamole.reference.{ ReferenceBroadcast, ReferenceUtil }
 import org.hammerlab.guacamole.util.GuacFunSuite
 import org.hammerlab.guacamole.util.TestUtil.resourcePath
+import org.hammerlab.test.implicits.convertMap
 
 class PileupStatsSuite
   extends GuacFunSuite
@@ -41,7 +42,7 @@ class PileupStatsSuite
 
   implicit def s2v[T](s: Seq[T]): Vector[T] = s.toVector
 
-  implicit val m2m = liftMap[String, Int, Bases, Int] _
+  implicit val m2m = convertMap[String, Int, Bases, Int] _
 
   test("pileupstats likelihood computation") {
 

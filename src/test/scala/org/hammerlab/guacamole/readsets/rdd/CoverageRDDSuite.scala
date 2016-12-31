@@ -4,8 +4,8 @@ import org.apache.spark.rdd.RDD
 import org.hammerlab.genomics.loci.set.LociSet
 import org.hammerlab.genomics.loci.set.test.TestLociSet
 import org.hammerlab.genomics.readsets.rdd.RegionsRDDUtil
-import org.hammerlab.genomics.reference.test.{ ContigLengthsUtil, TestRegion }
-import org.hammerlab.genomics.reference.{ ContigLengths, ContigName, Position }
+import org.hammerlab.genomics.reference.test.ContigLengthsUtil
+import org.hammerlab.genomics.reference.{ ContigLengths, Position, Region }
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.util.GuacFunSuite
 import org.hammerlab.magic.rdd.cmp.CmpStats
@@ -18,13 +18,12 @@ class CoverageRDDSuite
     with ContigLengthsUtil {
 
   kryoRegister(
-    classOf[Array[TestRegion]],
-    classOf[TestRegion],
     classOf[CmpStats],
     "scala.Tuple2$mcIZ$sp",
     classOf[scala.collection.mutable.Queue[_]],
-//    classOf[scala.collection.mutable.LinkedList[_]],
-    classOf[Array[Int]]
+    classOf[Array[Int]],
+    "org.hammerlab.genomics.reference.RegionImpl",
+    classOf[Array[Region]]
   )
 
   lazy val readsRDD =
@@ -40,8 +39,6 @@ class CoverageRDDSuite
     )
 
   lazy val coverageRDD = new CoverageRDD(readsRDD)
-
-  implicit def ttcl(t: (String, Int)): (ContigName, Int) = (t._1, t._2)
 
   val contigLengths: ContigLengths =
     makeContigLengths(

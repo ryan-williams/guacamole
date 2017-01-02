@@ -50,7 +50,7 @@ case class PileupElement(
 
   def cigarElementReadLength = cigarElement.getReadLength
   def cigarElementReferenceLength = cigarElement.getReferenceLength
-  def cigarElementEndLocus = cigarElementLocus + cigarElement
+  def cigarElementEndLocus = cigarElementLocus + cigarElement.getReferenceLength
 
   /**
    * Number of mismatching bases in this read. Does *not* include indels: only looks at read bases that align to a

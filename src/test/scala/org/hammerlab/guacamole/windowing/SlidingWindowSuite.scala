@@ -1,15 +1,15 @@
 package org.hammerlab.guacamole.windowing
 
-import org.hammerlab.genomics.loci.set.test.TestLociSet
+import org.hammerlab.genomics.loci.set.test.LociSetUtil
 import org.hammerlab.genomics.reads.ReadsUtil
 import org.hammerlab.genomics.reference.Locus
 import org.hammerlab.genomics.reference.test.LocusUtil
 import org.hammerlab.guacamole.windowing.SlidingWindow.advanceMultipleWindows
 import org.hammerlab.test.Suite
-import org.hammerlab.test.implicits.{ convertOpt, toVector }
 
 class SlidingWindowSuite
   extends Suite
+    with LociSetUtil
     with LocusUtil
     with ReadsUtil {
 
@@ -206,7 +206,7 @@ class SlidingWindowSuite
 
     val window2 = SlidingWindow("chr1", 0, reads2.iterator)
 
-    val loci = TestLociSet("chr1:0-3,chr1:20-30").onContig("chr1").iterator
+    val loci = lociSet("chr1:0-3,chr1:20-30")("chr1").iterator
     val windows = Vector(window1, window2)
 
     advanceMultipleWindows(windows, loci, skipEmpty = false) should === (Some(0))
@@ -238,7 +238,7 @@ class SlidingWindowSuite
 
     val window2 = SlidingWindow("chr1", 0, reads2.iterator)
 
-    val loci = TestLociSet("chr1:0-3,chr1:20-30").onContig("chr1").iterator
+    val loci = lociSet("chr1:0-3,chr1:20-30")("chr1").iterator
     val windows = Vector(window1, window2)
 
     advanceMultipleWindows(windows, loci, skipEmpty = true) should === (Some(0))
@@ -273,7 +273,7 @@ class SlidingWindowSuite
 
     val window2 = SlidingWindow("chr1", 0, reads2.iterator)
 
-    val loci = TestLociSet("chr1:0-3,chr1:60-101").onContig("chr1").iterator
+    val loci = lociSet("chr1:0-3,chr1:60-101")("chr1").iterator
     val windows = Vector(window1, window2)
 
     advanceMultipleWindows(windows, loci, skipEmpty = false) should === (Some(0))

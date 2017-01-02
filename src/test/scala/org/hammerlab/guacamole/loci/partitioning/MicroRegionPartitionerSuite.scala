@@ -1,12 +1,13 @@
 package org.hammerlab.guacamole.loci.partitioning
 
 import org.apache.spark.rdd.RDD
-import org.hammerlab.genomics.loci.set.test.TestLociSet
+import org.hammerlab.genomics.loci.set.test.LociSetUtil
 import org.hammerlab.genomics.reads.{ MappedRead, ReadsUtil }
 import org.hammerlab.guacamole.util.GuacFunSuite
 
 class MicroRegionPartitionerSuite
   extends GuacFunSuite
+    with LociSetUtil
     with ReadsUtil {
 
   test("partition") {
@@ -33,14 +34,13 @@ class MicroRegionPartitionerSuite
         )
       )
 
-    val loci = TestLociSet("chr1:0-100")
-
     val result =
       new MicroRegionPartitioner(
         reads,
         numPartitions = 2,
         microPartitionsPerPartition = 100
-      ).partition(loci)
+      )
+      .partition("chr1:0-100")
 
     result.toString should === ("chr1:0-7=0,chr1:7-100=1")
   }

@@ -158,7 +158,7 @@ class CoverageRDD[R <: Region: ClassTag](rdd: RDD[R])
             contigCoverages = ContigCoverageIterator(halfWindowSize, contigRegions)
 
             // Iterator of eligible loci on this contig.
-            lociContig = lociBroadcast.value.onContig(contigName).iterator
+            lociContig = lociBroadcast.value(contigName).iterator
 
             // Filter (locus, coverage) iterator by eligible loci for this contig.
             (locus, coverage) <- contigCoverages.intersect(lociContig)
@@ -201,7 +201,7 @@ class CoverageRDD[R <: Region: ClassTag](rdd: RDD[R])
     val regionLociIterator = new LociIterator(Iterator(Interval(lowerBound, upperBound)).buffered)
 
     // Eligible loci on this region's contig.
-    val lociContig = loci.onContig(contigName).iterator
+    val lociContig = loci(contigName).iterator
 
     // Intersect the eligible loci with the region's loci.
     val lociIterator = lociContig.intersect(regionLociIterator)

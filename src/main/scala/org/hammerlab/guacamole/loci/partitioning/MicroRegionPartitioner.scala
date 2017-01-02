@@ -97,8 +97,7 @@ class MicroRegionPartitioner[R <: Region: ClassTag](regions: RDD[R],
       regions
         .flatMap(region =>
           broadcastMicroPartitions
-            .value
-            .onContig(region.contigName)
+            .value(region.contigName)
             .getAll(region.start, region.end)
         )
         .countByValue()

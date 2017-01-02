@@ -2,7 +2,7 @@ package org.hammerlab.guacamole.readsets.rdd
 
 import org.apache.spark.rdd.RDD
 import org.hammerlab.genomics.loci.set.LociSet
-import org.hammerlab.genomics.loci.set.test.TestLociSet
+import org.hammerlab.genomics.loci.set.test.LociSetUtil
 import org.hammerlab.genomics.readsets.rdd.RegionsRDDUtil
 import org.hammerlab.genomics.reference.test.ContigLengthsUtil
 import org.hammerlab.genomics.reference.{ ContigLengths, Position, Region }
@@ -14,6 +14,7 @@ import org.hammerlab.test.matchers.seqs.PairSeqMatcher.pairsMatch
 
 class CoverageRDDSuite
   extends GuacFunSuite
+    with LociSetUtil
     with RegionsRDDUtil
     with ContigLengthsUtil {
 
@@ -80,7 +81,7 @@ class CoverageRDDSuite
   }
 
   test("some loci, half-window") {
-    val loci = TestLociSet("chr1:102-107,chr2:7-20")
+    val loci: LociSet = "chr1:102-107,chr2:7-20"
 
     val lociBroadcast = sc.broadcast(loci)
 

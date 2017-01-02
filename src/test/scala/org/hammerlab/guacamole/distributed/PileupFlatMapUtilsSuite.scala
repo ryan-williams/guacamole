@@ -3,10 +3,12 @@ package org.hammerlab.guacamole.distributed
 import org.apache.spark.storage.BroadcastBlockId
 import org.hammerlab.genomics.bases.Base.{ A, C, G, N, T }
 import org.hammerlab.genomics.bases.{ Base, Bases }
-import org.hammerlab.genomics.loci.set.test.TestLociSet
+import org.hammerlab.genomics.loci.set.LociSet
+import org.hammerlab.genomics.loci.set.test.LociSetUtil
 import org.hammerlab.genomics.readsets.PerSample
 import org.hammerlab.genomics.readsets.rdd.ReadsRDDUtil
 import org.hammerlab.genomics.reference.Locus
+import org.hammerlab.genomics.reference.test.LocusUtil
 import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.{ pileupFlatMapMultipleSamples, pileupFlatMapOneSample, pileupFlatMapTwoSamples }
 import org.hammerlab.guacamole.distributed.Util.pileupsToElementStrings
 import org.hammerlab.guacamole.loci.partitioning.UniformPartitioner
@@ -16,19 +18,12 @@ import org.hammerlab.guacamole.readsets.rdd.PartitionedRegionsUtil
 import org.hammerlab.guacamole.reference.{ MapBackedReferenceSequence, ReferenceUtil }
 import org.hammerlab.guacamole.util.GuacFunSuite
 
-import scala.reflect.ClassTag
-
-private object Util {
-  // This helper function is in its own object here to avoid serializing `PileupFlatMapUtilsSuite`, which is not
-  // serializable due to mixing in `Matchers`.
-  def pileupsToElementStrings(pileups: PerSample[Pileup]): Iterator[PerSample[Iterable[Bases]]] =
-    Iterator(pileups.map(_.elements.map(_.sequencedBases)))
-}
-
 class PileupFlatMapUtilsSuite
   extends GuacFunSuite
     with ReadsRDDUtil
     with PartitionedRegionsUtil
+    with LociSetUtil
+    with LocusUtil
     with ReferenceUtil {
 
   kryoRegister(
@@ -48,8 +43,6 @@ class PileupFlatMapUtilsSuite
     // "test pileup flatmap multiple rdds; skip empty pileups" collects an RDD of Arrays
     classOf[Array[PerSample[_]]]
   )
-
-  implicit def convertArray[T, U: ClassTag](a: Array[T])(implicit f: T ⇒ U): Array[U] = a.map(f)
 
   lazy val reference =
     makeReference(
@@ -78,9 +71,8 @@ class PileupFlatMapUtilsSuite
           .getOrElse(
             readsRDD.getNumPartitions
           )
-      ).partition(
-        TestLociSet(lociStr)
       )
+      .partition(lociStr)
     )
   }
 
@@ -171,7 +163,7 @@ class PileupFlatMapUtilsSuite
     val partitionedReads =
       partitionReads(
         reads1 ++ reads2,
-        UniformPartitioner(1).partition(TestLociSet("chr0:0-1000,chr1:1-500,chr2:10-20"))
+        UniformPartitioner(1).partition("chr0:0-1000,chr1:1-500,chr2:10-20")
       )
 
     val loci =
@@ -217,7 +209,7 @@ class PileupFlatMapUtilsSuite
         ("XZX", "3M", 99)
       )
 
-    val loci = TestLociSet("chr1:1-500,chr2:10-20")
+    val loci: LociSet = "chr1:1-500,chr2:10-20"
 
     val reads = reads1 ++ reads2 ++ reads3
 
@@ -228,7 +220,9 @@ class PileupFlatMapUtilsSuite
         skipEmpty = true,
         pileupsToElementStrings,
         reference = reference
-      ).collect.map(_.map(_.toSeq).toSeq)
+      )
+      .collect
+      .map(_.map(_.toSeq).toSeq)
 
     val resultParallelized =
       pileupFlatMapMultipleSamples[PerSample[Iterable[Bases]]](
@@ -237,7 +231,9 @@ class PileupFlatMapUtilsSuite
         skipEmpty = true,
         pileupsToElementStrings,
         reference = reference
-      ).collect.map(_.map(_.toSeq).toSeq)
+      )
+      .collect
+      .map(_.map(_.toSeq).toSeq)
 
     val resultWithEmpty =
       pileupFlatMapMultipleSamples[PerSample[Iterable[Bases]]](
@@ -246,7 +242,9 @@ class PileupFlatMapUtilsSuite
         skipEmpty = false,
         pileupsToElementStrings,
         reference = reference
-      ).collect.map(_.map(_.toSeq).toSeq)
+      )
+      .collect
+      .map(_.map(_.toSeq).toSeq)
 
     resultPlain should === (resultParallelized)
 
@@ -309,7 +307,7 @@ class PileupFlatMapUtilsSuite
     val partitionedReads =
       partitionReads(
         reads1 ++ reads2,
-        UniformPartitioner(1000).partition(TestLociSet("chr1:1-500"))
+        UniformPartitioner(1000).partition("chr1:1-500")
       )
 
     val elements =
@@ -341,7 +339,7 @@ class PileupFlatMapUtilsSuite
       pileupFlatMapOneSample[PileupElement](
         partitionReads(
           reads,
-          UniformPartitioner(5).partition(TestLociSet("chr1:1-12"))
+          UniformPartitioner(5).partition("chr1:1-12")
         ),
         sampleName = "sampleName",
         skipEmpty = false,
@@ -353,4 +351,13 @@ class PileupFlatMapUtilsSuite
     val insertionPileups = pileups.filter(_.isInsertion)
     insertionPileups.length should === (1)
   }
+}
+
+private object Util {
+  /**
+   * This helper function is in its own object here to avoid serializing `PileupFlatMapUtilsSuite`, which is not
+   * serializable due the `AssertionsHelper` nested-class in [[org.scalatest.Assertions]].
+   */
+  def pileupsToElementStrings(pileups: PerSample[Pileup]): Iterator[PerSample[Iterable[Bases]]] =
+    Iterator(pileups.map(_.elements.map(_.sequencedBases)))
 }

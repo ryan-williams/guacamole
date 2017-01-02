@@ -49,7 +49,7 @@ object VCFComparison {
     partialMatch: ArrayBuffer[(VariantContext, VariantContext)],
     unique: ArrayBuffer[VariantContext]): Unit = {
     records.foreach(record1 => {
-      map.onContig(record1.getContig).get(Locus(record1.getStart)) match {
+      map(record1.getContig).get(Locus(record1.getStart)) match {
         case Some(record2) => {
           if (variantToString(record1) == variantToString(record2)) {
             exactMatch += ((record1, record2))

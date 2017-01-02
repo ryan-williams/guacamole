@@ -1,6 +1,7 @@
 package org.hammerlab.guacamole.loci.set
 
-import org.hammerlab.genomics.loci.set.test.TestLociSet
+import org.hammerlab.genomics.loci.set.LociSet
+import org.hammerlab.genomics.loci.set.test.LociSetUtil
 import org.hammerlab.genomics.reference.Position
 import org.hammerlab.genomics.reference.test.LocusUtil
 import org.hammerlab.guacamole.loci.Coverage
@@ -8,6 +9,7 @@ import org.hammerlab.test.Suite
 
 class TakeLociIteratorSuite
   extends Suite
+    with LociSetUtil
     with LocusUtil {
 
   def check(input: ((String, Int), (Int, Int))*)(expectedStrs: String*): Unit =
@@ -20,7 +22,7 @@ class TakeLociIteratorSuite
       } yield
         (Position(contig, locus) -> Coverage(depth, starts))
 
-    val expected = expectedStrs.map(TestLociSet.apply)
+    val expected = expectedStrs.map(str ⇒ str: LociSet)
 
     new TakeLociIterator(depths.iterator.buffered, 15, trimRanges).toList should === (expected)
   }

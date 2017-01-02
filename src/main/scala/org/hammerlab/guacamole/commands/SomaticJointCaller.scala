@@ -180,8 +180,7 @@ object SomaticJoint {
     def callPileups(pileups: PerSample[Pileup]): Iterator[MultiSampleMultiAlleleEvidence] = {
       val forceCall =
         broadcastForceCallLoci
-          .value
-          .onContig(pileups.head.contigName)
+          .value(pileups.head.contigName)
           .contains(pileups.head.locus.next)
 
       MultiSampleMultiAlleleEvidence(

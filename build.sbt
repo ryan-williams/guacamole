@@ -14,9 +14,7 @@ deps ++= Seq(
   libs.value('commons_math),
   libs.value('hadoop_bam),
   libs.value('htsjdk),
-  libs.value('loci),
   libs.value('magic_rdds),
-  libs.value('reference),
   libs.value('scalautils),
   libs.value('slf4j),
   libs.value('spark_commands),
@@ -33,8 +31,11 @@ testDeps ++= Seq(
 )
 
 compileAndTestDeps ++= Seq(
+  libs.value('genomic_utils),
+  libs.value('loci),
   libs.value('reads),
-  libs.value('readsets)
+  libs.value('readsets),
+  libs.value('reference)
 )
 
 takeFirstLog4JProperties

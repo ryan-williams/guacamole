@@ -10,6 +10,8 @@ package object jointcaller {
         .sortBy(-_._2)
         .take(num)
         .toMap
+
+    override def toString: String = s"AD(${map.map { case (allele, depth) ⇒ s"$allele → $depth" }.mkString(",")})"
   }
 
   object AllelicDepths {

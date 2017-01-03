@@ -1,6 +1,6 @@
 package org.hammerlab.guacamole.reference
 
-import org.hammerlab.genomics.bases.Base
+import org.hammerlab.genomics.bases.{ Base, Bases }
 import org.hammerlab.genomics.reference.{ ContigName, ContigSequence }
 
 trait ReferenceGenome {
@@ -38,5 +38,5 @@ trait ReferenceGenome {
    * @param endLocus 0-based exclusive end of the subsequence
    * @return Array of bases for the reference sequence
    */
-  def getReferenceSequence(contigName: ContigName, startLocus: Int, endLocus: Int): Array[Base]
+  def getReferenceSequence(contigName: ContigName, startLocus: Int, endLocus: Int): Bases
 }

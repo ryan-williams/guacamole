@@ -1,9 +1,8 @@
 package org.hammerlab.guacamole.jointcaller
 
-import org.hammerlab.genomics.loci.parsing.ParsedLoci
 import org.hammerlab.genomics.loci.set.LociSet
+import org.hammerlab.genomics.readsets.ReadSetsUtil
 import org.hammerlab.guacamole.commands.SomaticJoint.makeCalls
-import org.hammerlab.guacamole.readsets.ReadSetsUtil
 import org.hammerlab.guacamole.reference.{ ReferenceBroadcast, ReferenceUtil }
 import org.hammerlab.guacamole.util.GuacFunSuite
 import org.hammerlab.guacamole.util.TestUtil.resourcePath

@@ -7,10 +7,10 @@ import grizzled.slf4j.Logging
 import htsjdk.samtools.reference.FastaSequenceFile
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
-import org.hammerlab.genomics.bases.Base
+import org.hammerlab.genomics.bases.{ Base, Bases }
 import org.hammerlab.genomics.loci.parsing.{ LociRange, LociRanges, ParsedLociRange }
 import org.hammerlab.genomics.loci.set.LociSet
-import org.hammerlab.genomics.readsets.args.ReferenceArgs
+import org.hammerlab.genomics.readsets.args.HasReference
 import org.hammerlab.genomics.reference.{ ContigName, ContigSequence, Locus, NumLoci }
 
 import scala.collection.mutable
@@ -30,13 +30,13 @@ case class ReferenceBroadcast(broadcastedContigs: Map[String, ContigSequence],
   override def getReferenceBase(contigName: ContigName, locus: Int): Base =
     getContig(contigName)(locus)
 
-  override def getReferenceSequence(contigName: ContigName, startLocus: Int, endLocus: Int): Array[Base] =
+  override def getReferenceSequence(contigName: ContigName, startLocus: Int, endLocus: Int): Bases =
     getContig(contigName).slice(startLocus, endLocus)
 }
 
 object ReferenceBroadcast extends Logging {
 
-  def apply(args: ReferenceArgs, sc: SparkContext): ReferenceBroadcast =
+  def apply(args: HasReference, sc: SparkContext): ReferenceBroadcast =
     ReferenceBroadcast(
       args.referencePath,
       sc,
@@ -49,7 +49,7 @@ object ReferenceBroadcast extends Logging {
    * TODO: Arrays can't be more than 2³² long, use 2bit instead?
    */
   case class ArrayBackedReferenceSequence(contigName: ContigName,
-                                          wrapped: Broadcast[Array[Base]])
+                                          wrapped: Broadcast[Bases])
     extends ContigSequence {
 
     val length: NumLoci = wrapped.value.length
@@ -62,7 +62,7 @@ object ReferenceBroadcast extends Logging {
           throw new Exception(s"Position $contigName:$locus missing from reference", e)
       }
 
-    def slice(start: Locus, end: Locus): Array[Base] =
+    def slice(start: Locus, end: Locus): Bases =
       if (start < 0 || end > length)
         throw new Exception(
           s"Illegal reference slice: $contigName:[$start,$end) (valid range: [0,$length)"
@@ -89,7 +89,7 @@ object ReferenceBroadcast extends Logging {
           throw new Exception(s"Position $contigName:$locus missing from reference", e)
       }
 
-    def slice(start: Locus, end: Locus): Array[Base] = (start until end).map(apply).toArray
+    def slice(start: Locus, end: Locus): Bases = (start until end).map(locus ⇒ apply(locus): Byte).toVector
   }
 
   /**
@@ -104,7 +104,7 @@ object ReferenceBroadcast extends Logging {
     val broadcastedSequences = Map.newBuilder[String, ContigSequence]
     while (nextSequence != null) {
       val contigName = nextSequence.getName
-      val sequence: Array[Base] = nextSequence.getBases.map(b => b: Base)
+      val sequence: Bases = nextSequence.getBases
       info(s"Broadcasting contig: $contigName")
       val broadcastedSequence = ArrayBackedReferenceSequence(contigName, sc.broadcast(sequence))
       broadcastedSequences += ((contigName, broadcastedSequence))

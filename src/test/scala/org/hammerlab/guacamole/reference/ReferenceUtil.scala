@@ -1,9 +1,9 @@
 package org.hammerlab.guacamole.reference
 
 import org.apache.spark.SparkContext
+import org.hammerlab.genomics.bases.{ Base, Bases }
 import org.hammerlab.genomics.reference.ContigName
 import org.hammerlab.guacamole.reference.ReferenceBroadcast.MapBackedReferenceSequence
-import org.hammerlab.guacamole.util.Bases.stringToBases
 
 import scala.collection.mutable
 
@@ -20,14 +20,15 @@ trait ReferenceUtil {
                     contigLengths: Int,
                     contigStartSequences: (ContigName, Int, String)*): ReferenceBroadcast = {
 
-    val basesMap = mutable.HashMap[String, mutable.Map[Int, Byte]]()
+    val basesMap = mutable.HashMap[String, mutable.Map[Int, Base]]()
 
     for {
-      (contigName, start, sequence) <- contigStartSequences
+      (contigName, start, basesStr) <- contigStartSequences
+      bases = basesStr: Bases
     } {
       val contigBasesMap = basesMap.getOrElseUpdate(contigName, mutable.Map())
       for {
-        (base, offset) <- stringToBases(sequence).zipWithIndex
+        (base, offset) <- bases.zipWithIndex
         locus = start + offset
       } {
         contigBasesMap(locus) = base

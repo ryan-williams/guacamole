@@ -1,10 +1,10 @@
 package org.hammerlab.guacamole.pileup
 
+import org.hammerlab.genomics.bases.Base.{ A, C, G, T }
+import org.hammerlab.genomics.reads.{ MappedRead, ReadsUtil }
 import org.hammerlab.genomics.reference.Locus
-import org.hammerlab.guacamole.reads.{ MappedRead, ReadsUtil }
 import org.hammerlab.guacamole.reference.ReferenceUtil
-import org.hammerlab.guacamole.util.BasesUtil._
-import org.hammerlab.guacamole.util.{ AssertBases, Bases, GuacFunSuite }
+import org.hammerlab.guacamole.util.{ AssertBases, GuacFunSuite }
 import org.hammerlab.guacamole.variants.Allele
 import org.scalatest.prop.TableDrivenPropertyChecks
 
@@ -49,8 +49,8 @@ class PileupSuite
     insertPileup.elements.exists(_.isInsertion) should be(true)
     insertPileup.elements.forall(_.qualityScore == 31) should be(true)
 
-    insertPileup.elements(0).alignment should equal(Match('A', 31.toByte))
-    insertPileup.elements(1).alignment should equal(Match('A', 31.toByte))
+    insertPileup.elements(0).alignment should equal(Match(A, 31.toByte))
+    insertPileup.elements(1).alignment should equal(Match(A, 31.toByte))
     insertPileup.elements(2).alignment should equal(Insertion("ACCC", Seq(31, 31, 31, 31).map(_.toByte)))
   }
 
@@ -111,7 +111,7 @@ class PileupSuite
 
     val lastPileup = makePileup(reads, "chr1", 8)
     lastPileup.elements.foreach(e => AssertBases(e.sequencedBases, "A"))
-    lastPileup.elements.forall(_.sequencedBases.headOption.exists(_ == Bases.A)) should be(true)
+    lastPileup.elements.forall(_.sequencedBases.headOption.exists(_ == A)) should be(true)
 
     lastPileup.elements.forall(_.isMatch) should be(true)
     lastPileup.elements.forall(_.qualityScore == 25) should be(true)
@@ -212,7 +212,7 @@ class PileupSuite
 
     deletionPileup.elements.map(_.alignment).count {
       case Deletion(bases, _) => {
-        Bases.basesToString(bases) should equal("AAAAAAAAAAA")
+        AssertBases(bases, "AAAAAAAAAAA")
         true
       }
       case _ => false
@@ -270,7 +270,7 @@ class PileupSuite
     val at5 = pileupElementFromRead(decadentRead1, 5)
     assert(at5 != null)
     AssertBases(at5.sequencedBases, "A")
-    assert(at5.sequencedBases.headOption.exists(_ == Bases.A))
+    assert(at5.sequencedBases.headOption.exists(_ == A))
 
     // At the end of the read:
     assert(pileupElementFromRead(decadentRead1, 74) != null)
@@ -318,15 +318,15 @@ class PileupSuite
     val read4At20 = pileupElementFromRead(decadentRead4, 20)
     assert(read4At20 != null)
     for (i <- 0 until 2) {
-      assert(read4At20.advanceToLocus(20 + i * 4 + 0).sequencedBases(0) == 'A')
-      assert(read4At20.advanceToLocus(20 + i * 4 + 1).sequencedBases(0) == 'C')
-      assert(read4At20.advanceToLocus(20 + i * 4 + 2).sequencedBases(0) == 'G')
-      assert(read4At20.advanceToLocus(20 + i * 4 + 3).sequencedBases(0) == 'T')
+      assert(read4At20.advanceToLocus(20 + i * 4 + 0).sequencedBases(0) == A)
+      assert(read4At20.advanceToLocus(20 + i * 4 + 1).sequencedBases(0) == C)
+      assert(read4At20.advanceToLocus(20 + i * 4 + 2).sequencedBases(0) == G)
+      assert(read4At20.advanceToLocus(20 + i * 4 + 3).sequencedBases(0) == T)
     }
 
     val read4At30 = read4At20.advanceToLocus(20 + 9)
     read4At30.isInsertion should be(true)
-    (read4At30.sequencedBases: String) should equal("CGTACGTACGT")
+    AssertBases(read4At30.sequencedBases, "CGTACGTACGT")
   }
 
   test("Read5: ACGTACGTACGTACG, 5M4=1X5=") {
@@ -335,14 +335,14 @@ class PileupSuite
     val decadentRead5 = testAdamRecords(4)
     val read5At10 = pileupElementFromRead(decadentRead5, 10)
     assert(read5At10 != null)
-    AssertBases(read5At10.advanceToLocus(10).sequencedBases, "A")
-    AssertBases(read5At10.advanceToLocus(14).sequencedBases, "A")
-    AssertBases(read5At10.advanceToLocus(18).sequencedBases, "A")
-    AssertBases(read5At10.advanceToLocus(19).sequencedBases, "C")
-    AssertBases(read5At10.advanceToLocus(20).sequencedBases, "G")
-    AssertBases(read5At10.advanceToLocus(21).sequencedBases, "T")
-    AssertBases(read5At10.advanceToLocus(22).sequencedBases, "A")
-    AssertBases(read5At10.advanceToLocus(24).sequencedBases, "G")
+    AssertBases(read5At10.advanceToLocus(10).sequencedBases, A)
+    AssertBases(read5At10.advanceToLocus(14).sequencedBases, A)
+    AssertBases(read5At10.advanceToLocus(18).sequencedBases, A)
+    AssertBases(read5At10.advanceToLocus(19).sequencedBases, C)
+    AssertBases(read5At10.advanceToLocus(20).sequencedBases, G)
+    AssertBases(read5At10.advanceToLocus(21).sequencedBases, T)
+    AssertBases(read5At10.advanceToLocus(22).sequencedBases, A)
+    AssertBases(read5At10.advanceToLocus(24).sequencedBases, G)
   }
 
   test("read6: ACGTACGTACGT 4=1N4=4S") {
@@ -352,13 +352,13 @@ class PileupSuite
     val read6At99 = pileupElementFromRead(decadentRead6, 99)
 
     assert(read6At99 != null)
-    AssertBases(read6At99.advanceToLocus(99).sequencedBases, "A")
-    AssertBases(read6At99.advanceToLocus(100).sequencedBases, "C")
-    AssertBases(read6At99.advanceToLocus(101).sequencedBases, "G")
-    AssertBases(read6At99.advanceToLocus(102).sequencedBases, "T")
+    AssertBases(read6At99.advanceToLocus(99).sequencedBases, A)
+    AssertBases(read6At99.advanceToLocus(100).sequencedBases, C)
+    AssertBases(read6At99.advanceToLocus(101).sequencedBases, G)
+    AssertBases(read6At99.advanceToLocus(102).sequencedBases, T)
     AssertBases(read6At99.advanceToLocus(103).sequencedBases, "")
-    AssertBases(read6At99.advanceToLocus(104).sequencedBases, "A")
-    AssertBases(read6At99.advanceToLocus(107).sequencedBases, "T")
+    AssertBases(read6At99.advanceToLocus(104).sequencedBases, A)
+    AssertBases(read6At99.advanceToLocus(107).sequencedBases, T)
     intercept[AssertionError] {
       read6At99.advanceToLocus(49).sequencedBases
     }
@@ -368,13 +368,13 @@ class PileupSuite
     val decadentRead7 = testAdamRecords(6)
     val read7At99 = pileupElementFromRead(decadentRead7, 99)
     assert(read7At99 != null)
-    AssertBases(read7At99.advanceToLocus(99).sequencedBases, "A")
-    AssertBases(read7At99.advanceToLocus(100).sequencedBases, "C")
-    AssertBases(read7At99.advanceToLocus(101).sequencedBases, "G")
-    AssertBases(read7At99.advanceToLocus(102).sequencedBases, "T")
+    AssertBases(read7At99.advanceToLocus(99).sequencedBases, A)
+    AssertBases(read7At99.advanceToLocus(100).sequencedBases, C)
+    AssertBases(read7At99.advanceToLocus(101).sequencedBases, G)
+    AssertBases(read7At99.advanceToLocus(102).sequencedBases, T)
     AssertBases(read7At99.advanceToLocus(103).sequencedBases, "")
-    AssertBases(read7At99.advanceToLocus(104).sequencedBases, "A")
-    AssertBases(read7At99.advanceToLocus(107).sequencedBases, "T")
+    AssertBases(read7At99.advanceToLocus(104).sequencedBases, A)
+    AssertBases(read7At99.advanceToLocus(107).sequencedBases, T)
     intercept[AssertionError] {
       read7At99.advanceToLocus(49).sequencedBases
     }

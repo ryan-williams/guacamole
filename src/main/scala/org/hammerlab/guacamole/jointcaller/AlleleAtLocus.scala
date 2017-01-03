@@ -30,15 +30,17 @@ case class AlleleAtLocus(contigName: ContigName, start: Locus, ref: Bases, alt: 
   assume(ref.nonEmpty)
   assume(alt.nonEmpty)
 
-  lazy val id = "%s:%d-%d %s>%s".format(
-    contigName,
-    start,
-    end,
-    ref,
-    alt)
+  @transient lazy val id =
+    "%s:%d-%d %s>%s".format(
+      contigName,
+      start,
+      end,
+      ref,
+      alt
+    )
 
   /** Zero-based exclusive end site on the reference genome. */
-  lazy val end = start + ref.length
+  @transient lazy val end = start + ref.length
 }
 
 object AlleleAtLocus {

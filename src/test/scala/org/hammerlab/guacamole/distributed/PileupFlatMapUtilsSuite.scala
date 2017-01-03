@@ -1,23 +1,26 @@
 package org.hammerlab.guacamole.distributed
 
 import org.apache.spark.storage.BroadcastBlockId
+import org.hammerlab.genomics.bases.Base.T
+import org.hammerlab.genomics.bases.Bases
 import org.hammerlab.genomics.loci.set.test.TestLociSet
+import org.hammerlab.genomics.readsets.PerSample
+import org.hammerlab.genomics.readsets.rdd.ReadsRDDUtil
 import org.hammerlab.guacamole.distributed.PileupFlatMapUtils.{ pileupFlatMapMultipleSamples, pileupFlatMapOneSample, pileupFlatMapTwoSamples }
 import org.hammerlab.guacamole.distributed.Util.pileupsToElementStrings
 import org.hammerlab.guacamole.loci.partitioning.UniformPartitioner
 import org.hammerlab.guacamole.pileup.{ Pileup, PileupElement }
-import org.hammerlab.guacamole.readsets.rdd.{ PartitionedRegionsUtil, ReadsRDDUtil }
-import org.hammerlab.guacamole.readsets.{ PartitionedReads, PerSample }
+import org.hammerlab.guacamole.readsets.PartitionedReads
+import org.hammerlab.guacamole.readsets.rdd.PartitionedRegionsUtil
 import org.hammerlab.guacamole.reference.ReferenceBroadcast.MapBackedReferenceSequence
 import org.hammerlab.guacamole.reference.ReferenceUtil
-import org.hammerlab.guacamole.util.Bases.{ T, basesToString }
 import org.hammerlab.guacamole.util.{ AssertBases, GuacFunSuite }
 
 private object Util {
   // This helper function is in its own object here to avoid serializing `PileupFlatMapUtilsSuite`, which is not
   // serializable due to mixing in `Matchers`.
-  def pileupsToElementStrings(pileups: PerSample[Pileup]): Iterator[PerSample[Iterable[String]]] =
-    Iterator(pileups.map(_.elements.map(p => basesToString(p.sequencedBases))))
+  def pileupsToElementStrings(pileups: PerSample[Pileup]): Iterator[PerSample[Iterable[Bases]]] =
+    Iterator(pileups.map(_.elements.map(_.sequencedBases)))
 }
 
 class PileupFlatMapUtilsSuite
@@ -212,7 +215,7 @@ class PileupFlatMapUtilsSuite
     val reads = reads1 ++ reads2 ++ reads3
 
     val resultPlain =
-      pileupFlatMapMultipleSamples[PerSample[Iterable[String]]](
+      pileupFlatMapMultipleSamples[PerSample[Iterable[Bases]]](
         sampleNames = Vector("a", "b", "c"),
         partitionReads(reads, UniformPartitioner(1).partition(loci)),
         skipEmpty = true,
@@ -221,7 +224,7 @@ class PileupFlatMapUtilsSuite
       ).collect.map(_.toList)
 
     val resultParallelized =
-      pileupFlatMapMultipleSamples[PerSample[Iterable[String]]](
+      pileupFlatMapMultipleSamples[PerSample[Iterable[Bases]]](
         sampleNames = Vector("a", "b", "c"),
         partitionReads(reads, UniformPartitioner(800).partition(loci)),
         skipEmpty = true,
@@ -230,7 +233,7 @@ class PileupFlatMapUtilsSuite
       ).collect.map(_.toList)
 
     val resultWithEmpty =
-      pileupFlatMapMultipleSamples[PerSample[Iterable[String]]](
+      pileupFlatMapMultipleSamples[PerSample[Iterable[Bases]]](
         sampleNames = Vector("a", "b", "c"),
         partitionReads(reads, UniformPartitioner(5).partition(loci)),
         skipEmpty = false,
@@ -312,7 +315,7 @@ class PileupFlatMapUtilsSuite
 
     elements.map(_.isMatch) should equal(List.fill(elements.length)(true))
     AssertBases(
-      elements.flatMap(_.sequencedBases).toSeq,
+      elements.flatMap(_.sequencedBases),
       "TTTTTTCCCCCCGGGGGGAAAAAATTTTTTCCCCCCGGGGGGAAAAAAAGGGGGGGGGGGGGGGGGGGGGGGGGG"
     )
   }

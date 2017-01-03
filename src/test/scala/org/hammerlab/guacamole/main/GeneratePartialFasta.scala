@@ -5,15 +5,14 @@ import java.io.{ BufferedWriter, File, FileWriter }
 import org.apache.spark.SparkContext
 import org.hammerlab.commands.Args
 import org.hammerlab.genomics.loci.set.LociSet
+import org.hammerlab.genomics.readsets.ReadSets
+import org.hammerlab.genomics.readsets.args.{ ReferenceArgs, Arguments ⇒ ReadSetsArguments }
+import org.hammerlab.genomics.readsets.io.InputConfig
 import org.hammerlab.genomics.reference.Interval
 import org.hammerlab.guacamole.commands.GuacCommand
 import org.hammerlab.guacamole.logging.LoggingUtils.progress
-import org.hammerlab.guacamole.readsets.ReadSets
-import org.hammerlab.guacamole.readsets.args.{ ReferenceArgs, Arguments ⇒ ReadSetsArguments }
-import org.hammerlab.guacamole.readsets.io.InputConfig
 import org.hammerlab.guacamole.readsets.rdd.PartitionedRegionsArgs
-import org.hammerlab.guacamole.reference.ContigNotFound
-import org.hammerlab.guacamole.util.Bases.basesToString
+import org.hammerlab.guacamole.reference.{ ContigNotFound, ReferenceBroadcast }
 import org.kohsuke.args4j.{ Option ⇒ Args4jOption }
 
 class GeneratePartialFastaArguments
@@ -57,11 +56,9 @@ object GeneratePartialFasta extends GuacCommand[GeneratePartialFastaArguments] {
   override val name: String = "generate-partial-fasta"
   override val description: String = "generate \"partial fasta\"s for use in our tests of variant callers"
 
-  def main(args: Array[String]): Unit = run(args)
-
   override def run(args: GeneratePartialFastaArguments, sc: SparkContext): Unit = {
 
-    val reference = args.reference(sc)
+    val reference = ReferenceBroadcast(args, sc)
     val parsedLoci = args.parseConfig(sc.hadoopConfiguration).loci
 
     val readsets =
@@ -92,9 +89,9 @@ object GeneratePartialFasta extends GuacCommand[GeneratePartialFastaArguments] {
       try {
         val paddedStart = start.toInt - padding
         val paddedEnd = end.toInt + padding
-        val sequence = basesToString(reference.getContig(contig.name).slice(paddedStart, paddedEnd))
+        val sequence = reference.getContig(contig.name).slice(paddedStart, paddedEnd)
         writer.write(">%s:%d-%d/%d\n".format(contig.name, paddedStart, paddedEnd, contigLengths(contig.name)))
-        writer.write(sequence)
+        writer.write(sequence.toString)
         writer.write("\n")
       } catch {
         case e: ContigNotFound => warn(s"No such contig in reference: $contig: $e")

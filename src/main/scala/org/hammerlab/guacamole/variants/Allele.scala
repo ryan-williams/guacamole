@@ -21,5 +21,5 @@ object Allele {
 //    Allele(refBases, altBases)
 
   def apply(refBase: Base, altBase: Base): Allele =
-    Allele(Array(refBase), Array(altBase))
+    Allele(Bases(refBase), Bases(altBase))
 }

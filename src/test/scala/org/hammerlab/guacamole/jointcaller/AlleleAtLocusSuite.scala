@@ -1,6 +1,6 @@
 package org.hammerlab.guacamole.jointcaller
 
-import org.hammerlab.guacamole.pileup.{ Util => PileupUtil }
+import org.hammerlab.guacamole.pileup.{ Util ⇒ PileupUtil }
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.hammerlab.guacamole.util.GuacFunSuite
 import org.hammerlab.guacamole.util.TestUtil.resourcePath
@@ -40,3 +40,42 @@ class AlleleAtLocusSuite
     possibleAlleles should equal(Seq(AlleleAtLocus("chr22", 46931061, "G", "A")))
   }
 }
+
+//class AALTest
+//  extends KryoSerializerSuite
+//    with SparkSerializerSuite {
+//
+//  kryoRegister(classOf[MappedRead], new MappedReadSerializer)
+//
+//  kryoRegister(
+//    //classOf[MappedRead] → new MappedReadSerializer,
+//    classOf[AlleleAtLocus],
+//    classOf[mutable.WrappedArray.ofByte],
+////    classOf[mutable.ArraySeq[_]],
+//    classOf[Cigar],
+//    classOf[Array[Object]]
+//  )
+//
+//  test("serde") {
+//    val aal = AlleleAtLocus("chr22", 46931061, "G", "A")
+//    deserialize[AlleleAtLocus](serialize(aal)) should be(aal)
+//  }
+//
+//  test("read") {
+//    val read = MappedRead(
+//      "read1",
+//      "TCGACCCTCGA",
+//      Array[Byte]((10 to 20).map(_.toByte): _*),
+//      isDuplicate = true,
+//      "chr5",
+//      50,
+//      325352323,
+//      TextCigarCodec.decode(""),
+//      failedVendorQualityChecks = false,
+//      isPositiveStrand = true,
+//      isPaired = true
+//    )
+//
+//    deserialize[MappedRead](serialize(read)) should be(read)
+//  }
+//}

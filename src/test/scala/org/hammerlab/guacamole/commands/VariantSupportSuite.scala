@@ -1,11 +1,12 @@
 package org.hammerlab.guacamole.commands
 
+import org.hammerlab.genomics.bases.Bases
 import org.hammerlab.genomics.loci.parsing.ParsedLoci
+import org.hammerlab.genomics.reads.MappedRead
+import org.hammerlab.genomics.readsets.io.TestInputConfig
+import org.hammerlab.genomics.readsets.rdd.ReadsRDDUtil
 import org.hammerlab.guacamole.commands.VariantSupport.Caller.AlleleCount
-import org.hammerlab.guacamole.pileup.{ Pileup, Util => PileupUtil }
-import org.hammerlab.guacamole.reads.MappedRead
-import org.hammerlab.guacamole.readsets.io.TestInputConfig
-import org.hammerlab.guacamole.readsets.rdd.ReadsRDDUtil
+import org.hammerlab.guacamole.pileup.{ Pileup, Util ⇒ PileupUtil }
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.hammerlab.guacamole.util.GuacFunSuite
 import org.hammerlab.guacamole.util.TestUtil.resourcePath
@@ -43,6 +44,11 @@ class VariantSupportSuite
   }
 
   def assertAlleleCounts(pileup: Pileup, alleleCounts: (String, String, Int)*): Unit = {
+    import org.hammerlab.genomics.bases.Bases.BasesOrdering
+
+    implicit val bo = implicitly[Ordering[Bases]]
+    implicit val ord = implicitly[Ordering[(Bases, Bases, Int)]]
+
     val computedAlleleCounts =
       (for {
         AlleleCount(_, _, _, ref, alternate, count) <- VariantSupport.Caller.pileupsToAlleleCounts(Vector(pileup))

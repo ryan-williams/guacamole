@@ -33,7 +33,7 @@ object Likelihood {
     prior: Genotype => Double = uniformPrior,
     logSpace: Boolean = false): Seq[(Genotype, Double)] = {
 
-    val alleles = pileup.distinctAlleles.filter(allele => allele.altBases.forall(_.isStandardBase))
+    val alleles = pileup.distinctAlleles.filter(_.altBases.allStandardBases)
 
     // Assume the alleles are equivalent fractions in the genotype
     val genotypes =

@@ -17,6 +17,9 @@ case class InputCollection(items: PerSample[Input]) {
 }
 
 object InputCollection {
+
+  implicit def unpackInputs(inputCollection: InputCollection): PerSample[Input] = inputCollection.items
+
   trait Arguments extends ReadSetsArgsBase {
     @Args4jOption(name = "--tissue-types", handler = classOf[StringArrayOptionHandler],
       usage = "[normal|tumor] ... [normal|tumor]")

@@ -1,7 +1,7 @@
 package org.hammerlab.guacamole.windowing
 
 import org.hammerlab.genomics.loci.set.test.TestLociSet
-import org.hammerlab.guacamole.reads.ReadsUtil
+import org.hammerlab.genomics.reads.ReadsUtil
 import org.scalatest.{ FunSuite, Matchers }
 
 class SlidingWindowSuite

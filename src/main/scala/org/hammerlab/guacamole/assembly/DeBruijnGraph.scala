@@ -2,18 +2,18 @@ package org.hammerlab.guacamole.assembly
 
 import breeze.stats.mean
 import htsjdk.samtools.CigarOperator
-import org.hammerlab.genomics.bases.{ Base, Bases }
+import org.hammerlab.genomics.bases.Bases
 import org.hammerlab.genomics.reads.{ MappedRead, Read }
 import org.hammerlab.guacamole.assembly.DeBruijnGraph.{ Kmer, Sequence, SubKmer }
 
-import scala.collection.mutable
+import scala.collection.mutable.{ HashSet ⇒ MHashSet, Map ⇒ MMap, Set ⇒ MSet, Stack ⇒ MStack }
 
 class DeBruijnGraph(val kmerSize: Int,
-                    val kmerCounts: mutable.Map[Kmer, Int]) {
+                    val kmerCounts: MMap[Kmer, Int]) {
 
   // Table to store prefix to kmers that share that prefix
-  val prefixTable: mutable.Map[SubKmer, List[Kmer]] =
-    mutable.Map(
+  val prefixTable: MMap[SubKmer, List[Kmer]] =
+    MMap(
       kmerCounts
         .keys
         .groupBy(kmerPrefix)
@@ -22,8 +22,8 @@ class DeBruijnGraph(val kmerSize: Int,
     )
 
   // Table to store suffix to kmers that share that suffix
-  val suffixTable: mutable.Map[SubKmer, List[Kmer]] =
-    mutable.Map(
+  val suffixTable: MMap[SubKmer, List[Kmer]] =
+    MMap(
       kmerCounts
         .keys
         .groupBy(kmerSuffix)
@@ -34,7 +34,7 @@ class DeBruijnGraph(val kmerSize: Int,
   //  Map from kmers to the sequence they were merged in to.
   //  The value is the merged sequence and the index in that sequence 
   // at which the "key" kmer occurs.
-  val mergeIndex: mutable.Map[Kmer, (Sequence, Int)] = mutable.Map.empty
+  val mergeIndex: MMap[Kmer, (Sequence, Int)] = MMap.empty
 
   @inline
   private[assembly] def kmerPrefix(seq: Kmer): SubKmer = {
@@ -55,7 +55,7 @@ class DeBruijnGraph(val kmerSize: Int,
   private[assembly] def removeKmer(kmer: Kmer) = {
     kmerCounts.remove(kmer)
     def removeFromTable(kmer: Kmer,
-                        table: mutable.Map[Kmer, List[Kmer]],
+                        table: MMap[Kmer, List[Kmer]],
                         keyFunc: Kmer => SubKmer) = {
       val key = keyFunc(kmer)
       val otherNodes = table(key).filterNot(_ == kmer)
@@ -86,7 +86,7 @@ class DeBruijnGraph(val kmerSize: Int,
    * Merge existing kmers in unique path
    */
   private[assembly] def mergeNodes(): Unit = {
-    val allNodes: mutable.Set[Kmer] = mutable.HashSet[Kmer](kmerCounts.keys.toSeq: _*)
+    val allNodes: MSet[Kmer] = MHashSet[Kmer](kmerCounts.keys.toSeq: _*)
 
     while (allNodes.nonEmpty) {
       val node = allNodes.head
@@ -138,7 +138,7 @@ class DeBruijnGraph(val kmerSize: Int,
     val prevFunc: Kmer => Seq[Kmer] = if (searchForward) parents else children
 
     var current = kmer
-    var visited: mutable.Set[Kmer] = mutable.Set(current)
+    var visited: MSet[Kmer] = MSet(current)
 
     // Kmer next in the path
     def nextNodes(currentNode: Kmer) =
@@ -189,10 +189,10 @@ class DeBruijnGraph(val kmerSize: Int,
     assume(sink.length == kmerSize, s"Sink kmer $sink has size ${sink.length} != $kmerSize")
 
     var paths = List.empty[Path]
-    var visited: mutable.Set[Kmer] = mutable.Set.empty
+    var visited: MSet[Kmer] = MSet.empty
 
     // Add the source node to the frontier
-    val frontier: mutable.Stack[Kmer] =
+    val frontier: MStack[Kmer] =
       if (mergeIndex.contains(source)) {
         val (mergedNode, pathIndex) = mergeIndex(source)
 
@@ -206,9 +206,9 @@ class DeBruijnGraph(val kmerSize: Int,
         visited += mergedNode
 
         // Add the merged node to the frontier, removing any preceding bases
-        mutable.Stack(mergedNode.drop(pathIndex))
+        MStack(mergedNode.drop(pathIndex))
       } else {
-        mutable.Stack(source)
+        MStack(source)
       }
 
     // Initialize an empty path
@@ -218,8 +218,8 @@ class DeBruijnGraph(val kmerSize: Int,
 
     // Track if we branch in the path if we need to return to this point
     // Keep track of the branch and number of children
-    val lastBranchIndex = mutable.Stack[Int]()
-    val lastBranchChildren = mutable.Stack[Int]()
+    val lastBranchIndex = MStack[Int]()
+    val lastBranchChildren = MStack[Int]()
     var numBacktracks = 0
 
     // explore branches until we find the sink
@@ -343,7 +343,7 @@ object DeBruijnGraph {
             minMeanKmerBaseQuality: Int = 0,
             mergeNodes: Boolean = false): DeBruijnGraph = {
 
-    val kmerCounts = mutable.Map.empty[Kmer, Int]
+    val kmerCounts = MMap.empty[Kmer, Int]
 
     reads.foreach(
       read => {
@@ -387,6 +387,8 @@ object DeBruijnGraph {
 
   /**
    * For a given set of reads identify all kmers that appear in the specified reference region
+   *
+   * TODO(ryan): unused?
    *
    * @param reads  Set of reads to extract sequence from
    * @param startLocus Start (inclusive) locus on the reference
@@ -435,7 +437,7 @@ object DeBruijnGraph {
   def discoverPathsFromReads(reads: Seq[MappedRead],
                              referenceStart: Int,
                              referenceEnd: Int,
-                             referenceSequence: Array[Base],
+                             referenceSequence: Bases,
                              kmerSize: Int,
                              minOccurrence: Int,
                              maxPaths: Int,

@@ -28,8 +28,8 @@ case class Insertion(override val sequencedBases: Bases, baseQualities: Seq[Byte
 }
 
 class MatchOrMisMatch(val base: Base, val baseQuality: Byte, val referenceBase: Base) extends Alignment {
-  override val sequencedBases: Bases = Vector(base)
-  override val referenceBases: Bases = Vector(referenceBase)
+  override val sequencedBases: Bases = Bases(base)
+  override val referenceBases: Bases = Bases(referenceBase)
 }
 object MatchOrMisMatch {
   def unapply(m: MatchOrMisMatch): Option[(Base, Byte)] = Some((m.base, m.baseQuality))
@@ -57,7 +57,7 @@ case class Deletion(override val referenceBases: Bases, baseQuality: Byte) exten
     case _ =>
       false
   }
-  override val sequencedBases: Bases = referenceBases.headOption.toIndexedSeq
+  override val sequencedBases: Bases = referenceBases.headOption.toVector
 }
 object Deletion {
   def apply(referenceBases: String, baseQuality: Byte): Deletion =

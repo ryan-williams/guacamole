@@ -5,6 +5,7 @@ import org.hammerlab.genomics.loci.set.LociSet
 import org.hammerlab.guacamole.commands.SomaticJoint.Arguments
 import org.hammerlab.guacamole.commands.{ GuacCommand, SomaticJoint }
 import org.hammerlab.guacamole.data.{ CancerWGSTestUtil, NA12878TestUtil }
+import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.hammerlab.guacamole.util.TestUtil.resourcePath
 import org.hammerlab.guacamole.variants.VariantComparisonTest
 
@@ -36,7 +37,7 @@ object SomaticJointCallerIntegrationTests
   // increase the parallelism.
   setDefaultConf("spark.default.parallelism", "24")
 
-  def main(args: Array[String]): Unit = {
+  override def main(args: Array[String]): Unit = {
 
     val forceCallLoci =
       LociSet(
@@ -57,7 +58,7 @@ object SomaticJointCallerIntegrationTests
       referenceIsPartial = true
       somaticGenotypePolicy = "trigger"
       lociStrOpt = Some(((1).until(22).map(i => "chr%d".format(i)) ++ Seq("chrX", "chrY")).mkString(","))
-      forceCallLociFileOpt = Some(forceCallLoci.truncatedString(100000))
+      forceCallLociFileOpt = Some(forceCallLoci.toString(100000))
       outDir = outDir
     }
 
@@ -77,7 +78,7 @@ object SomaticJointCallerIntegrationTests
       compareToCSV(
         outDir + "/somatic.all_samples.vcf",
         CancerWGSTestUtil.expectedSomaticCallsCSV,
-        CancerWGSTestUtil.reference(sc),
+        ReferenceBroadcast(CancerWGSTestUtil, sc),
         Set("primary", "recurrence")
       )
     }

@@ -1,7 +1,6 @@
 name := "guacamole"
 version := "0.1.0-SNAPSHOT"
 
-sparkVersion := "1.6.1"
 hadoopVersion := "2.7.2"
 
 addSparkDeps
@@ -31,8 +30,7 @@ libraryDependencies ++= Seq(
 )
 
 testDeps ++= Seq(
-  libraries.value('spark_testing_base)/*,
-  libraries.value('hadoop)*/
+  libraries.value('spark_testing_base) exclude("org.apache.hadoop", "hadoop-client")
 )
 
 testJarTestDeps ++= Seq(

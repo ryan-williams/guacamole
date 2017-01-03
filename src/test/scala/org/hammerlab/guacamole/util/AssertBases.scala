@@ -1,8 +1,9 @@
 package org.hammerlab.guacamole.util
 
+import org.hammerlab.genomics.bases.{ Base, Bases }
 import org.scalatest.Matchers
-import org.hammerlab.guacamole.util.Bases.basesToString
 
 object AssertBases extends Matchers {
-  def apply(bases1: Iterable[Byte], bases2: String) = basesToString(bases1) should equal(bases2)
+  def apply(bases1: Bases, bases2: String) = bases1.toString should equal(bases2)
+  def apply(bases1: Bases, base: Base) = bases1.toString should equal(Bases(base))
 }

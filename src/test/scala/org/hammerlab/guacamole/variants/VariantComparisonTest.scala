@@ -2,13 +2,13 @@ package org.hammerlab.guacamole.variants
 
 import java.io.File
 
-import htsjdk.variant.variantcontext.{ GenotypeBuilder, VariantContext => HTSJDKVariantContext, VariantContextBuilder, Allele => HTSJDKAllele }
+import htsjdk.variant.variantcontext.{ GenotypeBuilder, VariantContextBuilder, Allele ⇒ HTSJDKAllele, VariantContext ⇒ HTSJDKVariantContext }
 import htsjdk.variant.vcf.VCFFileReader
+import org.hammerlab.genomics.bases.Bases
 import org.hammerlab.guacamole.reference.ReferenceBroadcast
-import org.hammerlab.guacamole.util.Bases.basesToString
 import org.hammerlab.guacamole.util.VCFComparison
 
-import scala.collection.JavaConversions
+import scala.collection.JavaConversions.{seqAsJavaList, collectionAsScalaIterable}
 import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
 
@@ -17,8 +17,8 @@ case class VariantFromVarlensCSV(
     contig: String,
     interbaseStart: Int,
     interbaseEnd: Int,
-    ref: String,
-    alt: String,
+    ref: Bases,
+    alt: Bases,
     tumor: String,
     normal: String,
     validation: String) {
@@ -26,36 +26,44 @@ case class VariantFromVarlensCSV(
   def toHtsjdVariantContext(reference: ReferenceBroadcast): HTSJDKVariantContext = {
     val uncanonicalizedContig = "chr" + contig
 
-    val (adjustedInterbaseStart, adjustedRef, adjustedAlt) = if (alt.nonEmpty) {
-      (interbaseStart, ref, alt)
-    } else {
-      // Deletion.
-      val refSequence =
-        basesToString(
+    val (adjustedInterbaseStart, adjustedRef, adjustedAlt) =
+      if (alt.nonEmpty)
+        (interbaseStart, ref, alt)
+      else {
+        // Deletion.
+        val refSequence =
           reference
-            .getReferenceSequence(
-              uncanonicalizedContig,
-              interbaseStart.toInt - 1, interbaseEnd.toInt
-            )
-        ).toUpperCase
+          .getReferenceSequence(
+            uncanonicalizedContig,
+            interbaseStart.toInt - 1, interbaseEnd.toInt
+          )
 
-      (interbaseStart - 1, refSequence, refSequence(0) + alt)
-    }
+        (interbaseStart - 1, refSequence: Bases, (refSequence(0).byte +: alt): Bases)
+      }
 
     val alleles = Seq(adjustedRef, adjustedAlt).distinct
 
-    def makeHtsjdkAllele(allele: String): HTSJDKAllele = HTSJDKAllele.create(allele, allele == adjustedRef)
+    def makeHtsjdkAllele(allele: Bases): HTSJDKAllele = HTSJDKAllele.create(allele.toString, allele == adjustedRef)
 
-    val genotype = new GenotypeBuilder(tumor)
-      .alleles(JavaConversions.seqAsJavaList(Seq(adjustedRef, adjustedAlt).map(makeHtsjdkAllele _)))
-      .make
+    val genotype =
+      new GenotypeBuilder(tumor)
+        .alleles(
+          seqAsJavaList(
+            Seq(
+              adjustedRef,
+              adjustedAlt
+            )
+            .map(makeHtsjdkAllele)
+          )
+        )
+        .make
 
     new VariantContextBuilder()
       .chr(uncanonicalizedContig)
       .start(adjustedInterbaseStart + 1) // one based based inclusive
       .stop(adjustedInterbaseStart + 1 + math.max(adjustedRef.length - 1, 0))
-      .genotypes(JavaConversions.seqAsJavaList(Seq(genotype)))
-      .alleles(JavaConversions.seqAsJavaList(alleles.map(makeHtsjdkAllele _)))
+      .genotypes(seqAsJavaList(Seq(genotype)))
+      .alleles(seqAsJavaList(alleles.map(makeHtsjdkAllele _)))
       .make
   }
 }
@@ -171,7 +179,7 @@ trait VariantComparisonTest {
 
     def onlyIndels(calls: Seq[HTSJDKVariantContext]): Seq[HTSJDKVariantContext] = {
       calls.filter(call => call.getReference.length != 1 ||
-        JavaConversions.collectionAsScalaIterable(call.getAlternateAlleles).exists(_.length != 1))
+        collectionAsScalaIterable(call.getAlternateAlleles).exists(_.length != 1))
     }
 
     val comparisonFull = VCFComparison(recordsExpected, recordsGuacamole)

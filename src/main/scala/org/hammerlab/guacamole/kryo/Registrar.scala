@@ -5,9 +5,10 @@ import org.apache.spark.serializer.KryoRegistrator
 import org.bdgenomics.adam.models.{ SequenceDictionary, SequenceRecord, VariantContext }
 import org.bdgenomics.adam.rich.RichVariant
 import org.bdgenomics.adam.serialization.ADAMKryoRegistrator
+import org.hammerlab.genomics.bases.Base
 import org.hammerlab.genomics.loci.map.{ Contig, ContigSerializer, LociMap, Serializer }
-import org.hammerlab.genomics.readsets
-import org.hammerlab.genomics.reference.ContigLengths
+import org.hammerlab.genomics.reference.{ ContigLengths, Position }
+import org.hammerlab.genomics.{ bases, readsets }
 import org.hammerlab.guacamole.jointcaller.kryo.{ Registrar ⇒ JointCallerRegistrar }
 import org.hammerlab.guacamole.loci.Coverage
 import org.hammerlab.guacamole.loci.partitioning.LociPartitioning
@@ -65,5 +66,15 @@ class Registrar extends KryoRegistrator {
 
     kryo.register(classOf[Array[CalledSomaticAllele]])
     kryo.register(classOf[CalledSomaticAllele])
+
+    Position.registerKryo(kryo)
+
+    new bases.Registrar().registerClasses(kryo)
+    kryo.register(classOf[Base])
+    kryo.register(classOf[Array[Base]])
+
+    kryo.register(classOf[Allele])
+
+    //new readsets.Registrar().registerClasses(kryo)
   }
 }

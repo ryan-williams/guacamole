@@ -2,7 +2,6 @@ package org.hammerlab.guacamole.alignment
 
 import org.hammerlab.guacamole.alignment.AlignmentState.{ Insertion, Match, Mismatch }
 import org.hammerlab.guacamole.alignment.ReadAlignment.scoreAlignmentPaths
-import org.hammerlab.guacamole.util.BasesUtil._
 import org.scalatest.{ FunSuite, Matchers }
 
 class ReadAlignmentSuite extends FunSuite with Matchers {

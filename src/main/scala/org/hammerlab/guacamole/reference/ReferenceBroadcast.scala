@@ -54,7 +54,7 @@ object ReferenceBroadcast extends Logging {
     val broadcastedSequences = Map.newBuilder[ContigName, ContigSequence]
     while (nextSequence != null) {
       val contigName = nextSequence.getName
-      val sequence: Bases = nextSequence.getBases
+      val sequence = nextSequence.getBases
       info(s"Broadcasting contig: $contigName")
       val broadcastedSequence = ArrayBackedReferenceSequence(contigName, sc.broadcast(sequence))
       broadcastedSequences += ((contigName, broadcastedSequence))

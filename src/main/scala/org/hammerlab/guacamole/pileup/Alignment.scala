@@ -59,10 +59,6 @@ case class Deletion(override val referenceBases: Bases, baseQuality: Byte) exten
   }
   override val sequencedBases: Bases = referenceBases.headOption.toVector
 }
-object Deletion {
-  def apply(referenceBases: String, baseQuality: Byte): Deletion =
-    Deletion(referenceBases: Bases, baseQuality)
-}
 
 /**
  * Signifies that at a particular locus, a read has bases deleted.

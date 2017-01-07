@@ -120,8 +120,8 @@ trait VariantComparisonTest {
             fields("contig"),
             fields("interbase_start").toInt,
             fields("interbase_end").toInt,
-            fields("ref"),
-            fields("alt"),
+            Bases(fields("ref")),
+            Bases(fields("alt")),
             fields("tumor"),
             fields("normal"),
             fields("validation"))

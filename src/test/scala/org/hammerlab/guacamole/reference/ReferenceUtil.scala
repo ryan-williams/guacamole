@@ -26,7 +26,7 @@ trait ReferenceUtil extends LocusUtil {
 
     for {
       (contigName, start, basesStr) <- contigStartSequences
-      bases = basesStr: Bases
+      bases = Bases(basesStr)
     } {
       val contigBasesMap = basesMap.getOrElseUpdate(contigName, mutable.Map())
       for {

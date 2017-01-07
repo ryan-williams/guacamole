@@ -1,10 +1,14 @@
 package org.hammerlab.guacamole.alignment
 
+import org.hammerlab.genomics.bases.BasesUtil
 import org.hammerlab.guacamole.alignment.AlignmentState.{ Insertion, Match, Mismatch }
 import org.hammerlab.guacamole.alignment.ReadAlignment.scoreAlignmentPaths
+import org.hammerlab.test.Suite
 import org.scalatest.{ FunSuite, Matchers }
 
-class ReadAlignmentSuite extends FunSuite with Matchers {
+class ReadAlignmentSuite
+  extends Suite
+    with BasesUtil {
 
   test("test cigar string: all match") {
     val alignment = ReadAlignment(

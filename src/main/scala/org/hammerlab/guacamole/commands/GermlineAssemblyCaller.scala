@@ -22,6 +22,8 @@ import org.hammerlab.guacamole.reference.ReferenceBroadcast
 import org.hammerlab.guacamole.variants.{ Allele, AlleleEvidence, CalledAllele, GenotypeOutputCaller }
 import org.kohsuke.args4j.{ Option ⇒ Args4jOption }
 
+import math.{exp, log, min, max, log10, round}
+
 /**
  * Simple assembly based germline variant caller
  *
@@ -251,7 +253,7 @@ object GermlineAssemblyCaller {
       } else {
         val (genotype, logProbability) = genotypeProbabilities.maxBy(_._2)
 
-        val probability = math.exp(logProbability)
+        val probability = exp(logProbability)
         genotype
           .getNonReferenceAlleles
           .filter(_.altBases.nonEmpty)

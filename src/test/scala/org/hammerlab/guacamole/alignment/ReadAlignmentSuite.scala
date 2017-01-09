@@ -4,7 +4,8 @@ import org.hammerlab.genomics.bases.BasesUtil
 import org.hammerlab.guacamole.alignment.AlignmentState.{ Insertion, Match, Mismatch }
 import org.hammerlab.guacamole.alignment.ReadAlignment.scoreAlignmentPaths
 import org.hammerlab.test.Suite
-import org.scalatest.{ FunSuite, Matchers }
+
+import scala.math.round
 
 class ReadAlignmentSuite
   extends Suite
@@ -101,7 +102,7 @@ class ReadAlignmentSuite
         closeGapProbability = 1e-2
       )
 
-    math.round(alignments(0)._3) should === (5)
+    round(alignments(0)._3) should === (5)
   }
 
   test("align exact match") {

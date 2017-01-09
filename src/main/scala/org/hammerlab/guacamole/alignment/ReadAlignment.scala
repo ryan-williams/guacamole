@@ -5,6 +5,8 @@ import htsjdk.samtools.{ Cigar, TextCigarCodec }
 import org.hammerlab.genomics.bases.Bases
 import org.hammerlab.guacamole.alignment.AlignmentState.{ AlignmentState, cigarKey, isGapAlignment }
 
+import scala.math.{ exp, log }
+
 /**
  *
  * @param alignments Sequence of alignments
@@ -64,9 +66,9 @@ object ReadAlignment {
    */
   def apply(sequence: Bases,
             reference: Bases,
-            mismatchProbability: Double = math.exp(-4),
-            openGapProbability: Double = math.exp(-6),
-            closeGapProbability: Double = 1 - math.exp(-1)): ReadAlignment = {
+            mismatchProbability: Double = exp(-4),
+            openGapProbability: Double = exp(-6),
+            closeGapProbability: Double = 1 - exp(-1)): ReadAlignment = {
     // TODO: What are the best defaults?
     // BWA defaults:
     // -log mismatchProbability = 4
@@ -99,13 +101,13 @@ object ReadAlignment {
                                              openGapProbability: Double,
                                              closeGapProbability: Double): DenseVector[Path] = {
 
-    val logMismatchPenalty = -math.log(mismatchProbability)
+    val logMismatchPenalty = -log(mismatchProbability)
 
-    val logOpenGapPenalty = -math.log(openGapProbability)
-    val noGapPenalty = -math.log(1 - openGapProbability)
+    val logOpenGapPenalty = -log(openGapProbability)
+    val noGapPenalty = -log(1 - openGapProbability)
 
-    val logCloseGapPenalty = -math.log(closeGapProbability)
-    val logContinueGapPenalty = -math.log(1 - closeGapProbability)
+    val logCloseGapPenalty = -log(closeGapProbability)
+    val logContinueGapPenalty = -log(1 - closeGapProbability)
 
     val sequenceLength = sequence.length
     val referenceLength = reference.length

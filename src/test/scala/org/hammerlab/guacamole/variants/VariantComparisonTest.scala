@@ -12,6 +12,7 @@ import org.hammerlab.guacamole.util.VCFComparison
 import scala.collection.JavaConversions.{ collectionAsScalaIterable, seqAsJavaList }
 import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
+import scala.math.max
 
 case class VariantFromVarlensCSV(
     genome: String,
@@ -63,7 +64,7 @@ case class VariantFromVarlensCSV(
     new VariantContextBuilder()
       .chr(uncanonicalizedContig)
       .start(adjustedInterbaseStart + 1) // one based based inclusive
-      .stop(adjustedInterbaseStart + 1 + math.max(adjustedRef.length - 1, 0))
+      .stop(adjustedInterbaseStart + 1 + max(adjustedRef.length - 1, 0))
       .genotypes(seqAsJavaList(Seq(genotype)))
       .alleles(seqAsJavaList(alleles.map(makeHtsjdkAllele _)))
       .make

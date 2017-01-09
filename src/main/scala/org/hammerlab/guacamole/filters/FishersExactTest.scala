@@ -2,11 +2,13 @@ package org.hammerlab.guacamole.filters
 
 import org.apache.commons.math3.util.ArithmeticUtils.binomialCoefficientLog
 
+import math.{exp, log, min, max, log10, round}
+
 object FishersExactTest {
 
   /** Fisher's exact test, returned as a probability. */
   def apply(totalA: Int, totalB: Int, conditionA: Int, conditionB: Int): Double =
-    math.exp(asLog(totalA, totalB, conditionA, conditionB))
+    exp(asLog(totalA, totalB, conditionA, conditionB))
 
   /** Fisher's exact test, returned as -1 * log base 10 probability (i.e. a positive number). */
   def asLog10(totalA: Int, totalB: Int, conditionA: Int, conditionB: Int): Double =

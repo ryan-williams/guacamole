@@ -4,6 +4,8 @@ import org.hammerlab.guacamole.jointcaller._
 import org.hammerlab.guacamole.jointcaller.annotation.SingleSampleAnnotations
 import org.hammerlab.guacamole.jointcaller.pileup_summarization.{ AlleleMixture, PileupStats }
 
+import scala.math.max
+
 /**
  *
  * Summary of evidence for a particular somatic allele in a single tumor RNA sample.
@@ -35,7 +37,7 @@ object TumorRNASingleSampleSingleAlleleEvidence {
   def apply(allele: AlleleAtLocus, stats: PileupStats, parameters: Parameters): TumorRNASingleSampleSingleAlleleEvidence = {
     assume(allele.ref == stats.ref, "%s != %s".format(allele.ref, stats.ref))
 
-    val altVaf = math.max(parameters.somaticVafFloor, stats.vaf(allele.alt))
+    val altVaf = max(parameters.somaticVafFloor, stats.vaf(allele.alt))
     val possibleMixtures =
       Seq(AlleleMixture(allele.ref -> 1.0)) ++
         (

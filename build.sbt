@@ -11,15 +11,18 @@ deps ++= Seq(
   libs.value('args4s),
   libs.value('bdg_formats),
   libs.value('bdg_utils_cli),
+  libs.value('breeze),
   libs.value('commons_math),
   libs.value('hadoop_bam),
   libs.value('htsjdk),
+  libs.value('iterators),
   libs.value('magic_rdds),
   libs.value('scalautils),
   libs.value('slf4j),
   libs.value('spark_commands),
   libs.value('spark_util),
-  libs.value('spire)
+  libs.value('spire),
+  libs.value('string_utils)
 )
 
 providedDeps ++= Seq(

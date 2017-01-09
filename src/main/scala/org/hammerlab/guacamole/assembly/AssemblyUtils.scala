@@ -93,9 +93,9 @@ object AssemblyUtils extends Logging {
     if (paths.isEmpty) {
       warn(s"In window $contigName:$referenceStart-$referenceEnd assembly failed")
       List.empty
-    } else if (paths.size <= expectedPloidy) {
+    } else if (paths.size <= expectedPloidy)
       paths
-    } else if (paths.size <= maxPathsToScore) {
+    else if (paths.size <= maxPathsToScore)
       (for {
         path <- paths
       } yield {
@@ -110,7 +110,7 @@ object AssemblyUtils extends Logging {
       .take(expectedPloidy)
       .map(_._2)
 
-    } else {
+    else {
       warn(s"In window $contigName:$referenceStart-$referenceEnd " +
         s"there were ${paths.size} paths found, all variants skipped")
       List.empty
@@ -144,47 +144,50 @@ object AssemblyUtils extends Logging {
     // Find the alignment sequences using the CIGAR
     val cigarElements = alignment.toCigar.getCigarElements
     val numCigarElements = cigarElements.size
-    cigarElements.zipWithIndex.flatMap {
-      case (cigarElement, cigarIdx) ⇒
-        val cigarOperator = cigarElement.getOperator
-        val referenceLength: Int = cigarElement.getReferenceLength
-        val pathLength = cigarElement.getReadLength
-        val locus = start + NumLoci(referenceIndex)
 
-        // Yield a resulting variant when there is a mismatch, insertion or deletion
-        val possibleVariant =
-          cigarOperator match {
-            case CigarOperator.X =>
-              val referenceAllele = referenceContig.slice(locus, referenceLength)
-              val alternateAllele: Bases = path.slice(pathIndex, pathIndex + pathLength)
+    cigarElements
+      .zipWithIndex
+      .flatMap {
+        case (cigarElement, cigarIdx) ⇒
+          val cigarOperator = cigarElement.getOperator
+          val referenceLength: Int = cigarElement.getReferenceLength
+          val pathLength = cigarElement.getReadLength
+          val locus = start + NumLoci(referenceIndex)
 
-              if (referenceAllele.nonEmpty &&
-                alternateAllele.nonEmpty &&
-                (allowReferenceVariant || referenceAllele != alternateAllele))
-                Some(buildVariant(locus, referenceAllele, alternateAllele))
-              else
-                None
+          // Yield a resulting variant when there is a mismatch, insertion or deletion
+          val possibleVariant =
+            cigarOperator match {
+              case CigarOperator.X =>
+                val referenceAllele = referenceContig.slice(locus, referenceLength)
+                val alternateAllele: Bases = path.slice(pathIndex, pathIndex + pathLength)
 
-            case (CigarOperator.I | CigarOperator.D) if cigarIdx != 0 && cigarIdx != (numCigarElements - 1) =>
-              // For insertions and deletions, report the variant with the last reference base attached
-              val referenceAllele = referenceContig.slice(locus.prev, referenceLength + 1)
-              val alternateAllele: Bases = path.slice(pathIndex - 1, pathIndex + pathLength)
+                if (referenceAllele.nonEmpty &&
+                    alternateAllele.nonEmpty &&
+                    (allowReferenceVariant || referenceAllele != alternateAllele))
+                  Some(buildVariant(locus, referenceAllele, alternateAllele))
+                else
+                  None
 
-              if (referenceAllele.nonEmpty &&
-                alternateAllele.nonEmpty &&
-                (allowReferenceVariant || referenceAllele != alternateAllele))
-                Some(buildVariant(locus.prev, referenceAllele, alternateAllele))
-              else
-                None
+              case (CigarOperator.I | CigarOperator.D) if cigarIdx != 0 && cigarIdx != (numCigarElements - 1) =>
+                // For insertions and deletions, report the variant with the last reference base attached
+                val referenceAllele = referenceContig.slice(locus.prev, referenceLength + 1)
+                val alternateAllele: Bases = path.slice(pathIndex - 1, pathIndex + pathLength)
 
-            case _ => None
-          }
+                if (referenceAllele.nonEmpty &&
+                    alternateAllele.nonEmpty &&
+                    (allowReferenceVariant || referenceAllele != alternateAllele))
+                  Some(buildVariant(locus.prev, referenceAllele, alternateAllele))
+                else
+                  None
 
-        referenceIndex += referenceLength
-        pathIndex += pathLength
+              case _ => None
+            }
 
-        possibleVariant
-    }
+          referenceIndex += referenceLength
+          pathIndex += pathLength
+
+          possibleVariant
+      }
   }
 
 }
